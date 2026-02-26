@@ -1,5 +1,8 @@
 import * as admin from 'firebase-admin';
 
+// Attempt to initialize Firebase Admin using credentials from environment variables.
+// If something goes wrong (e.g. env vars missing), we catch the error so the
+// whole application can still start and the /health endpoint remains usable.
 const serviceAccount = {
   projectId: process.env.FIREBASE_PROJECT_ID,
   privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
@@ -14,19 +17,39 @@ const serviceAccount = {
   )}`,
 };
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
-  });
+let db: FirebaseFirestore.Firestore | null = null;
+let firebaseInitialized = false;
+
+try {
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+    });
+  }
+  db = admin.firestore();
+  firebaseInitialized = true;
+  console.log('✅ Firebase Admin initialized successfully');
+} catch (error) {
+  console.warn(
+    '⚠️ Firebase Admin initialization failed. ' +
+      'Continuing without Firestore. ' +
+      'Routes depending on Firestore will throw when invoked.',
+    error
+  );
 }
 
-export const db = admin.firestore();
+export { db, firebaseInitialized };
 
 export async function saveIncomingMessage(
   phone: string,
   message: string,
   type: 'text' | 'image' | 'document' = 'text'
 ) {
+  if (!firebaseInitialized || !db) {
+    console.warn('saveIncomingMessage called but Firestore is not initialized');
+    throw new Error('Firestore not available');
+  }
+
   try {
     const doc = await db.collection('messages').add({
       phone,
@@ -49,6 +72,11 @@ export async function saveAssistantMessage(
   provider: string,
   incomingMessageId?: string
 ) {
+  if (!firebaseInitialized || !db) {
+    console.warn('saveAssistantMessage called but Firestore is not initialized');
+    throw new Error('Firestore not available');
+  }
+
   try {
     await db.collection('messages').add({
       phone,
@@ -69,6 +97,11 @@ export async function createOrder(
   customerId: string,
   orderData: Record<string, any>
 ) {
+  if (!firebaseInitialized || !db) {
+    console.warn('createOrder called but Firestore is not initialized');
+    throw new Error('Firestore not available');
+  }
+
   try {
     const doc = await db.collection('orders').add({
       ...orderData,
@@ -88,6 +121,11 @@ export async function updateOrderStatus(
   orderId: string,
   newStatus: string
 ) {
+  if (!firebaseInitialized || !db) {
+    console.warn('updateOrderStatus called but Firestore is not initialized');
+    throw new Error('Firestore not available');
+  }
+
   try {
     await db.collection('orders').doc(orderId).update({
       status: newStatus,
@@ -100,6 +138,11 @@ export async function updateOrderStatus(
 }
 
 export async function getCustomerByPhone(phone: string) {
+  if (!firebaseInitialized || !db) {
+    console.warn('getCustomerByPhone called but Firestore is not initialized');
+    throw new Error('Firestore not available');
+  }
+
   try {
     const snapshot = await db
       .collection('customers')
