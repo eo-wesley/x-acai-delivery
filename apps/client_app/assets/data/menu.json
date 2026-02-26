@@ -1,0 +1,34 @@
+[
+  {
+    "id": "1",
+    "name": "Açaí 300ml",
+    "description": "Açaí cremoso na medida certa",
+    "price": 14.9,
+    "image": "",
+    "category": "acai"
+  },
+  {
+    "id": "2",
+    "name": "Açaí 500ml",
+    "description": "Açaí com frutas",
+    "price": 19.9,
+    "image": "",
+    "category": "acai"
+  },
+  {
+    "id": "3",
+    "name": "Açaí 700ml",
+    "description": "Açaí completo",
+    "price": 24.9,
+    "image": "",
+    "category": "acai"
+  },
+  {
+    "id": "4",
+    "name": "Combo Família",
+    "description": "Combo para 4 pessoas",
+    "price": 49.9,
+    "image": "",
+    "category": "combo"
+  }
+]

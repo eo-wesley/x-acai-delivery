@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1077201570871",
+    "project_id": "xacai-delivery-prod",
+    "storage_bucket": "xacai-delivery-prod.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1077201570871:android:7b062e2601252ca3bb03b2",
+        "android_client_info": {
+          "package_name": "com.example.client_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCxEh0DnGyOCvf4Hs708D4HDw3EYof23Cs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

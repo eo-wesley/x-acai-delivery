@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "prod": "xacai-delivery-prod"
+  },
+  "targets": {},
+  "etags": {}
+}
