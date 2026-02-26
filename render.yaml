@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: x-acai-backend
+    runtime: docker
+    dockerfilePath: apps/backend/Dockerfile
+    autoDeploy: true
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production

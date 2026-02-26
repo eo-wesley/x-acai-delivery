@@ -18,3 +18,11 @@ No PowerShell:
 cd apps\client_app
 flutter pub get
 flutter run
+
+## Deploy do backend no Render.com
+1. Criar conta em https://render.com
+2. Conectar sua conta GitHub e autorizar o repositório deste projeto
+3. Selecionar o repositório `x-acai-delivery` na lista de serviços
+4. O arquivo `render.yaml` já configura um serviço web usando Docker. O deploy será feito automaticamente a cada push na branch principal.
+
+O serviço utiliza o `Dockerfile` localizado em `apps/backend/Dockerfile` e espera a variável de ambiente `NODE_ENV=production`.
