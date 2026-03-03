@@ -3,19 +3,32 @@ import * as admin from 'firebase-admin';
 // Attempt to initialize Firebase Admin using credentials from environment variables.
 // If something goes wrong (e.g. env vars missing), we catch the error so the
 // whole application can still start and the /health endpoint remains usable.
-const serviceAccount = {
-  projectId: process.env.FIREBASE_PROJECT_ID,
-  privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
-  privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-  clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  clientId: process.env.FIREBASE_CLIENT_ID,
-  authUri: process.env.FIREBASE_AUTH_URI,
-  tokenUri: process.env.FIREBASE_TOKEN_URI,
-  authProviderX509CertUrl: 'https://www.googleapis.com/oauth2/v1/certs',
-  clientX509CertUrl: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
-    process.env.FIREBASE_CLIENT_EMAIL || ''
-  )}`,
-};
+let serviceAccount: any = null;
+
+if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+  } catch (err) {
+    console.error('❌ FIREBASE_SERVICE_ACCOUNT_JSON is malformed or invalid JSON.');
+  }
+} else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
+  serviceAccount = {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    clientId: process.env.FIREBASE_CLIENT_ID,
+    authUri: process.env.FIREBASE_AUTH_URI,
+    tokenUri: process.env.FIREBASE_TOKEN_URI,
+    authProviderX509CertUrl: 'https://www.googleapis.com/oauth2/v1/certs',
+    clientX509CertUrl: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(
+      process.env.FIREBASE_CLIENT_EMAIL || ''
+    )}`,
+  };
+} else {
+  console.warn('⚠️ Missing Firebase Admin credentials in environment variables.');
+  console.warn('Please provide FIREBASE_SERVICE_ACCOUNT_JSON or (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY).');
+}
 
 let db: FirebaseFirestore.Firestore | null = null;
 let firebaseInitialized = false;
