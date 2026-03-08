@@ -8,6 +8,7 @@ import { eventBus } from '../core/eventBus';
 import { marketingService } from '../services/marketing.service';
 import jwt from 'jsonwebtoken';
 import { menuCacheService } from '../services/cache/menu.cache';
+import { v4 as uuidv4 } from 'uuid';
 
 export const adminRouter = Router();
 let sseClients: any[] = [];
@@ -84,29 +85,6 @@ adminRouter.put('/admin/orders/:id/status', adminAuthMiddleware, tenantMiddlewar
 
         const success = await ordersRepo.updateOrderStatus(req.params.id, status);
         if (success) {
-            const order = await ordersRepo.getOrderById(req.params.id);
-            if (order) {
-                const { statusToEvent } = await import('../notifications/status.mapper');
-                const evt = statusToEvent(status);
-                if (evt) {
-                    eventBus.emit(evt, {
-                        orderId: (order as any).id,
-                        customerPhone: (order as any).customer_phone,
-                        customerName: (order as any).customer_name,
-                        totalCents: (order as any).total_cents,
-                    });
-                }
-
-                // Trigger Marketing Loyalty check (Phase 16)
-                if (status === 'completed' && order.customer_phone) {
-                    const { customersRepo } = await import('../db/repositories/customers.repo');
-                    const customer = await customersRepo.getCustomerByPhone(order.customer_phone, tenantId);
-                    if (customer) {
-                        await marketingService.checkLoyaltyTarget(tenantId, customer.id);
-                    }
-                }
-            }
-
             sseClients.filter(c => c.tenantId === tenantId).forEach(c => c.res.write(`data: ${JSON.stringify({ orderId: req.params.id, status })}\n\n`));
             res.json({ success: true, status });
         } else {
@@ -288,7 +266,6 @@ adminRouter.patch('/admin/menu/:id/availability', adminAuthMiddleware, tenantMid
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// Admin menu options
 adminRouter.get('/admin/menu/:id/options', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {
         const db = await getDb();
@@ -302,18 +279,12 @@ adminRouter.get('/admin/menu/:id/options', adminAuthMiddleware, tenantMiddleware
 });
 
 adminRouter.post('/admin/menu/:id/options/groups', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
-    console.log(`[AdminRouter] POST Option Group for item ${req.params.id}`);
     try {
         const db = await getDb();
-        const { v4: uuidv4 } = await import('uuid');
-        // Accept both field names for compatibility during transition
-        const { name, min_options, max_options, min_select, max_select, sort_order, required } = req.body;
-        const finalMin = min_select !== undefined ? min_select : (min_options || 0);
-        const finalMax = max_select !== undefined ? max_select : (max_options || 1);
-
+        const { name, min_select, max_select, sort_order, required } = req.body;
         const id = uuidv4();
         await db.run(`INSERT INTO option_groups (id, restaurant_id, menu_item_id, name, min_select, max_select, sort_order, required) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, req.tenantId, req.params.id, name, finalMin, finalMax, sort_order || 0, required ? 1 : 0]);
+            [id, req.tenantId, req.params.id, name, min_select || 0, max_select || 1, sort_order || 0, required ? 1 : 0]);
         menuCacheService.invalidate(req.tenantId);
         res.status(201).json({ success: true, id });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -322,12 +293,9 @@ adminRouter.post('/admin/menu/:id/options/groups', adminAuthMiddleware, tenantMi
 adminRouter.put('/admin/menu/options/groups/:groupId', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {
         const db = await getDb();
-        const { name, min_options, max_options, min_select, max_select, sort_order, required } = req.body;
-        const finalMin = min_select !== undefined ? min_select : (min_options || 0);
-        const finalMax = max_select !== undefined ? max_select : (max_options || 1);
-
+        const { name, min_select, max_select, sort_order, required } = req.body;
         await db.run(`UPDATE option_groups SET name=?, min_select=?, max_select=?, sort_order=?, required=? WHERE id=?`,
-            [name, finalMin, finalMax, sort_order, required ? 1 : 0, req.params.groupId]);
+            [name, min_select || 0, max_select || 1, sort_order, required ? 1 : 0, req.params.groupId]);
         menuCacheService.invalidate(req.tenantId);
         res.json({ success: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -345,7 +313,6 @@ adminRouter.delete('/admin/menu/options/groups/:groupId', adminAuthMiddleware, t
 adminRouter.post('/admin/menu/options/groups/:groupId/items', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {
         const db = await getDb();
-        const { v4: uuidv4 } = await import('uuid');
         const { name, price_cents, sort_order, available } = req.body;
         const id = uuidv4();
         await db.run(`INSERT INTO option_items (id, restaurant_id, option_group_id, name, price_cents, sort_order, available) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -375,7 +342,6 @@ adminRouter.delete('/admin/menu/options/items/:itemId', adminAuthMiddleware, ten
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
-// SaaS Onboarding (Admin)
 adminRouter.post('/admin/restaurants', adminAuthMiddleware, async (req, res) => {
     try {
         const { restaurantsRepo } = await import('../db/repositories/restaurants.repo');
@@ -423,4 +389,80 @@ adminRouter.delete('/admin/restaurants/:id', adminAuthMiddleware, async (req, re
         const success = await restaurantsRepo.deleteRestaurant(req.params.id);
         if (success) res.json({ success: true }); else res.status(404).json({ error: 'Restaurant not found' });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+adminRouter.get('/dashboard/stats', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const db = await getDb();
+        const tenantId = req.tenantId;
+
+        const stats = await db.get(`
+            SELECT 
+                COUNT(*) as active_orders,
+                SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending_count,
+                SUM(CASE WHEN status = 'preparing' THEN 1 ELSE 0 END) as preparing_count
+            FROM orders 
+            WHERE restaurant_id = ? AND status IN ('pending', 'pending_payment', 'accepted', 'preparing', 'delivering')`,
+            [tenantId]
+        );
+
+        res.json(stats);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PDV Counter Sale (Venda de Balcão)
+adminRouter.post('/admin/pdv/orders', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const {
+            items,
+            totalCents,
+            subtotalCents,
+            deliveryFeeCents,
+            paymentMethod,
+            customerName,
+            customerPhone,
+            customerId,
+            addressText
+        } = req.body;
+
+        const tenantId = req.tenantId || 'default_tenant';
+        const db = await getDb();
+        const orderId = uuidv4();
+        const finalCustomerId = customerId || 'pdv_guest';
+
+        // 1. Ensure customer exists (FK constraint)
+        await db.run(
+            `INSERT OR IGNORE INTO customers (id, restaurant_id, name, phone) 
+             VALUES (?, ?, ?, ?)`,
+            [finalCustomerId, tenantId, customerName || 'Cliente PDV', customerPhone || '00000000000']
+        );
+
+        // 2. Create order
+        await db.run(
+            `INSERT INTO orders (
+                id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents,
+                restaurant_id, address_text, payment_method, payment_status, customer_name, customer_phone, created_at
+            ) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, datetime('now'))`,
+            [
+                orderId,
+                finalCustomerId,
+                JSON.stringify(items || []),
+                subtotalCents || totalCents || 0,
+                deliveryFeeCents || 0,
+                totalCents || 0,
+                tenantId,
+                addressText || 'Venda de Balcão',
+                paymentMethod || 'cash',
+                customerName || 'Cliente PDV',
+                customerPhone || '00000000000'
+            ]
+        );
+
+        res.status(201).json({ success: true, orderId });
+    } catch (error: any) {
+        console.error('[ADMIN-PDV-FATAL]', error);
+        res.status(500).json({ error: error.message });
+    }
 });

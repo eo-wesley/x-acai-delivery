@@ -1,6 +1,5 @@
 import { getDb } from '../db/db.client';
 import { randomUUID } from 'crypto';
-import { sendNotification } from '../notifications/notification.service';
 import { EvolutionWhatsAppProvider } from '../notifications/providers/evolution.provider';
 
 export class MarketingService {
@@ -21,7 +20,6 @@ export class MarketingService {
         cutoffDate.setDate(cutoffDate.getDate() - days);
         const isoCutoff = cutoffDate.toISOString();
 
-        // Encontrar clientes que não pedem há 'days' dias e que ainda não receberam winback recente
         const inactiveCustomers = await db.all(
             `SELECT * FROM customers 
              WHERE restaurant_id = ? 
@@ -53,7 +51,6 @@ export class MarketingService {
 
         if (!trigger) return;
 
-        // Encontrar aniversariantes de HOJE (formato MM-DD)
         const todayMD = new Date().toISOString().slice(5, 10); // "MM-DD"
 
         const birthdayCustomers = await db.all(
@@ -102,21 +99,18 @@ export class MarketingService {
         const couponId = randomUUID();
         const couponCode = `${type.toUpperCase()}${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
 
-        // 1. Criar cupom temporário
         await db.run(
             `INSERT INTO coupons (id, restaurant_id, code, description, type, discount_value, max_uses, active)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [couponId, restaurantId, couponCode, `Automático: ${trigger.name}`, trigger.discount_type, trigger.discount_value, 1, 1]
         );
 
-        // 2. Registrar campanha
         await db.run(
             `INSERT INTO customer_campaigns (id, restaurant_id, customer_id, type, coupon_id, status)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [campaignId, restaurantId, customer.id, type, couponId, 'sent']
         );
 
-        // 3. Notificar via WhatsApp
         const wa = new EvolutionWhatsAppProvider();
         if (wa.isConfigured()) {
             let message = '';
@@ -136,6 +130,25 @@ export class MarketingService {
                 extra: { body: message }
             });
         }
+    }
+
+    async startAutomatedMarketing(intervalMs: number = 1000 * 60 * 60 * 12) {
+        console.log('[Marketing] Engine de Automação Iniciada.');
+        const run = async () => {
+            try {
+                const db = await getDb();
+                const restaurants = await db.all(`SELECT id FROM restaurants WHERE status = 'active'`);
+                for (const rest of restaurants) {
+                    console.log(`[Marketing] Processando automações para restaurante: ${rest.id}`);
+                    await this.processWinback(rest.id);
+                    await this.processBirthdays(rest.id);
+                }
+            } catch (err) {
+                console.error('[Marketing] Erro no ciclo de automação:', err);
+            }
+        };
+        run();
+        setInterval(run, intervalMs);
     }
 }
 

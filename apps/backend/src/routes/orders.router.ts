@@ -162,15 +162,6 @@ ordersRouter.post('/orders/:id/cancel', async (req, res) => {
         const reason = req.body.reason || 'Requested by customer';
         const success = await ordersRepo.cancelOrder(req.params.id, reason);
         if (success) {
-            const order = await ordersRepo.getOrderById(req.params.id);
-            if (order) {
-                eventBus.emit('order_cancelled', {
-                    orderId: req.params.id,
-                    customerPhone: (order as any).customer_phone,
-                    customerName: (order as any).customer_name,
-                    totalCents: (order as any).total_cents,
-                });
-            }
             res.json({ success: true, message: 'Order cancelled' });
         } else {
             res.status(400).json({ error: 'Failed to cancel order' });
@@ -213,4 +204,15 @@ ordersRouter.get('/orders/:id/payment-status', async (req, res) => {
             pix_qr_base64: order.payment_qr_base64,
         });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Rastreamento público de pedido
+ordersRouter.get('/track/:id', async (req, res) => {
+    try {
+        const order = await ordersRepo.getDetailedOrderById(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        res.json(order);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
 });

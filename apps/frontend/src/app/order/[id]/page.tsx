@@ -117,7 +117,8 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
         let prevStatus = '';
         const fetchOrder = async () => {
             try {
-                const res = await fetch(`${API}/api/orders/${id}`, { cache: 'no-store' });
+                // Usando o endpoint de track enriquecido
+                const res = await fetch(`${API}/api/track/${id}`, { cache: 'no-store' });
                 if (res.ok) {
                     const data = await res.json();
                     if (prevStatus && prevStatus !== data.status) {
@@ -139,9 +140,9 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
     if (loading) {
         return (
             <div className="p-4 pb-24 space-y-4 animate-pulse">
-                <div className="h-44 bg-gray-100 rounded-2xl" />
-                <div className="h-32 bg-gray-100 rounded-2xl" />
-                <div className="h-24 bg-gray-100 rounded-2xl" />
+                <div className="h-44 bg-purple-50 rounded-3xl" />
+                <div className="h-32 bg-purple-50 rounded-3xl" />
+                <div className="h-24 bg-purple-50 rounded-3xl" />
             </div>
         );
     }
@@ -149,10 +150,10 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
     if (!order) {
         return (
             <div className="p-6 text-center mt-12">
-                <div className="text-5xl mb-4">😕</div>
-                <h2 className="font-black text-gray-800 text-xl">Pedido não encontrado</h2>
-                <p className="text-gray-500 mt-2 text-sm">O link pode estar incorreto.</p>
-                <Link href="/"><button className="mt-6 bg-purple-600 text-white font-bold py-3 px-8 rounded-xl">Voltar ao Cardápio</button></Link>
+                <div className="text-6xl mb-6">🔍</div>
+                <h2 className="font-black text-gray-800 text-2xl">Pedido não encontrado</h2>
+                <p className="text-gray-500 mt-2 text-sm italic">Verifique o link ou aguarde alguns instantes.</p>
+                <Link href="/"><button className="mt-8 bg-purple-700 text-white font-bold py-4 px-10 rounded-2xl shadow-lg active:scale-95 transition">Voltar ao Cardápio</button></Link>
             </div>
         );
     }
@@ -164,130 +165,154 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
     const badge = STATUS_BADGE[order.status] || { bg: 'bg-gray-100 text-gray-700', text: order.status };
     const currentTimeline = STATUS_TIMELINE[currentStep];
 
-    // Detect PIX payment from URL
     const pixPending = typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search).get('method') === 'pix' && order.status === 'pending_payment'
         : false;
 
     return (
-        <div className="min-h-screen bg-gray-50 pb-32">
+        <div className="min-h-screen bg-[#FDFCFE] pb-32 font-sans overflow-x-hidden">
             {/* Status change flash */}
             {justChanged && (
-                <div className="fixed top-0 left-0 right-0 z-50 bg-purple-600 text-white text-center py-3 font-bold text-sm animate-bounce shadow-lg">
-                    🔔 Status atualizado: {badge.text}
+                <div className="fixed top-4 left-4 right-4 z-50 bg-purple-700 text-white text-center py-4 rounded-2xl font-bold text-sm animate-bounce shadow-2xl border border-purple-500">
+                    ✨ Status atualizado: {badge.text}
                 </div>
             )}
 
-            <div className="p-4 space-y-4">
-                {/* Hero badge */}
-                <div className={`rounded-2xl p-6 text-center shadow-sm ${badge.bg}`}>
-                    <div className="text-5xl mb-3">{isCancelled ? '❌' : currentTimeline?.icon || '📦'}</div>
-                    <h2 className="text-base font-black mb-1">Pedido #{id?.slice(0, 8).toUpperCase()}</h2>
-                    <span className={`inline-block text-sm font-bold px-3 py-1 rounded-full ${badge.bg}`}>{badge.text}</span>
-                    {currentTimeline?.msg && !isCancelled && (
-                        <p className="text-sm mt-2 opacity-80">{currentTimeline.msg}</p>
-                    )}
-                    {lastUpdated && (
-                        <p className="text-xs mt-2 opacity-60">
-                            Atualizado {lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })} · auto a cada 5s
-                        </p>
-                    )}
-                    {!isCancelled && !isCompleted && currentStep >= 1 && (
-                        <div className="mt-4 bg-white bg-opacity-40 inline-block px-4 py-2 rounded-xl text-sm font-bold shadow-sm">
-                            ⏱️ Previsão de entrega: 40-50 min
+            {/* Header Header Premium */}
+            <div className="bg-gradient-to-b from-purple-800 to-purple-950 text-white p-8 pb-16 rounded-b-[40px] shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-purple-700 opacity-20 rounded-full -mr-20 -mt-20 blur-3xl"></div>
+                <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-600 opacity-10 rounded-full -ml-10 -mb-10 blur-2xl"></div>
+
+                <div className="relative z-10 flex flex-col items-center">
+                    <div className="bg-white/10 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.2em] mb-4 border border-white/20">
+                        {order.restaurant_name || 'X-Açaí Delivery'}
+                    </div>
+                    <div className="text-6xl mb-4 drop-shadow-lg">{isCancelled ? '❌' : currentTimeline?.icon || '📦'}</div>
+                    <h1 className="text-2xl font-black tracking-tight">{badge.text.replace('🏍️', '').replace('✅', '').replace('📋', '').replace('🍳', '').trim()}</h1>
+                    <p className="text-purple-200 text-xs mt-1 font-medium italic opacity-80">{currentTimeline?.msg}</p>
+
+                    <div className="mt-6 flex flex-col items-center gap-2">
+                        <span className="text-[10px] text-purple-300 font-bold uppercase tracking-widest">Identificador</span>
+                        <div className="bg-black/20 backdrop-blur-sm px-6 py-2 rounded-2xl font-mono text-sm border border-white/10 shadow-inner">
+                            #{id?.slice(0, 8).toUpperCase()}
                         </div>
-                    )}
+                    </div>
+                </div>
+            </div>
+
+            <div className="px-6 -mt-8 space-y-6 max-w-lg mx-auto relative z-20">
+                {/* Save Link Reminder */}
+                <div className="bg-purple-50 border border-purple-100 rounded-2xl p-3 flex items-center justify-between text-xs text-purple-800 shadow-sm animate-pulse">
+                    <span className="font-bold flex items-center gap-2">📌 Salve este link para acompanhar seu pedido!</span>
                 </div>
 
-                {/* PIX Payment CTA — shown when pending_payment + method=pix */}
-                {pixPending && order.payment_url && (
-                    <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-4 text-center">
-                        <p className="font-black text-yellow-800 mb-1">📲 Finalize o Pagamento PIX</p>
-                        <p className="text-xs text-yellow-700 mb-3">Clique abaixo para ir ao MercadoPago e pagar com PIX.</p>
-                        <a href={order.payment_url} target="_blank" rel="noreferrer">
-                            <button className="bg-yellow-500 hover:bg-yellow-600 text-white font-black py-3 px-8 rounded-xl transition active:scale-95 w-full">
-                                💸 Pagar com PIX
-                            </button>
-                        </a>
-                        <p className="text-xs text-gray-400 mt-2">Após o pagamento, seu pedido será confirmado automaticamente.</p>
-                    </div>
-                )}
-
-                {/* Timeline Stepper */}
+                {/* Timeline Stepper Premium */}
                 {!isCancelled && (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                        <div className="flex justify-between relative">
-                            <div className="absolute top-5 left-[10%] right-[10%] h-0.5 bg-gray-200 z-0" />
+                    <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-50/50">
+                        <div className="flex justify-between relative px-2">
+                            <div className="absolute top-5 left-8 right-8 h-1 bg-gray-100 z-0 rounded-full">
+                                <div className="h-full bg-purple-500 transition-all duration-1000 rounded-full" style={{ width: `${(currentStep / (STATUS_TIMELINE.length - 1)) * 100}%` }} />
+                            </div>
                             {STATUS_TIMELINE.map((step, i) => {
                                 const done = i <= currentStep;
                                 const active = i === currentStep;
                                 return (
-                                    <div key={step.key} className="flex flex-col items-center z-10 flex-1">
-                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all border-2 text-sm
-                                            ${done ? 'bg-purple-600 border-purple-600 text-white shadow-md' : 'bg-white border-gray-200 text-gray-400'}
-                                            ${active ? 'ring-4 ring-purple-200 scale-110' : ''}`}>
+                                    <div key={step.key} className="flex flex-col items-center z-10">
+                                        <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-500 border-x-4 border-y-4 text-xs
+                                            ${done ? 'bg-purple-700 border-white text-white shadow-lg scale-100' : 'bg-gray-50 border-white text-gray-300'}
+                                            ${active ? 'ring-4 ring-purple-100 scale-125 !z-20' : ''}`}>
                                             {done ? (active ? step.icon : '✓') : step.icon}
                                         </div>
-                                        <p className={`text-center text-[10px] mt-1.5 font-semibold leading-tight max-w-[60px] ${done ? 'text-purple-700' : 'text-gray-400'}`}>
-                                            {step.label}
-                                        </p>
                                     </div>
                                 );
                             })}
                         </div>
+                        <div className="flex justify-between mt-4 px-1 text-[9px] font-black uppercase text-gray-400 tracking-tighter">
+                            {STATUS_TIMELINE.map((step, i) => (
+                                <span key={i} className={i <= currentStep ? 'text-purple-900' : ''}>{step.label}</span>
+                            ))}
+                        </div>
                     </div>
                 )}
 
-                {/* Items */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-                    <h3 className="font-black text-gray-800 mb-3 text-xs uppercase tracking-wide">🧾 Seu Pedido</h3>
-                    <div className="space-y-2">
+                {/* Driver Info Card (Se houver entrega e motorista) */}
+                {order.driver && (
+                    <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-50/50">
+                        <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 flex items-center gap-2">
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> SEU ENTREGADOR
+                        </h3>
+                        <div className="flex items-center gap-4">
+                            <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center text-xl shadow-inner">👤</div>
+                            <div className="flex-1">
+                                <p className="font-black text-gray-800 uppercase tracking-tight">{order.driver.driver_name}</p>
+                                <p className="text-xs text-gray-500 font-medium">{order.driver.driver_vehicle || 'Veículo Cadastrado'}</p>
+                            </div>
+                            <a href={`tel:${order.driver.driver_phone}`} className="w-10 h-10 bg-green-500 text-white rounded-xl flex items-center justify-center shadow-lg hover:bg-green-600 transition active:scale-90">
+                                📞
+                            </a>
+                        </div>
+                    </div>
+                )}
+
+                {/* PIX Payment CTA */}
+                {pixPending && order.payment_url && (
+                    <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-3xl p-6 text-white shadow-xl shadow-yellow-500/20 animate-pulse">
+                        <p className="font-black text-lg mb-1 drop-shadow-sm">📲 Pagamento Pendente</p>
+                        <p className="text-xs opacity-90 mb-4 font-medium">Finalize seu pagamento para que a loja comece a preparar seu pedido imediatamente.</p>
+                        <a href={order.payment_url} target="_blank" rel="noreferrer">
+                            <button className="bg-white text-yellow-600 font-black py-4 px-8 rounded-2xl shadow-xl transition active:scale-95 w-full uppercase tracking-tighter text-sm">
+                                💸 Ir para o PIX
+                            </button>
+                        </a>
+                    </div>
+                )}
+
+                {/* Items & Resume */}
+                <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-50/50">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> RESUMO DO PEDIDO
+                    </h3>
+                    <div className="space-y-4">
                         {items.map((item: any, i: number) => (
-                            <div key={i} className="flex flex-col text-sm border-b border-gray-50 pb-2 mb-2 last:border-0 last:pb-0 last:mb-0 text-gray-700">
-                                <div className="flex justify-between items-center">
-                                    <span>
-                                        <span className="font-black text-purple-700">{item.qty}x</span> {item.name || item.menuItemId}
-                                        {item.notes && <span className="text-orange-500 text-xs ml-1">({item.notes})</span>}
-                                    </span>
-                                    {item.unitPriceCents != null && (
-                                        <span className="text-gray-500 text-xs text-right">R$ {((item.unitPriceCents * item.qty) / 100).toFixed(2).replace('.', ',')}</span>
-                                    )}
+                            <div key={i} className="flex flex-col border-b border-gray-50 pb-4 last:border-0 last:pb-0">
+                                <div className="flex justify-between items-start">
+                                    <div className="flex gap-3">
+                                        <div className="bg-purple-50 text-purple-700 font-black text-xs w-6 h-6 rounded-lg flex items-center justify-center">{item.qty}x</div>
+                                        <div className="flex flex-col">
+                                            <span className="font-black text-gray-800 text-sm tracking-tight">{item.name || item.menuItemId}</span>
+                                            {item.notes && <span className="text-[10px] text-orange-600 font-bold bg-orange-50 px-2 py-0.5 rounded-md mt-1 w-fit">OBS: {item.notes}</span>}
+                                        </div>
+                                    </div>
+                                    <span className="text-gray-900 font-bold text-xs">R$ {((item.unitPriceCents * item.qty) / 100).toFixed(2).replace('.', ',')}</span>
                                 </div>
-                                {item.selected_options && item.selected_options.length > 0 && (
-                                    <ul className="pl-6 mt-1 text-xs text-gray-500 list-none space-y-0.5 border-l-2 border-purple-100 ml-1">
-                                        {item.selected_options.map((opt: any, idx: number) => (
-                                            <li key={idx}>
-                                                <span className="text-gray-400 mr-1">└</span> {opt.optionName} <span className="opacity-70">({opt.groupName})</span>
-                                                {opt.price_cents > 0 && <span className="ml-1 text-purple-600 font-semibold">+ R$ {(opt.price_cents / 100).toFixed(2).replace('.', ',')}</span>}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
+                                {item.selected_options && item.selected_options.map((opt: any, idx: number) => (
+                                    <div key={idx} className="flex justify-between text-[11px] text-gray-500 pl-9 mt-1 italic">
+                                        <span>+ {opt.optionName}</span>
+                                        {opt.price_cents > 0 && <span>+ R$ {(opt.price_cents / 100).toFixed(2).replace('.', ',')}</span>}
+                                    </div>
+                                ))}
                             </div>
                         ))}
                     </div>
-                    <div className="mt-4 pt-3 border-t border-gray-100 space-y-1 text-sm">
-                        {order.subtotal_cents != null && (
-                            <div className="flex justify-between text-gray-500">
-                                <span>Subtotal</span>
-                                <span>R$ {(order.subtotal_cents / 100).toFixed(2).replace('.', ',')}</span>
-                            </div>
-                        )}
-                        {order.delivery_fee_cents != null && (
-                            <div className="flex justify-between text-gray-500">
-                                <span>Entrega</span>
-                                <span>R$ {(order.delivery_fee_cents / 100).toFixed(2).replace('.', ',')}</span>
-                            </div>
-                        )}
+
+                    <div className="mt-6 pt-6 border-t-2 border-dashed border-gray-100 space-y-3">
+                        <div className="flex justify-between text-xs text-gray-500 font-medium">
+                            <span>Subtotal</span>
+                            <span>R$ {(order.subtotal_cents / 100).toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <div className="flex justify-between text-xs text-gray-500 font-medium">
+                            <span>Taxa de Entrega</span>
+                            <span className="text-green-600 font-bold">{order.delivery_fee_cents > 0 ? `R$ ${(order.delivery_fee_cents / 100).toFixed(2).replace('.', ',')}` : 'GRÁTIS'}</span>
+                        </div>
                         {order.discount_cents > 0 && (
-                            <div className="flex justify-between text-green-600">
-                                <span>Desconto {order.coupon_code ? `(${order.coupon_code})` : ''}</span>
-                                <span>− R$ {(order.discount_cents / 100).toFixed(2).replace('.', ',')}</span>
+                            <div className="flex justify-between text-xs text-green-600 bg-green-50 p-2 rounded-xl">
+                                <span className="font-bold">Desconto {order.coupon_code ? `(${order.coupon_code})` : ''}</span>
+                                <span className="font-black">− R$ {(order.discount_cents / 100).toFixed(2).replace('.', ',')}</span>
                             </div>
                         )}
-                        <div className="flex justify-between font-black text-gray-900 text-base pt-1 border-t border-gray-100">
-                            <span>Total</span>
-                            <span>R$ {(order.total_cents / 100).toFixed(2).replace('.', ',')}</span>
+                        <div className="flex justify-between items-center bg-gray-50 p-4 rounded-2xl">
+                            <span className="font-black text-gray-400 text-[10px] uppercase tracking-widest">Valor Pago</span>
+                            <span className="font-black text-purple-900 text-xl tracking-tighter">R$ {(order.total_cents / 100).toFixed(2).replace('.', ',')}</span>
                         </div>
                     </div>
                 </div>
@@ -295,27 +320,52 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
                 {/* Rating (only for completed) */}
                 {isCompleted && <RatingForm orderId={id} customerName={order.customer_name} />}
 
-                {/* Address & Notes */}
-                {order.address_text && (
-                    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-sm">
-                        <p className="font-black text-gray-800 mb-1 text-xs uppercase tracking-wide">📍 Endereço</p>
-                        <p className="text-gray-600">{order.address_text}</p>
+                {/* Restaurant Detail Card */}
+                <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-50/50">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> SOBRE A LOJA
+                    </h3>
+                    <div className="flex items-center gap-4 mb-4">
+                        {order.restaurant_logo ? (
+                            <img src={order.restaurant_logo} alt="Logo" className="w-12 h-12 rounded-2xl object-cover shadow-sm border border-gray-100" />
+                        ) : (
+                            <div className="w-12 h-12 bg-purple-100 text-purple-700 font-black flex items-center justify-center rounded-2xl text-xl shadow-inner">
+                                {order.restaurant_name?.charAt(0) || 'X'}
+                            </div>
+                        )}
+                        <div className="flex-1">
+                            <p className="font-black text-gray-800 uppercase tracking-tight leading-tight">{order.restaurant_name || 'X-Açaí Delivery'}</p>
+                            <p className="text-[10px] text-gray-400 font-medium mt-0.5 line-clamp-1">📍 {order.restaurant_address || 'Unidade Principal'}</p>
+                        </div>
+                        {order.restaurant_phone && (
+                            <a href={`https://wa.me/${order.restaurant_phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="w-12 h-12 bg-green-50 text-green-600 rounded-2xl flex items-center justify-center shadow-sm border border-green-100 hover:bg-green-100 transition active:scale-90">
+                                <span className="text-xl">💬</span>
+                            </a>
+                        )}
                     </div>
-                )}
-                {order.notes && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm">
-                        <p className="font-black text-amber-800 mb-1 text-xs uppercase tracking-wide">📝 Obs</p>
-                        <p className="text-amber-700">{order.notes}</p>
-                    </div>
-                )}
+                </div>
+
+                {/* Address & Info */}
+                <div className="bg-white rounded-3xl p-6 shadow-xl shadow-purple-900/5 border border-purple-50/50">
+                    <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4 flex items-center gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div> ENTREGA EM
+                    </h3>
+                    <p className="text-sm text-gray-800 font-bold leading-relaxed">{order.address_text}</p>
+                    {order.customer_name && <p className="text-xs text-gray-500 mt-2">Destinatário: <span className="font-bold text-gray-700">{order.customer_name}</span></p>}
+                </div>
+
+                <div className="text-center py-6">
+                    <p className="text-[9px] text-gray-300 font-bold uppercase tracking-[0.3em]">X-Açaí Delivery Platform</p>
+                </div>
             </div>
 
-            {/* Sticky CTA */}
-            <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 z-40">
+            {/* Sticky Floating Action Button */}
+            <div className="fixed bottom-0 left-0 w-full bg-white/80 backdrop-blur-xl border-t border-purple-50 p-6 z-40 shadow-[0_-20px_50px_rgba(0,0,0,0.05)]">
                 <div className="max-w-md mx-auto">
                     <Link href="/">
-                        <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-black py-4 rounded-xl transition active:scale-95">
-                            + Fazer Novo Pedido
+                        <button className="w-full bg-purple-700 hover:bg-purple-800 text-white font-black py-5 rounded-[24px] shadow-2xl shadow-purple-200 transition active:scale-[0.98] flex items-center justify-center gap-3 group">
+                            <span className="text-xl group-hover:rotate-12 transition-transform">🍇</span>
+                            NOVO PEDIDO
                         </button>
                     </Link>
                 </div>

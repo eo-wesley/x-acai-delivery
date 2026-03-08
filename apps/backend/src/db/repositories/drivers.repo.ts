@@ -94,7 +94,7 @@ export class DriversRepo {
         const db = await getDb();
         if (driverId) {
             return db.all(`
-                SELECT do.*, o.customer_name, o.customer_address, o.customer_phone, o.total_cents 
+                SELECT do.*, o.customer_name, o.address_text as customer_address, o.customer_phone, o.total_cents 
                 FROM driver_orders do
                 JOIN orders o ON do.order_id = o.id
                 WHERE do.restaurant_id = ? AND do.driver_id = ?
@@ -102,13 +102,44 @@ export class DriversRepo {
             `, [tenantId, driverId]);
         }
         return db.all(`
-            SELECT do.*, d.name as driver_name, o.customer_name, o.customer_address 
+            SELECT do.*, d.name as driver_name, o.customer_name, o.address_text as customer_address 
             FROM driver_orders do
             JOIN drivers d ON do.driver_id = d.id
             JOIN orders o ON do.order_id = o.id
             WHERE do.restaurant_id = ?
             ORDER BY do.assigned_at DESC LIMIT 100
         `, [tenantId]);
+    }
+
+    /**
+     * Busca o melhor entregador disponível (ativo e com menos entregas pendentes)
+     */
+    async findOptimalDriver(tenantId: string) {
+        const db = await getDb();
+        return db.get(`
+            SELECT d.*, COUNT(do.id) as active_orders
+            FROM drivers d
+            LEFT JOIN driver_orders do ON d.id = do.driver_id AND do.status = 'assigned'
+            WHERE d.restaurant_id = ? AND d.status = 'active'
+            GROUP BY d.id
+            ORDER BY active_orders ASC, d.created_at ASC
+            LIMIT 1
+        `, [tenantId]);
+    }
+
+    /**
+     * Calcula estimativas de entrega (Simulado)
+     */
+    async calculateDeliveryEstimate(orderId: string) {
+        // Simulação básica baseada no ID do pedido para variabilidade
+        const seed = orderId.length;
+        const distance = (seed % 5) + 1.5; // 1.5km a 6.5km
+        const time = Math.floor(distance * 4) + 5; // 5-30 min
+
+        return {
+            distanceKm: parseFloat(distance.toFixed(1)),
+            estimatedMinutes: time
+        };
     }
 }
 

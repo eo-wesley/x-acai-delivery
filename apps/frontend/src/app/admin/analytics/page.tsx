@@ -223,45 +223,74 @@ export default function AnalyticsPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Gráfico */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-100 shadow-sm relative min-h-[400px]">
-                    <h3 className="text-gray-800 font-bold mb-6">Receita Diária Bruta</h3>
-                    <div className="absolute inset-0 top-16 bottom-6 px-6">
-                        <Line data={chartData} options={chartOptions as any} />
-                    </div>
+                    <h3 className="text-gray-800 font-bold mb-6 italic flex items-center gap-2">
+                        Receita Diária Bruta
+                        {stats.info && <span className="text-[10px] bg-amber-100 text-amber-700 font-black px-2 py-0.5 rounded uppercase not-italic">Pro</span>}
+                    </h3>
+
+                    {stats.info ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gray-50/80 rounded-2xl backdrop-blur-[2px] z-10 p-8 text-center">
+                            <div className="text-4xl mb-4">🔒</div>
+                            <h4 className="text-lg font-black text-gray-800">Gráficos Avançados Indisponíveis</h4>
+                            <p className="text-sm text-gray-500 max-w-sm mt-2 mb-6">Assine o plano <b>PRO</b> para visualizar o faturamento histórico, horários de pico e retenção de clientes.</p>
+                            <button className="bg-purple-600 text-white font-black px-6 py-2 rounded-lg shadow-md hover:bg-purple-700 transition">Ver Planos de Upgrade</button>
+                        </div>
+                    ) : (
+                        <div className="absolute inset-0 top-16 bottom-6 px-6">
+                            <Line data={chartData} options={chartOptions as any} />
+                        </div>
+                    )}
                 </div>
 
                 {/* Top Produtos */}
                 <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm">
-                    <h3 className="text-gray-800 font-bold mb-6 flex items-center gap-2">⭐ Itens Mais Vendidos</h3>
+                    <h3 className="text-gray-800 font-bold mb-6 flex items-center gap-2">
+                        ⭐ Itens Mais Vendidos
+                        {stats.info && <span className="text-[10px] bg-amber-100 text-amber-700 font-black px-2 py-0.5 rounded uppercase">Pro</span>}
+                    </h3>
 
-                    {stats?.topItems?.length === 0 ? (
-                        <p className="text-center text-gray-400 py-10 font-medium text-sm">Nenhum dado de vendas ainda.</p>
-                    ) : (
-                        <div className="space-y-4">
-                            {stats.topItems.map((item: any, i: number) => (
-                                <div key={i} className="flex justify-between items-center group">
-                                    <div className="flex gap-3 items-center">
-                                        <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-700 font-black flex items-center justify-center text-sm shadow-inner shrink-0">
-                                            #{i + 1}
-                                        </div>
-                                        <div>
-                                            <p className="font-bold text-gray-800 leading-tight group-hover:text-purple-600 transition max-w-[150px] truncate" title={item.item_name}>
-                                                {item.item_name}
-                                            </p>
-                                            <p className="text-xs text-gray-500 font-medium border border-gray-200 inline-block px-2 rounded mt-1 bg-gray-50">
-                                                {item.qty} vendidos
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="font-black text-gray-900 border-l pl-4 py-2">
-                                        <span className="text-xs font-bold text-gray-400 mr-1">R$</span>
-                                        {(item.revenue / 100).toFixed(2).replace('.', ',')}
-                                    </div>
+                    {stats.info ? (
+                        <div className="space-y-4 opacity-30 select-none grayscale">
+                            {[1, 2, 3, 4, 5].map(i => (
+                                <div key={i} className="flex justify-between items-center blur-[2px]">
+                                    <div className="w-8 h-8 rounded-full bg-gray-200"></div>
+                                    <div className="h-4 bg-gray-200 w-24 rounded"></div>
+                                    <div className="h-4 bg-gray-200 w-12 rounded"></div>
                                 </div>
                             ))}
                         </div>
+                    ) : (
+                        stats?.topItems?.length === 0 ? (
+                            <p className="text-center text-gray-400 py-10 font-medium text-sm">Nenhum dado de vendas ainda.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {stats.topItems.map((item: any, i: number) => (
+                                    <div key={i} className="flex justify-between items-center group">
+                                        <div className="flex gap-3 items-center">
+                                            <div className="w-8 h-8 rounded-full bg-yellow-100 text-yellow-700 font-black flex items-center justify-center text-sm shadow-inner shrink-0">
+                                                #{i + 1}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-gray-800 leading-tight group-hover:text-purple-600 transition max-w-[150px] truncate" title={item.item_name}>
+                                                    {item.item_name}
+                                                </p>
+                                                <p className="text-xs text-gray-500 font-medium border border-gray-200 inline-block px-2 rounded mt-1 bg-gray-50">
+                                                    {item.qty} vendidos
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="font-black text-gray-900 border-l pl-4 py-2">
+                                            <span className="text-xs font-bold text-gray-400 mr-1">R$</span>
+                                            {(item.revenue / 100).toFixed(2).replace('.', ',')}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )
                     )}
                 </div>
             </div>
+
         </div>
     );
 }

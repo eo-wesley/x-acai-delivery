@@ -163,7 +163,37 @@ export class OrdersRepo {
         if (!order) return null;
         return {
             ...order,
-            items: JSON.parse(order.items)
+            items: typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || [])
+        };
+    }
+
+    async getDetailedOrderById(id: string): Promise<any> {
+        const db = await getDb();
+        // Base order info
+        const order = await db.get(`
+            SELECT o.*, r.name as restaurant_name, r.phone as restaurant_phone, r.logo_url as restaurant_logo, r.address as restaurant_address
+            FROM orders o
+            JOIN restaurants r ON o.restaurant_id = r.id
+            WHERE o.id = ? OR o.id LIKE ?`,
+            [id, `${id}%`]
+        );
+
+        if (!order) return null;
+
+        // Try to get driver info if assigned
+        const driverInfo = await db.get(`
+            SELECT d.name as driver_name, d.phone as driver_phone, d.vehicle as driver_vehicle
+            FROM driver_orders do
+            JOIN drivers d ON do.driver_id = d.id
+            WHERE do.order_id = ? AND do.status != 'cancelled'
+            ORDER BY do.assigned_at DESC LIMIT 1`,
+            [order.id]
+        );
+
+        return {
+            ...order,
+            items: typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []),
+            driver: driverInfo || null
         };
     }
 
@@ -182,10 +212,32 @@ export class OrdersRepo {
 
     async updateOrderStatus(id: string, newStatus: string): Promise<boolean> {
         const db = await getDb();
+        const orderBefore = await this.getOrderById(id);
+        if (!orderBefore) return false;
+
         const res = await db.run(`UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [newStatus, id]);
 
         if (res.changes && res.changes > 0) {
             await this.logOrderEvent(id, 'status_updated', { newStatus });
+
+            // Trigger WhatsApp Notification via EventBus
+            try {
+                const { statusToEvent } = await import('../../notifications/notification.service');
+                const eventName = statusToEvent(newStatus);
+                if (eventName) {
+                    const { eventBus } = await import('../../core/eventBus');
+                    eventBus.emit(eventName, {
+                        orderId: id,
+                        customerPhone: orderBefore.customer_phone || orderBefore.phone,
+                        customerName: orderBefore.customer_name || 'Cliente',
+                        totalCents: orderBefore.total_cents,
+                        extra: { status: newStatus }
+                    });
+                }
+            } catch (err) {
+                console.error('[OrdersRepo] Failed to emit status update event', err);
+            }
+
             return true;
         }
         return false;
@@ -202,6 +254,21 @@ export class OrdersRepo {
 
         if (res.changes && res.changes > 0) {
             await this.logOrderEvent(id, 'order_cancelled', { reason });
+
+            // Trigger WhatsApp Notification
+            try {
+                const { eventBus } = await import('../../core/eventBus');
+                eventBus.emit('order_cancelled', {
+                    orderId: id,
+                    customerPhone: order.customer_phone || order.phone,
+                    customerName: order.customer_name || 'Cliente',
+                    totalCents: order.total_cents,
+                    extra: { reason }
+                });
+            } catch (err) {
+                console.error('[OrdersRepo] Failed to emit cancel event', err);
+            }
+
             return true;
         }
         return false;

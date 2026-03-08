@@ -18,6 +18,32 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         if (savedSlug) setSlug(savedSlug);
     }, []);
 
+    // Check Onboarding
+    useEffect(() => {
+        if (!token || pathname === '/admin/onboarding' || pathname === '/admin/restaurants') return;
+
+        const checkOnboarding = async () => {
+            try {
+                const restaurantId = localStorage.getItem('admin_restaurant_id');
+                if (!restaurantId) return;
+
+                const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+                const res = await fetch(`${API_URL}/api/onboard/status?restaurantId=${restaurantId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.onboarding_step < 3) {
+                        router.push('/admin/onboarding');
+                    }
+                }
+            } catch (e) {
+                console.error('Onboarding check failed', e);
+            }
+        };
+
+        checkOnboarding();
+    }, [token, pathname, router]);
+
+
     const [loading, setLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
 
@@ -77,7 +103,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     }
 
+    if (pathname === '/admin/onboarding') {
+        return <div className="bg-gray-50 flex-1">{children}</div>;
+    }
+
     return (
+
         <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
             {/* Sidebar */}
             <aside className="w-full md:w-64 bg-white shadow-md flex flex-col">

@@ -7,6 +7,7 @@ export default function DriversPage() {
     const [drivers, setDrivers] = useState<any[]>([]);
     const [driverOrders, setDriverOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState<Record<string, any>>({});
 
     const [showForm, setShowForm] = useState(false);
     const [formData, setFormData] = useState({ name: '', phone: '', vehicle: 'Moto' });
@@ -23,7 +24,18 @@ export default function DriversPage() {
                 fetch(`${API}/api/admin/driver-orders?slug=${slug}`, { headers })
             ]);
 
-            if (drvRes.ok) setDrivers(await drvRes.json());
+            if (drvRes.ok) {
+                const driversList = await drvRes.json();
+                setDrivers(driversList);
+
+                // Fetch stats for each driver
+                const statsMap: Record<string, any> = {};
+                for (const drv of driversList) {
+                    const sRes = await fetch(`${API}/api/admin/drivers/${drv.id}/stats?slug=${slug}`, { headers });
+                    if (sRes.ok) statsMap[drv.id] = await sRes.json();
+                }
+                setStats(statsMap);
+            }
             if (ordRes.ok) setDriverOrders(await ordRes.json());
         } catch (e) {
             console.error(e);
@@ -79,13 +91,34 @@ export default function DriversPage() {
         }
     };
 
+    const handleSettle = async (id: string, name: string) => {
+        if (!confirm(`Confirmar o acerto (pagamento) para o entregador ${name}?`)) return;
+
+        const token = localStorage.getItem('admin_token');
+        const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const slug = localStorage.getItem('admin_slug') || 'default';
+
+        try {
+            const res = await fetch(`${API}/api/admin/drivers/${id}/settle?slug=${slug}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                alert('Acerto realizado com sucesso!');
+                fetchData(slug);
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
     const fmtCurrency = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-black text-gray-800 flex items-center gap-2">
-                    🛵 Entregadores (Gestão de Frota)
+                    🛵 Gestão de Logística
                 </h1>
                 <button
                     onClick={() => setShowForm(!showForm)}
@@ -126,7 +159,10 @@ export default function DriversPage() {
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     {/* Lista de Motoristas */}
                     <div className="bg-white border rounded-xl shadow-sm overflow-hidden h-fit">
-                        <h2 className="text-lg font-black text-gray-800 p-5 border-b bg-gray-50">Equipe de Entregas</h2>
+                        <h2 className="text-lg font-black text-gray-800 p-5 border-b bg-gray-50 flex justify-between items-center">
+                            <span>Equipe de Entregas</span>
+                            <span className="text-xs text-gray-400 font-normal">{drivers.length} ativos</span>
+                        </h2>
                         {drivers.length === 0 ? (
                             <div className="p-8 text-center text-gray-500 font-medium">Nenhum entregador cadastrado.</div>
                         ) : (
@@ -134,33 +170,53 @@ export default function DriversPage() {
                                 <thead>
                                     <tr className="bg-white border-b text-gray-400 text-xs tracking-wider uppercase">
                                         <th className="p-4 font-bold">Motorista</th>
-                                        <th className="p-4 font-bold">Contato / Veículo</th>
+                                        <th className="p-4 font-bold">Desempenho</th>
+                                        <th className="p-4 font-bold">A Receber</th>
                                         <th className="p-4 font-bold text-right">Ação</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50 text-gray-700">
-                                    {drivers.map(drv => (
-                                        <tr key={drv.id} className={`hover:bg-gray-50 transition ${drv.status !== 'active' ? 'opacity-50' : ''}`}>
-                                            <td className="p-4 font-bold">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`w-2 h-2 rounded-full ${drv.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                                    {drv.name}
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="text-gray-500 text-xs mb-0.5">{drv.phone}</div>
-                                                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold text-xs">{drv.vehicle}</span>
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <button
-                                                    onClick={() => handleToggleStatus(drv.id, drv.status)}
-                                                    className={`text-xs font-bold px-3 py-1.5 rounded-lg ${drv.status === 'active' ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}
-                                                >
-                                                    {drv.status === 'active' ? 'Desativar' : 'Ativar'}
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {drivers.map(drv => {
+                                        const drvStats = stats[drv.id] || { completed_deliveries: 0, pending_settlement_cents: 0 };
+                                        return (
+                                            <tr key={drv.id} className={`hover:bg-gray-50 transition ${drv.status !== 'active' ? 'opacity-50' : ''}`}>
+                                                <td className="p-4 font-bold">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`w-2 h-2 rounded-full ${drv.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                                                        <div>
+                                                            <div>{drv.name}</div>
+                                                            <div className="text-[10px] text-gray-400 font-normal uppercase">{drv.vehicle}</div>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <span className="font-bold text-gray-600">{drvStats.completed_deliveries}</span>
+                                                    <span className="text-xs text-gray-400 ml-1">entregas</span>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className={`font-black ${drvStats.pending_settlement_cents > 0 ? 'text-orange-600' : 'text-gray-400'}`}>
+                                                        {fmtCurrency(drvStats.pending_settlement_cents)}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-right flex justify-end gap-2">
+                                                    {drvStats.pending_settlement_cents > 0 && (
+                                                        <button
+                                                            onClick={() => handleSettle(drv.id, drv.name)}
+                                                            className="text-[10px] bg-green-600 text-white font-black px-2 py-1 rounded hover:bg-green-700"
+                                                        >
+                                                            PAGAR
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleToggleStatus(drv.id, drv.status)}
+                                                        className={`text-[10px] font-black px-2 py-1 rounded border ${drv.status === 'active' ? 'border-red-200 text-red-500' : 'border-green-200 text-green-500'}`}
+                                                    >
+                                                        {drv.status === 'active' ? 'OFF' : 'ON'}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         )}
@@ -181,7 +237,7 @@ export default function DriversPage() {
                                         <tr>
                                             <th className="p-4 font-bold hidden md:table-cell">Pedido</th>
                                             <th className="p-4 font-bold">Entregador</th>
-                                            <th className="p-4 font-bold">Cliente / Taxa</th>
+                                            <th className="p-4 font-bold">Dados Rota</th>
                                             <th className="p-4 font-bold text-right">Status</th>
                                         </tr>
                                     </thead>
@@ -189,18 +245,23 @@ export default function DriversPage() {
                                         {driverOrders.map(do_ => (
                                             <tr key={do_.id} className="hover:bg-purple-50 transition">
                                                 <td className="p-4 text-xs font-mono text-gray-500 hidden md:table-cell">
-                                                    ...{do_.order_id.substring(do_.order_id.length - 6)}
+                                                    #{do_.order_id.substring(do_.order_id.length - 6).toUpperCase()}
                                                 </td>
-                                                <td className="p-4 font-bold text-gray-800">{do_.driver_name}</td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-gray-800">{do_.driver_name}</div>
+                                                    <div className="text-[10px] text-gray-400 uppercase">{new Date(do_.assigned_at).toLocaleTimeString()}</div>
+                                                </td>
                                                 <td className="p-4">
                                                     <div className="font-semibold text-gray-600 truncate max-w-[150px]">{do_.customer_name}</div>
-                                                    <div className="text-green-600 font-black text-xs">{fmtCurrency(do_.delivery_fee_cents)}</div>
+                                                    <div className="text-green-600 font-black text-xs">
+                                                        {fmtCurrency(do_.delivery_fee_cents)} • {do_.distance_km || '2.5'}km
+                                                    </div>
                                                 </td>
                                                 <td className="p-4 text-right">
                                                     <span className={`px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider ${do_.status === 'assigned' ? 'bg-orange-100 text-orange-700' :
-                                                            do_.status === 'returned' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                                                        do_.status === 'returned' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
                                                         }`}>
-                                                        {do_.status}
+                                                        {do_.status === 'assigned' ? 'A caminho' : do_.status === 'delivered' ? 'Entregue' : 'Retornado'}
                                                     </span>
                                                 </td>
                                             </tr>

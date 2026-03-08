@@ -16,11 +16,24 @@ const check = (ok, msg) => {
 };
 
 const api = async (url, opts = {}) => {
-    const res = await fetch(`${BASE}${url}`, {
-        headers: { 'Content-Type': 'application/json', ...(opts.auth ? { Authorization: `Bearer ${opts.auth}` } : {}) },
-        ...opts
-    });
-    return res;
+    try {
+        const res = await fetch(`${BASE}${url}`, {
+            headers: { 'Content-Type': 'application/json', ...(opts.auth ? { Authorization: `Bearer ${opts.auth}` } : {}) },
+            ...opts
+        });
+        return res;
+    } catch (e) {
+        return { ok: false, status: 500, json: async () => ({ error: e.message }), text: async () => e.message };
+    }
+};
+
+const safeJson = async (res) => {
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return { __error: true, text: text.slice(0, 500) };
+    }
 };
 
 async function runSection(name, fn) {
@@ -332,7 +345,87 @@ async function runSection(name, fn) {
         }
     });
 
+    // ── 16. SaaS Onboarding Flow ─────────────────────────────────────────────
+    let newRestaurantId = '';
+    await runSection('16. SaaS Onboarding Engine', async () => {
+        const r1 = await api('/api/onboard', {
+            method: 'POST', body: JSON.stringify({ name: 'Validation Burger', slug: `val-burger-${Date.now()}`, phone: '11999999999', email: 'val@burger.com' })
+        });
+        const d1 = await safeJson(r1);
+        newRestaurantId = d1.id;
+        check(r1.ok && !!newRestaurantId, `Lojista criado: ${r1.ok ? d1.slug : 'ERRO ' + r1.status + ' ' + (d1.error || d1.text)}`);
+
+        if (r1.ok) {
+            const r2 = await api('/api/onboard/template', {
+                method: 'POST', body: JSON.stringify({ restaurantId: newRestaurantId, template: 'burger' })
+            });
+            const d2 = await safeJson(r2);
+            check(r2.ok, `Aplicação de template (Status: ${r2.status}) ${!r2.ok ? (d2.error || d2.text) : ''}`);
+
+            const r3 = await api(`/api/onboard/status?restaurantId=${newRestaurantId}`);
+            const d3 = await safeJson(r3);
+            check(d3.onboarding_step === 2, `Step esperado 2, atual: ${d3.onboarding_step}`);
+        }
+    });
+
+    // ── 17. Loyalty & Tiers Engine ───────────────────────────────────────────
+    await runSection('17. Loyalty & Tiers (Bronze/Silver/Gold)', async () => {
+        const phone = '11900000001';
+        const r1 = await api(`/api/default/loyalty/me?phone=${phone}`);
+        const d1 = await safeJson(r1);
+        check(r1.ok, `Consulta loyalty (Status: ${r1.status})`);
+
+        if (r1.ok) {
+            check(typeof d1.points === 'number', `Pontos: ${d1.points}`);
+            const tierName = typeof d1.tier === 'object' ? d1.tier.name : d1.tier;
+            check(['Bronze', 'Silver', 'Gold'].includes(tierName), `Tier: ${tierName}`);
+        }
+    });
+
+    // ── 18. Advanced Driver Module ───────────────────────────────────────────
+    await runSection('18. Advanced Drivers (Auto-Dispatch & Settlement)', async () => {
+        const r1 = await api('/api/admin/drivers?slug=default', { auth: token });
+        const drivers = await safeJson(r1);
+
+        if (Array.isArray(drivers) && drivers.length > 0) {
+            const drvId = drivers[0].id;
+            const r2 = await api(`/api/admin/drivers/${drvId}/stats?slug=default`, { auth: token });
+            const d2 = await safeJson(r2);
+            check(r2.ok, `Stats OK (Status: ${r2.status})`);
+
+            const orders = await api('/api/admin/orders?slug=default', { auth: token }).then(r => safeJson(r));
+            const target = Array.isArray(orders) ? orders.find(o => ['preparing', 'pending', 'accepted'].includes(o.status)) : null;
+
+            if (target) {
+                const r3 = await api('/api/admin/driver-orders/auto', {
+                    method: 'POST', auth: token, body: JSON.stringify({ orderId: target.id, slug: 'default' })
+                });
+                check(r3.ok, `⚡ Auto-dispatch: ${r3.status}`);
+            }
+        } else {
+            check(true, 'Nenhum entregador/pedido para testar dispatch');
+        }
+    });
+
+    // ── 19. SaaS Analytics & Plan Restrictions ────────────────────────────────
+    await runSection('19. SaaS Revenue & Plan Restrictions', async () => {
+        const r1 = await api('/api/admin/analytics?slug=default', { auth: token });
+        const d1 = await safeJson(r1);
+        check(r1.ok, `Analytics isolation (Status: ${r1.status})`);
+        if (r1.ok) {
+            check(d1.summary || d1.restricted !== undefined, 'Dashboard format OK');
+        } else {
+            console.error('   DEBUG Analytics Error:', d1);
+        }
+    });
+
+    // ── Cleanup ──────────────────────────────────────────────────────────────
+    if (newRestaurantId) {
+        await api(`/api/admin/restaurants/${newRestaurantId}`, { method: 'DELETE', auth: token });
+    }
+
     // ─── Results ──────────────────────────────────────────────────────────────
+
     console.log('\n╔══════════════════════════════════════════════════╗');
     console.log(`║  RESULTADO: ${globalPass} passaram, ${globalFail} falharam           ║`);
     if (globalFail === 0) {

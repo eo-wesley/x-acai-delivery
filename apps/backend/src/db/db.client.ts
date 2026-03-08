@@ -29,6 +29,10 @@ export async function setupDatabase() {
             email TEXT,
             status TEXT DEFAULT 'active',
             plan TEXT DEFAULT 'trial',
+            mode TEXT DEFAULT 'saas', -- 'store' (dono) ou 'saas' (clientes)
+            subscription_plan TEXT DEFAULT 'starter', -- 'starter', 'pro', 'enterprise'
+            subscription_status TEXT DEFAULT 'active',
+            onboarding_step INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
@@ -88,6 +92,22 @@ export async function setupDatabase() {
         );
     `);
 
+    // Order Items Table (for detailed analytics)
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS order_items (
+            id TEXT PRIMARY KEY,
+            order_id TEXT NOT NULL,
+            item_id TEXT NOT NULL,
+            item_name TEXT NOT NULL,
+            quantity INTEGER NOT NULL,
+            price_cents INTEGER NOT NULL,
+            notes TEXT,
+            FOREIGN KEY (order_id) REFERENCES orders(id),
+            FOREIGN KEY (item_id) REFERENCES menu_items(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_order_items_order ON order_items(order_id);
+    `);
+
     // Safe Migrations 
     try { await db.exec("ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT 'pending_payment'"); } catch (e) { }
     try { await db.exec("ALTER TABLE orders ADD COLUMN payment_provider TEXT"); } catch (e) { }
@@ -104,11 +124,20 @@ export async function setupDatabase() {
     // SaaS Multi-tenancy Migrations
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN phone TEXT"); } catch (e) { }
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN email TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN plan TEXT DEFAULT 'trial'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN mode TEXT DEFAULT 'saas'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN subscription_plan TEXT DEFAULT 'starter'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN subscription_status TEXT DEFAULT 'active'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN onboarding_step INTEGER DEFAULT 0"); } catch (e) { }
+
+    // Set default tenant as store mode
+    try { await db.exec("UPDATE restaurants SET mode = 'store', subscription_plan = 'enterprise' WHERE id = 'default_tenant'"); } catch (e) { }
+
     try { await db.exec("ALTER TABLE menu_items ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
     try { await db.exec("ALTER TABLE customers ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
     try { await db.exec("ALTER TABLE customers ADD COLUMN birthday DATE"); } catch (e) { }
 
-    // ─── Payment Logs (Phase 11) ──────────────────────────────────────────────db.exec("ALTER TABLE orders ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
 
     // CRM Migrations
     try { await db.exec("ALTER TABLE customers ADD COLUMN email TEXT"); } catch (e) { }

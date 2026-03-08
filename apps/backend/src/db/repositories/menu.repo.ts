@@ -1,4 +1,5 @@
 import { getDb } from '../db.client';
+import { randomUUID } from 'crypto';
 
 export interface MenuItem {
     id: string;
@@ -63,7 +64,7 @@ export class MenuRepo {
 
     async createMenuItem(data: Omit<MenuItem, 'id' | 'created_at' | 'updated_at'>): Promise<string> {
         const db = await getDb();
-        const id = require('crypto').randomUUID();
+        const id = randomUUID();
         const tagsJson = JSON.stringify(data.tags || []);
 
         await db.run(

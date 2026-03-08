@@ -2,7 +2,6 @@ import { Router } from 'express';
 
 const healthRouter = Router();
 
-<<<<<<< HEAD
 healthRouter.get('/health', async (req, res) => {
   let dbStatus = 'ok';
   try {
@@ -20,11 +19,6 @@ healthRouter.get('/health', async (req, res) => {
     status: dbStatus === 'ok' ? 'healthy' : 'unhealthy',
     database: dbStatus,
     uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
-=======
-healthRouter.get('/', (_req, res) => {
-  res.status(200).json({
-    status: 'ok',
->>>>>>> 63a8525880a654bbbff8b7dd26ee2c4abbbc8e81
     timestamp: new Date().toISOString(),
     version: '1.1.0',
     process: {

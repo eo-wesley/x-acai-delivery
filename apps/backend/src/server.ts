@@ -18,8 +18,7 @@ import { ordersRouter } from './routes/orders.router';
 import { menuRouter } from './routes/menu.router';
 import { adminRouter } from './routes/admin.router';
 import { setupEventSubscribers } from './core/eventSubscriber';
-import { paymentsRouter } from './routes/payments.router';
-import { pdvRouter } from './routes/pdv.router';
+import { marketingService } from './services/marketing.service';
 import { inventoryRouter } from './routes/inventory.router';
 import { customersRouter } from './routes/customers.router';
 import { couponsRouter } from './routes/coupons.router';
@@ -29,37 +28,35 @@ import { loyaltyRouter } from './routes/loyalty.router';
 import { restaurantsRouter } from './routes/restaurants.router';
 import { analyticsRouter } from './routes/analytics.router';
 import { marketingRouter } from './routes/marketing.router';
+import { saasRouter } from './routes/saas.router';
 
 dotenv.config();
 
 const app = express();
-setupEventSubscribers();
-const port = process.env.PORT || 3000;
 
-// Middleware
-const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3001';
-app.use(cors({ origin: allowedOrigin }));
-app.use(loggingMiddleware); // Professional Request Logging
+// Set up subscribers only if not in test
+if (process.env.NODE_ENV !== 'test') {
+  setupEventSubscribers();
+  marketingService.startAutomatedMarketing();
+}
+
+app.use(cors());
 app.use(express.json());
+app.use(loggingMiddleware);
 
-// Request Context (ID & Tenant)
-app.use((req: any, res, next) => {
-  req.reqId = randomUUID().split('-')[0];
-  next();
-});
-
-// Routes
+// Health check
 app.use(healthRouter);
-app.use(webhookRouter);
-app.use('/ai', aiRoutes);
-app.use('/api/webhooks', mpWebhookRouter);
+app.use('/api', healthRouter);
 
-// Domain Routes mounted under /api
-app.use('/api', ordersRouter);
-app.use('/api', menuRouter);
+// Infrastructure Routes
+app.use('/api/webhooks', webhookRouter);
+app.use('/api/ai', aiRoutes);
+app.use('/api/payments/mercadopago/webhook', mpWebhookRouter);
+
+// Domain Routes
 app.use('/api', adminRouter);
-app.use('/api', paymentsRouter);
-app.use('/api', pdvRouter);
+app.use('/api', menuRouter);
+app.use('/api', ordersRouter);
 app.use('/api', inventoryRouter);
 app.use('/api', customersRouter);
 app.use('/api', couponsRouter);
@@ -69,24 +66,20 @@ app.use('/api', loyaltyRouter);
 app.use('/api', restaurantsRouter);
 app.use('/api', analyticsRouter);
 app.use('/api', marketingRouter);
+app.use('/api', saasRouter);
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+// Database initialization
+setupDatabase().then(() => {
+  logger.info('Database initialized and synchronized');
+}).catch(err => {
+  logger.error('Failed to initialize database', err);
 });
 
-// Global Error Handler
 app.use(errorMiddleware);
 
-// Start server
-app.listen(port, async () => {
-  logger.info(`🚀 X-Açaí Backend running on http://localhost:${port}`);
-  logger.info(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.info(`   AI Provider: ${process.env.AI_PROVIDER || 'mock'}`);
-
-  try {
-    await setupDatabase();
-  } catch (e) {
-    console.error("❌ Failed to initialize SQLite database:", e);
-  }
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => {
+  console.log(`Backend server running on port ${PORT}`);
 });
+
+export default app;

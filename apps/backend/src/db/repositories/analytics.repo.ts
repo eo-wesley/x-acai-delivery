@@ -42,11 +42,11 @@ export class AnalyticsRepo {
 
         // Top Selling Items (Best sellers)
         const topItems = await db.all(
-            `SELECT item_name, SUM(quantity) as qty, SUM(price_cents * quantity) as revenue 
+            `SELECT oi.item_name, SUM(oi.quantity) as qty, SUM(oi.price_cents * oi.quantity) as revenue 
              FROM order_items oi
              JOIN orders o ON oi.order_id = o.id
              WHERE o.restaurant_id = ? AND o.status = 'completed' AND o.created_at >= ?
-             GROUP BY item_id, item_name
+             GROUP BY oi.item_id, oi.item_name
              ORDER BY qty DESC
              LIMIT 5`,
             [tenantId, dateStr]

@@ -90,7 +90,8 @@ function SummaryBar({ orders }: { orders: Order[] }) {
 }
 
 /* ─── Order Card ──────────────────────────────────────────────────────── */
-function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (id: string, s: string) => void }) {
+function OrderCard({ order, onStatusChange, onAutoDispatch }: { order: Order; onStatusChange: (id: string, s: string) => void; onAutoDispatch: (id: string) => void }) {
+
     const age = ageminister(order.created_at);
     const overdue = age > 30 && !['completed', 'cancelled'].includes(order.status);
     const info = STATUS_FLOW[order.status];
@@ -186,6 +187,15 @@ function OrderCard({ order, onStatusChange }: { order: Order; onStatusChange: (i
                                         info.next === 'completed' ? '✅ Concluir' : `→ ${info.next}`}
                             </button>
                         )}
+                        {order.status === 'preparing' && (
+                            <button
+                                onClick={() => onAutoDispatch(order.id)}
+                                title="Despacho Automático (IA)"
+                                className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition active:scale-95 flex items-center gap-1"
+                            >
+                                ⚡ Auto
+                            </button>
+                        )}
                         {!['cancelled', 'completed'].includes(order.status) && (
                             <button
                                 onClick={() => onStatusChange(order.id, 'cancelled')}
@@ -263,6 +273,25 @@ export default function AdminOrders() {
         }
     };
 
+    const handleAutoDispatch = async (orderId: string) => {
+        try {
+            const res = await fetch(`${API}/api/admin/driver-orders/auto?slug=${getSlug()}`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${getToken()}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId }),
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`🚀 Despachado para ${data.driver}!\nEstimativa: ${data.estimates.distanceKm}km em ${data.estimates.estimatedMinutes}min.`);
+                fetchOrders();
+            } else {
+                alert(`❌ Erro: ${data.error}`);
+            }
+        } catch (e) {
+            alert('Erro ao tentar despacho automático.');
+        }
+    };
+
     const displayed = filter === 'all'
         ? orders
         : orders.filter(o => o.status === filter);
@@ -333,7 +362,7 @@ export default function AdminOrders() {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                     {displayed.map(order => (
-                        <OrderCard key={order.id} order={order} onStatusChange={updateStatus} />
+                        <OrderCard key={order.id} order={order} onStatusChange={updateStatus} onAutoDispatch={handleAutoDispatch} />
                     ))}
                 </div>
             )}

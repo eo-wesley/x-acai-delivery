@@ -102,6 +102,52 @@ driversRouter.post('/admin/driver-orders', adminAuthMiddleware, tenantMiddleware
     }
 });
 
+driversRouter.post('/admin/driver-orders/auto', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const tenantId = req.tenantId;
+        const { orderId } = req.body;
+
+        if (!orderId) return res.status(400).json({ error: 'orderId é obrigatório' });
+
+        // 1. Encontrar melhor entregador
+        const driver = await driversRepo.findOptimalDriver(tenantId);
+        if (!driver) return res.status(404).json({ error: 'Nenhum entregador disponível no momento.' });
+
+        // 2. Calcular taxas e estimativas (Simulado)
+        const estimates = await driversRepo.calculateDeliveryEstimate(orderId);
+        const feeCents = 500; // Taxa padrão R$ 5,00
+
+        // 3. Atribuir pedido
+        const assignmentId = await driversRepo.assignOrder(tenantId, driver.id, orderId, feeCents);
+
+        // 4. Notificar Driver (Reutilizando lógica)
+        try {
+            const { EvolutionWhatsAppProvider } = await import('../notifications/providers/evolution.provider');
+            const wa = new EvolutionWhatsAppProvider();
+            if (wa.isConfigured()) {
+                const db = await (await import('../db/db.client')).getDb();
+                const order = await db.get(`SELECT * FROM orders WHERE id = ?`, [orderId]);
+
+                const message = `🚀 *DESPACHO AUTOMÁTICO!* \n\n📍 *Endereço:* ${order.address_text}\n👤 *Cliente:* ${order.customer_name || 'Não informado'}\n📏 *Distância:* ${estimates.distanceKm}km\n⏱️ *Tempo Est.:* ${estimates.estimatedMinutes}min\n💰 *Sua Taxa:* R$ ${(feeCents / 100).toFixed(2).replace('.', ',')}\n\nPor favor, retire o pedido no balcão. Boa rota! 🛵💨`;
+
+                await wa.send({
+                    orderId: orderId,
+                    customerPhone: driver.phone,
+                    event: 'order_dispatched',
+                    restaurantName: 'X-Açaí Delivery',
+                    extra: { body: message }
+                });
+            }
+        } catch (err) {
+            console.error('[Auto Dispatch] Notification Error:', err);
+        }
+
+        res.json({ success: true, assignmentId, driver: driver.name, estimates });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 driversRouter.put('/admin/driver-orders/:id/status', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {
         const tenantId = req.tenantId;

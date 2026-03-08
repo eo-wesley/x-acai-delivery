@@ -5,10 +5,10 @@ async function check() {
         const db = await getDb();
         const tableInfo = await db.all("PRAGMA table_info(orders)");
         console.log('--- ORDERS TABLE SCHEMA ---');
-        console.table(tableInfo);
+        tableInfo.forEach(c => console.log(`${c.name} | ${c.type} | ${c.notnull ? 'NN' : 'NULL'} | ${c.dflt_value}`));
 
-        const testMenu = await db.get("SELECT id FROM menu_items LIMIT 1");
-        console.log('--- SAMPLE MENU ITEM ---', testMenu);
+        const firstCust = await db.get("SELECT id FROM customers LIMIT 1");
+        console.log('--- SAMPLE CUSTOMER ---', firstCust);
     } catch (e) {
         console.error(e);
     }

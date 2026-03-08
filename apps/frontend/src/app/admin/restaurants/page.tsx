@@ -7,9 +7,12 @@ export default function RestaurantsListPage() {
     const [restaurants, setRestaurants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchRestaurants();
-    }, []);
+    const handleManage = (rest: any) => {
+        localStorage.setItem('admin_slug', rest.slug);
+        localStorage.setItem('admin_restaurant_id', rest.id);
+        window.dispatchEvent(new Event('tenant_changed'));
+        window.location.href = '/admin/orders';
+    };
 
     const fetchRestaurants = async () => {
         setLoading(true);
@@ -78,8 +81,14 @@ export default function RestaurantsListPage() {
                                 <p className="text-gray-500 text-sm mb-4 italic truncate">"{rest.slogan}"</p>
                             )}
 
-                            <div className="text-xs text-gray-400 border-t pt-4">
-                                Cadastrado em: {new Date(rest.created_at).toLocaleDateString('pt-BR')}
+                            <div className="text-xs text-gray-400 border-t pt-4 flex justify-between items-center">
+                                <span>Cadastrado em: {new Date(rest.created_at).toLocaleDateString('pt-BR')}</span>
+                                <button
+                                    onClick={() => handleManage(rest)}
+                                    className="bg-purple-50 text-purple-600 font-black px-3 py-1 rounded-lg hover:bg-purple-600 hover:text-white transition text-[10px] uppercase"
+                                >
+                                    Gerenciar ⚡
+                                </button>
                             </div>
                         </div>
                     ))}

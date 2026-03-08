@@ -11,13 +11,35 @@ export class LoyaltyRepo {
         return res?.total || 0;
     }
 
+    async getCustomerTier(tenantId: string, customerId: string): Promise<{ name: string, multiplier: number }> {
+        const db = await getDb();
+        const customer = await db.get(
+            `SELECT total_spent_cents FROM customers WHERE restaurant_id = ? AND id = ?`,
+            [tenantId, customerId]
+        );
+
+        const spent = customer?.total_spent_cents || 0;
+
+        if (spent >= 150000) return { name: 'Gold', multiplier: 1.5 };
+        if (spent >= 50000) return { name: 'Silver', multiplier: 1.2 };
+        return { name: 'Bronze', multiplier: 1.0 };
+    }
+
     async addPoints(tenantId: string, customerId: string, points: number, description: string, orderId?: string) {
         if (points === 0) return;
         const db = await getDb();
+
+        let finalPoints = points;
+        // Apply tier multiplier for positive points (earning)
+        if (points > 0) {
+            const tier = await this.getCustomerTier(tenantId, customerId);
+            finalPoints = Math.floor(points * tier.multiplier);
+        }
+
         const id = randomUUID();
         await db.run(
             `INSERT INTO loyalty_points (id, restaurant_id, customer_id, order_id, points, description) VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, tenantId, customerId, orderId || null, points, description]
+            [id, tenantId, customerId, orderId || null, finalPoints, description]
         );
         return id;
     }

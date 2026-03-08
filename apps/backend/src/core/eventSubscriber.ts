@@ -1,5 +1,6 @@
 import { eventBus } from './eventBus';
 import { sendNotification } from '../notifications/notification.service';
+import { marketingService } from '../services/marketing.service';
 
 export function setupEventSubscribers() {
     console.log('[EventBus] Setting up core subscribers...');
@@ -63,8 +64,11 @@ export function setupEventSubscribers() {
                         `Pontos do Pedido #${payload.orderId.substring(order.id.length - 6).toUpperCase()}`,
                         payload.orderId
                     );
-                    console.log(`[Loyalty Engine] Added ${pointsToEarn} points to customer ${customer.id} for order ${payload.orderId}`);
+                    console.log(`[Loyalty Engine] Added points to customer ${customer.id}`);
                 }
+
+                // Check for automated marketing rewards (e.g. coupon every 5 orders)
+                await marketingService.checkLoyaltyTarget(order.restaurant_id, customer.id);
             }
         } catch (err: any) {
             console.error(`[Loyalty Engine] Error assigning points for order ${payload.orderId}:`, err.message);
