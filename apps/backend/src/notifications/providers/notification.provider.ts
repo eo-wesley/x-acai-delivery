@@ -11,7 +11,8 @@ export type NotificationEvent =
     | 'order_preparing'
     | 'order_delivering'
     | 'order_delivered'
-    | 'order_cancelled';
+    | 'order_cancelled'
+    | 'order_dispatched';
 
 export interface OrderItem {
     menuItemId: string;
@@ -107,7 +108,9 @@ export function buildMessage(payload: NotificationPayload): string {
             `✅ ${restaurant}: Seu pedido *#${orderId}* foi *entregue*! Obrigado pela preferência. Bom apetite! 🍇`,
         order_cancelled:
             `❌ ${restaurant}: Infelizmente seu pedido *#${orderId}* foi *cancelado*. Entre em contato conosco para mais informações.`,
+        order_dispatched:
+            `🚀 Pedido *#${orderId}* foi despachado para entrega!`,
     };
 
-    return templates[payload.event] || `Atualização do pedido #${orderId} — ${restaurant}`;
+    return (payload.extra?.body as string) || templates[payload.event] || `Atualização do pedido #${orderId} — ${restaurant}`;
 }

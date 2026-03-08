@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { tenantMiddleware } from '../middlewares/tenant.middleware';
+import { menuCacheService } from '../services/cache/menu.cache';
 
 export const inventoryRouter = Router();
 
@@ -19,6 +20,7 @@ inventoryRouter.post('/admin/inventory', tenantMiddleware, async (req: any, res:
         const tenantId = req.tenantId;
         const { inventoryRepo } = await import('../db/repositories/inventory.repo');
         const id = await inventoryRepo.createItem(tenantId, req.body);
+        menuCacheService.invalidate(tenantId);
         res.status(201).json({ success: true, id });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
@@ -30,7 +32,10 @@ inventoryRouter.put('/admin/inventory/:id', tenantMiddleware, async (req: any, r
         const tenantId = req.tenantId;
         const { inventoryRepo } = await import('../db/repositories/inventory.repo');
         const success = await inventoryRepo.updateItem(tenantId, req.params.id, req.body);
-        if (success) res.json({ success: true });
+        if (success) {
+            menuCacheService.invalidate(tenantId);
+            res.json({ success: true });
+        }
         else res.status(404).json({ error: 'Item not found' });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
@@ -44,6 +49,7 @@ inventoryRouter.post('/admin/inventory/:id/adjust', tenantMiddleware, async (req
         const { qty, reason } = req.body;
 
         await inventoryRepo.recordMovement(tenantId, req.params.id, 'adjust', qty, reason || 'manual_adjust');
+        menuCacheService.invalidate(tenantId);
         res.json({ success: true });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
@@ -104,6 +110,7 @@ inventoryRouter.post('/admin/recipes', tenantMiddleware, async (req: any, res: a
         if (items && Array.isArray(items)) {
             await recipesRepo.upsertRecipeItems(tenantId, recipeId, items);
         }
+        menuCacheService.invalidate(tenantId);
         res.status(201).json({ success: true, recipeId });
     } catch (e: any) {
         res.status(500).json({ error: e.message });

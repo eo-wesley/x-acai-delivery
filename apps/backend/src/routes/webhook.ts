@@ -5,6 +5,10 @@ import {
   saveAssistantMessage,
   getCustomerByPhone,
 } from '../store/firestore.client';
+import { orderParser } from '../ai/orderParser';
+import { pixPaymentService } from '../payments/pix.service';
+import { sendNotification } from '../notifications/notification.service';
+import { EvolutionWhatsAppProvider } from '../notifications/providers/evolution.provider';
 
 const webhookRouter = Router();
 const llmRouter = new LLMRouter();
@@ -110,6 +114,76 @@ webhookRouter.post('/webhook', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Webhook processing error:', error);
     // Don't throw - already responded to WhatsApp
+  }
+});
+
+/**
+ * Evolution API Webhook Handler (Phase 13 & 14)
+ */
+webhookRouter.post('/webhook/evolution', async (req: any, res: any) => {
+  try {
+    const payload = req.body;
+
+    // Acknowledge Evolution API immediately
+    res.status(200).json({ status: 'SUCCESS' });
+
+    if (payload.event !== 'messages.upsert') return;
+
+    const data = payload.data;
+    if (!data.key || data.key.fromMe) return;
+
+    const phone = data.key.remoteJid.replace('@s.whatsapp.net', '');
+    const messageText = data.message?.conversation || data.message?.extendedTextMessage?.text;
+
+    if (!messageText) return;
+
+    console.log(`[Evolution-Webhook] Incoming from ${phone}: ${messageText}`);
+
+    // 1. AI Parse Order
+    const restaurantId = payload.instance || 'default';
+    const parsed = await orderParser.parseOrder(messageText, restaurantId);
+
+    if (parsed && parsed.product_id) {
+      // 2. Mock Order ID for flow (or create real draft in DB)
+      const tempOrderId = `wa_${Date.now()}`;
+
+      // 3. Generate PIX
+      const payment = await pixPaymentService.createPixPayment({
+        orderId: tempOrderId,
+        totalCents: parsed.total_cents,
+        customerName: data.pushName || 'Cliente WhatsApp',
+      });
+
+      // 4. Send Confirmation & PIX back to user
+      const evolution = new EvolutionWhatsAppProvider();
+      if (evolution.isConfigured()) {
+        const responseMsg =
+          `📋 *PEDIDO ENTENDIDO!* \n\n` +
+          `✅ Produto: ${parsed.product_name}\n` +
+          `🔢 Qtd: ${parsed.quantity}\n` +
+          `💰 Total: R$ ${(parsed.total_cents / 100).toFixed(2).replace('.', ',')}\n` +
+          (parsed.modifiers?.length ? `➕ Adicionais: ${parsed.modifiers.join(', ')}\n` : '') +
+          `📝 Obs: ${parsed.notes || 'Nenhuma'}\n\n` +
+          `👇 *PAGAMENTO PIX (Copia e Cola):*\n\n` +
+          `${payment.qrCode}\n\n` +
+          `⚠️ Após pagar, envie o comprovante aqui!`;
+
+        await evolution.send({
+          orderId: tempOrderId,
+          customerPhone: phone,
+          event: 'order_created',
+          restaurantName: 'X-Açaí Delivery',
+          totalCents: parsed.total_cents,
+          extra: { body: responseMsg } // Provider needs to support custom body or use buildMessage
+        });
+      }
+    } else {
+      // Fallback: Default LLM help if not a clear order
+      console.log(`[Evolution-Webhook] No product detected, skipping auto-order.`);
+    }
+
+  } catch (error: any) {
+    console.error('[Evolution-Webhook] Error:', error.message);
   }
 });
 

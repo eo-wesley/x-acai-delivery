@@ -53,7 +53,41 @@ export class DriversRepo {
             `UPDATE driver_orders SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE restaurant_id = ? AND id = ?`,
             [status, tenantId, driverOrderId]
         );
+
+        // Se entregue, atualizar status do pedido principal também
+        if (status === 'delivered' && res.changes && res.changes > 0) {
+            const assignment = await db.get(`SELECT order_id FROM driver_orders WHERE id = ?`, [driverOrderId]);
+            if (assignment) {
+                const { ordersRepo } = await import('./orders.repo');
+                await ordersRepo.updateOrderStatus(assignment.order_id, 'completed');
+            }
+        }
+
         return res.changes !== undefined && res.changes > 0;
+    }
+
+    async getDriverStats(tenantId: string, driverId: string) {
+        const db = await getDb();
+        const stats = await db.get(`
+            SELECT 
+                COUNT(*) as total_deliveries,
+                SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as completed_deliveries,
+                SUM(CASE WHEN settled = 0 AND status = 'delivered' THEN delivery_fee_cents ELSE 0 END) as pending_settlement_cents,
+                SUM(CASE WHEN settled = 1 THEN delivery_fee_cents ELSE 0 END) as total_paid_cents
+            FROM driver_orders 
+            WHERE restaurant_id = ? AND driver_id = ?
+        `, [tenantId, driverId]);
+
+        return stats;
+    }
+
+    async settleDriverPayments(tenantId: string, driverId: string) {
+        const db = await getDb();
+        const res = await db.run(`
+            UPDATE driver_orders SET settled = 1 
+            WHERE restaurant_id = ? AND driver_id = ? AND status = 'delivered' AND settled = 0
+        `, [tenantId, driverId]);
+        return res.changes || 0;
     }
 
     async listDriverOrders(tenantId: string, driverId?: string) {

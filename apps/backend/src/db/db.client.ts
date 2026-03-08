@@ -106,7 +106,9 @@ export async function setupDatabase() {
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN email TEXT"); } catch (e) { }
     try { await db.exec("ALTER TABLE menu_items ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
     try { await db.exec("ALTER TABLE customers ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
-    try { await db.exec("ALTER TABLE orders ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE customers ADD COLUMN birthday DATE"); } catch (e) { }
+
+    // ─── Payment Logs (Phase 11) ──────────────────────────────────────────────db.exec("ALTER TABLE orders ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
 
     // CRM Migrations
     try { await db.exec("ALTER TABLE customers ADD COLUMN email TEXT"); } catch (e) { }
@@ -327,6 +329,13 @@ export async function setupDatabase() {
         CREATE INDEX IF NOT EXISTS idx_driver_orders_did ON driver_orders(driver_id);
     `);
 
+    // Driver System Refinement (Phase 17)
+    try { await db.exec("ALTER TABLE drivers ADD COLUMN cnh TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE drivers ADD COLUMN pix_key TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE driver_orders ADD COLUMN distance_km REAL DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE driver_orders ADD COLUMN estimated_time_minutes INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE driver_orders ADD COLUMN settled INTEGER DEFAULT 0"); } catch (e) { } // 1 if paid to driver
+
     // Safe migration: add payment_method and coupon columns to orders
     try { await db.exec("ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT 'pix'"); } catch { }
     try { await db.exec("ALTER TABLE orders ADD COLUMN discount_cents INTEGER DEFAULT 0"); } catch { }
@@ -445,6 +454,47 @@ export async function setupDatabase() {
         );
         CREATE INDEX IF NOT EXISTS idx_payment_logs_order ON payment_logs(order_id);
         CREATE INDEX IF NOT EXISTS idx_payment_logs_ref ON payment_logs(payment_reference);
+    `);
+
+    // ─── Marketing Automation (Phase 16) ──────────────────────────────────────
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS customer_campaigns (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL,
+            type TEXT NOT NULL, -- 'winback', 'loyalty', 'birthday'
+            coupon_id TEXT,
+            channel TEXT DEFAULT 'whatsapp',
+            status TEXT DEFAULT 'sent',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (customer_id) REFERENCES customers(id),
+            FOREIGN KEY (coupon_id) REFERENCES coupons(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS marketing_triggers (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL, -- 'winback', 'loyalty'
+            days_inactive INTEGER, -- for winback
+            order_count INTEGER,    -- for loyalty
+            coupon_template_id TEXT, -- optional: base template for new coupons
+            discount_type TEXT DEFAULT 'flat',
+            discount_value INTEGER,
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(restaurant_id, type)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_campaigns_tenant ON customer_campaigns(restaurant_id);
+        CREATE INDEX IF NOT EXISTS idx_campaigns_customer ON customer_campaigns(customer_id);
+
+        -- Performance Optimization Indices (Phase 20)
+        CREATE INDEX IF NOT EXISTS idx_menu_tenant_cat ON menu_items(restaurant_id, category);
+        CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_tenant_created ON orders(restaurant_id, created_at);
     `);
 
     console.log('📦 Database Schema initialized.');

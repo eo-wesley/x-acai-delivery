@@ -62,13 +62,59 @@ export class AnalyticsRepo {
             [tenantId, dateStr]
         );
 
+        // Hourly Heatmap (Pedidos por Hora)
+        const hourlyHeatmap = await db.all(
+            `SELECT strftime('%H', created_at) as hour, COUNT(id) as count
+             FROM orders
+             WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
+             GROUP BY hour
+             ORDER BY hour ASC`,
+            [tenantId, dateStr]
+        );
+
+        // Revenue by Payment Method
+        const paymentMethods = await db.all(
+            `SELECT payment_method, SUM(total_cents) as revenue, COUNT(id) as count
+             FROM orders
+             WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
+             GROUP BY payment_method`,
+            [tenantId, dateStr]
+        );
+
+        // Customer Retention (New vs Recurring)
+        const customerStats = await db.get(
+            `SELECT 
+                COUNT(DISTINCT customer_phone) as total_customers,
+                SUM(CASE WHEN order_count > 1 THEN 1 ELSE 0 END) as recurring_customers
+             FROM (
+                SELECT customer_phone, COUNT(id) as order_count 
+                FROM orders 
+                WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
+                GROUP BY customer_phone
+             )`,
+            [tenantId, dateStr]
+        );
+
+        const totalRevenue = orders.revenue || 0;
+        const totalOrders = orders.total || 0;
+        const avgTicket = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+        const retentionRate = customerStats.total_customers > 0
+            ? (customerStats.recurring_customers / customerStats.total_customers) * 100
+            : 0;
+
         return {
             summary: {
-                totalOrders: orders.total || 0,
-                totalRevenue: orders.revenue || 0,
+                totalOrders,
+                totalRevenue,
+                avgTicketCents: avgTicket,
+                retentionRate: Math.round(retentionRate * 100) / 100,
+                totalCustomers: customerStats.total_customers || 0,
+                recurringCustomers: customerStats.recurring_customers || 0
             },
             topItems,
-            dailyRevenue
+            dailyRevenue,
+            hourlyHeatmap,
+            paymentMethods
         };
     }
 }

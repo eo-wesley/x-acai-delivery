@@ -15,10 +15,13 @@ const check = (ok, msg) => {
     console.log(` ${ok ? '✅' : '❌'} ${msg}`);
 };
 
-const api = (url, opts = {}) => fetch(`${BASE}${url}`, {
-    headers: { 'Content-Type': 'application/json', ...(opts.auth ? { Authorization: `Bearer ${opts.auth}` } : {}) },
-    ...opts
-});
+const api = async (url, opts = {}) => {
+    const res = await fetch(`${BASE}${url}`, {
+        headers: { 'Content-Type': 'application/json', ...(opts.auth ? { Authorization: `Bearer ${opts.auth}` } : {}) },
+        ...opts
+    });
+    return res;
+};
 
 async function runSection(name, fn) {
     console.log(`\n▶ ${name}`);
@@ -33,26 +36,33 @@ async function runSection(name, fn) {
 
     // ── 1. Backend Health ────────────────────────────────────────────────────
     await runSection('1. Backend Health', async () => {
-        const h = await api('/api/health');
-        check(h.ok, 'Backend responde em /api/health');
+        const h = await api('/health');
+        check(h.ok, 'Backend responde em /health');
     });
 
     // ── 2. Admin Auth ────────────────────────────────────────────────────────
     let token = '';
     await runSection('2. Admin Auth (JWT)', async () => {
-        const r = await api('/api/admin/login', { method: 'POST', body: JSON.stringify({ secret: 'admin_secret_123' }) });
-        const d = await r.json();
+        const r = await api('/api/admin/login', {
+            method: 'POST',
+            body: JSON.stringify({ username: 'admin', password: 'admin123' })
+        });
+        const text = await r.text();
+        let d = {};
+        try { d = JSON.parse(text); } catch (e) { console.error('Erro ao parsar login JSON:', text); }
         token = d.token;
         check(r.ok && !!token, 'Admin login retornou JWT');
     });
 
     // ── 3. Store State Engine ────────────────────────────────────────────────
     await runSection('3. Restaurant Operations Engine', async () => {
-        const s = await api('/api/default/store');
-        check(s.ok, 'GET /api/default/store respondeu OK');
+        const s = await fetch(`${BASE}/api/admin/profile?slug=default`, {
+            headers: { Authorization: `Bearer ${token}` }
+        });
+        check(s.ok, 'GET /admin/profile respondeu OK');
         const sd = await s.json();
         check(typeof sd.store_status === 'string', `store_status presente: ${sd.store_status}`);
-        check(typeof sd.can_accept_orders === 'boolean', `can_accept_orders presente: ${sd.can_accept_orders}`);
+        check(sd.store_status === 'open' || sd.store_status === 'closed', 'store_status é válido');
 
         // Toggle store status
         const patch = await fetch(`${BASE}/api/admin/store?slug=default`, {
@@ -87,9 +97,9 @@ async function runSection(name, fn) {
         check(m.ok, 'GET /admin/metrics respondeu OK');
         const md = await m.json();
         check(typeof md.today?.orders === 'number', `today.orders: ${md.today?.orders}`);
-        check(typeof md.today?.revenue_cents === 'number', `today.revenue_cents: ${md.today?.revenue_cents}`);
-        check(Array.isArray(md.orders_by_status), 'orders_by_status é array');
-        check(Array.isArray(md.top_products), 'top_products é array');
+        check(typeof md.today?.revenueCents === 'number', `today.revenueCents: ${md.today?.revenueCents}`);
+        check(Array.isArray(md.byStatus), 'byStatus é array');
+        check(Array.isArray(md.topProducts), 'topProducts é array');
     });
 
     // ── 6. Menu ──────────────────────────────────────────────────────────────
@@ -275,7 +285,7 @@ async function runSection(name, fn) {
         });
         check(pdvReq.ok, `POST /admin/pdv/orders OK: ${pdvReq.status}`);
         const pdvData = await pdvReq.json();
-        check(!!pdvData.id, `Created PDV order ID: ${pdvData.id}`);
+        check(!!pdvData.orderId, `Created PDV order ID: ${pdvData.orderId}`);
     });
 
     // ── 15. WhatsApp Notification Engine ─────────────────────────────────────

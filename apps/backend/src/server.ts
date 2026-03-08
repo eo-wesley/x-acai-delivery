@@ -9,6 +9,10 @@ import webhookRouter from './routes/webhook';
 import aiRoutes from './routes/ai.routes';
 import mpWebhookRouter from './routes/mercadopago.webhook';
 
+import { loggingMiddleware } from './middlewares/logging.middleware';
+import { errorMiddleware } from './middlewares/error.middleware';
+import { logger } from './core/logger';
+
 // Domain Routers
 import { ordersRouter } from './routes/orders.router';
 import { menuRouter } from './routes/menu.router';
@@ -24,6 +28,7 @@ import { driversRouter } from './routes/drivers.router';
 import { loyaltyRouter } from './routes/loyalty.router';
 import { restaurantsRouter } from './routes/restaurants.router';
 import { analyticsRouter } from './routes/analytics.router';
+import { marketingRouter } from './routes/marketing.router';
 
 dotenv.config();
 
@@ -34,13 +39,12 @@ const port = process.env.PORT || 3000;
 // Middleware
 const allowedOrigin = process.env.CORS_ORIGIN || 'http://localhost:3001';
 app.use(cors({ origin: allowedOrigin }));
+app.use(loggingMiddleware); // Professional Request Logging
 app.use(express.json());
 
-// Request logging
+// Request Context (ID & Tenant)
 app.use((req: any, res, next) => {
   req.reqId = randomUUID().split('-')[0];
-  const slug = req.query?.slug || req.body?.slug || 'default';
-  console.log(`[${new Date().toISOString()}] [Req:${req.reqId}] [Tenant:${slug}] ${req.method} ${req.path}`);
   next();
 });
 
@@ -64,17 +68,21 @@ app.use('/api', driversRouter);
 app.use('/api', loyaltyRouter);
 app.use('/api', restaurantsRouter);
 app.use('/api', analyticsRouter);
+app.use('/api', marketingRouter);
 
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// Global Error Handler
+app.use(errorMiddleware);
+
 // Start server
 app.listen(port, async () => {
-  console.log(`\n🚀 X-Açaí Backend running on http://localhost:${port}`);
-  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`   AI Provider: ${process.env.AI_PROVIDER || 'mock'}`);
+  logger.info(`🚀 X-Açaí Backend running on http://localhost:${port}`);
+  logger.info(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.info(`   AI Provider: ${process.env.AI_PROVIDER || 'mock'}`);
 
   try {
     await setupDatabase();

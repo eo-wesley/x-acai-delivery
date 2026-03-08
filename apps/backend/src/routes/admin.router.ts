@@ -5,6 +5,7 @@ import { ordersRepo } from '../db/repositories/orders.repo';
 import { getDb } from '../db/db.client';
 import { aiMetrics } from '../ai/metrics/ai.metrics';
 import { eventBus } from '../core/eventBus';
+import { marketingService } from '../services/marketing.service';
 import jwt from 'jsonwebtoken';
 import { menuCacheService } from '../services/cache/menu.cache';
 
@@ -94,6 +95,15 @@ adminRouter.put('/admin/orders/:id/status', adminAuthMiddleware, tenantMiddlewar
                         customerName: (order as any).customer_name,
                         totalCents: (order as any).total_cents,
                     });
+                }
+
+                // Trigger Marketing Loyalty check (Phase 16)
+                if (status === 'completed' && order.customer_phone) {
+                    const { customersRepo } = await import('../db/repositories/customers.repo');
+                    const customer = await customersRepo.getCustomerByPhone(order.customer_phone, tenantId);
+                    if (customer) {
+                        await marketingService.checkLoyaltyTarget(tenantId, customer.id);
+                    }
                 }
             }
 
@@ -292,13 +302,18 @@ adminRouter.get('/admin/menu/:id/options', adminAuthMiddleware, tenantMiddleware
 });
 
 adminRouter.post('/admin/menu/:id/options/groups', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    console.log(`[AdminRouter] POST Option Group for item ${req.params.id}`);
     try {
         const db = await getDb();
         const { v4: uuidv4 } = await import('uuid');
-        const { name, min_options, max_options, sort_order, required } = req.body;
+        // Accept both field names for compatibility during transition
+        const { name, min_options, max_options, min_select, max_select, sort_order, required } = req.body;
+        const finalMin = min_select !== undefined ? min_select : (min_options || 0);
+        const finalMax = max_select !== undefined ? max_select : (max_options || 1);
+
         const id = uuidv4();
-        await db.run(`INSERT INTO option_groups (id, menu_item_id, name, min_options, max_options, sort_order, required) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [id, req.params.id, name, min_options || 0, max_options || 1, sort_order || 0, required ? 1 : 0]);
+        await db.run(`INSERT INTO option_groups (id, restaurant_id, menu_item_id, name, min_select, max_select, sort_order, required) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, req.tenantId, req.params.id, name, finalMin, finalMax, sort_order || 0, required ? 1 : 0]);
         menuCacheService.invalidate(req.tenantId);
         res.status(201).json({ success: true, id });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -307,9 +322,12 @@ adminRouter.post('/admin/menu/:id/options/groups', adminAuthMiddleware, tenantMi
 adminRouter.put('/admin/menu/options/groups/:groupId', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {
         const db = await getDb();
-        const { name, min_options, max_options, sort_order, required } = req.body;
-        await db.run(`UPDATE option_groups SET name=?, min_options=?, max_options=?, sort_order=?, required=? WHERE id=?`,
-            [name, min_options, max_options, sort_order, required ? 1 : 0, req.params.groupId]);
+        const { name, min_options, max_options, min_select, max_select, sort_order, required } = req.body;
+        const finalMin = min_select !== undefined ? min_select : (min_options || 0);
+        const finalMax = max_select !== undefined ? max_select : (max_options || 1);
+
+        await db.run(`UPDATE option_groups SET name=?, min_select=?, max_select=?, sort_order=?, required=? WHERE id=?`,
+            [name, finalMin, finalMax, sort_order, required ? 1 : 0, req.params.groupId]);
         menuCacheService.invalidate(req.tenantId);
         res.json({ success: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -330,8 +348,8 @@ adminRouter.post('/admin/menu/options/groups/:groupId/items', adminAuthMiddlewar
         const { v4: uuidv4 } = await import('uuid');
         const { name, price_cents, sort_order, available } = req.body;
         const id = uuidv4();
-        await db.run(`INSERT INTO option_items (id, option_group_id, name, price_cents, sort_order, available) VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, req.params.groupId, name, price_cents || 0, sort_order || 0, available === false ? 0 : 1]);
+        await db.run(`INSERT INTO option_items (id, restaurant_id, option_group_id, name, price_cents, sort_order, available) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, req.tenantId, req.params.groupId, name, price_cents || 0, sort_order || 0, available === false ? 0 : 1]);
         menuCacheService.invalidate(req.tenantId);
         res.status(201).json({ success: true, id });
     } catch (e: any) { res.status(500).json({ error: e.message }); }

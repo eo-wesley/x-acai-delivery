@@ -11,6 +11,7 @@ import { aiCache } from '../ai/cache/ai.cache';
 import { aiMetrics } from '../ai/metrics/ai.metrics';
 import { ragService } from '../ai/rag/rag.service';
 import { PADBASE_SYSTEM_PROMPT } from '../ai/prompts/padbase.system.txt';
+import { orderParser } from '../ai/orderParser';
 
 const router = Router();
 
@@ -281,7 +282,30 @@ router.post('/tools', async (req: any, res: any) => {
     }
 });
 
-// F4) GET /ai/stats
+// F4) POST /ai/order (Phase 13: NLP Order Parsing)
+router.post('/order', async (req: any, res: any) => {
+    try {
+        const { message, restaurant_id } = req.body;
+        if (!message) return res.status(400).json({ error: 'Message is required' });
+
+        const tenantId = restaurant_id || 'default';
+        const parsed = await orderParser.parseOrder(message, tenantId);
+
+        if (!parsed || !parsed.product_id) {
+            return res.status(422).json({
+                error: 'Could not detect product in menu',
+                parsed
+            });
+        }
+
+        res.json({ success: true, parsed });
+    } catch (error: any) {
+        console.error('[AI-API] Order parsing error:', error);
+        res.status(500).json({ error: 'Failed to process natural language order' });
+    }
+});
+
+// F5) GET /ai/stats
 router.get('/stats', (req: any, res: any) => {
     res.json(aiMetrics.getStats());
 });
