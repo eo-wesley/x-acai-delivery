@@ -1,0 +1,1631 @@
+import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
+import { z } from 'zod';
+import { aiMetrics } from '../ai/metrics/ai.metrics';
+import { env } from '../config/env';
+import { mercadoPagoService } from '../payments/mercadopago.service';
+import { pixPaymentService } from '../payments/pix.service';
+import { menuRepo } from '../db/repositories/menu.repo';
+import { ordersRepo } from '../db/repositories/orders.repo';
+import jwt from 'jsonwebtoken';
+import { sendNotification, statusToEvent } from '../notifications/notification.service';
+import { resolveTenant } from '../middlewares/tenant.middleware';
+
+// SSE clients registry (admin order stream)
+const sseClients = new Map<string, any[]>();
+function broadcastOrders(tenantId: string, data: unknown) {
+    const clients = sseClients.get(tenantId) || [];
+    const msg = `data: ${JSON.stringify(data)}\n\n`;
+    clients.forEach(res => { try { res.write(msg); } catch { } });
+}
+
+const router = Router();
+
+// Middlewares
+const appRateLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 100, // 100 requests per minute per IP for standard REST
+    message: { error: 'Too many requests, please try again later.' },
+});
+
+const adminAuthMiddleware = (req: any, res: any, next: any) => {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader ? authHeader.split('Bearer ')[1] : null;
+
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'fallback_jwt_secret_123';
+
+    if (!token) {
+        return res.status(401).json({ error: 'Token is missing' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.admin = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+    }
+};
+
+router.use(appRateLimiter);
+
+// ---------------------------------------------------------
+// PUBLIC ENDPOINTS
+// ---------------------------------------------------------
+
+router.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+router.get('/business', (req, res) => {
+    res.json({
+        hours: '10:00 - 22:00',
+        pickupAddress: 'Rua Principal, 100 - Centro',
+        policies: 'Cancelamentos apenas antes do preparo iniciar',
+    });
+});
+
+router.get('/menu', async (req, res) => {
+    try {
+        const category = req.query.category as string;
+        let items = [];
+        const tenantId = 'default_tenant';
+        if (category) {
+            items = await menuRepo.getMenuByCategory(tenantId, category, true);
+        } else {
+            items = await menuRepo.listMenu(tenantId, true);
+        }
+        res.json(items);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/menu/search', async (req, res) => {
+    try {
+        const q = req.query.q as string;
+        if (!q) return res.status(400).json({ error: "Missing 'q' query parameter" });
+        const tenantId = 'default_tenant';
+        const items = await menuRepo.searchMenu(tenantId, q);
+        res.json(items);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/orders/:id', async (req, res) => {
+    try {
+        const order = await ordersRepo.getOrderById(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        res.json(order);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+const createOrderSchema = z.object({
+    customerId: z.string(),
+    customerName: z.string().optional(),
+    customerPhone: z.string().optional(),
+    customerEmail: z.string().email().optional(),
+    items: z.array(z.object({
+        menuItemId: z.string(),
+        qty: z.number().positive(),
+        notes: z.string().optional(),
+        selected_options: z.array(z.object({
+            groupId: z.string(),
+            groupName: z.string(),
+            optionId: z.string(),
+            optionName: z.string(),
+            price_cents: z.number()
+        })).optional()
+    })).min(1),
+    subtotalCents: z.number().nonnegative(),
+    deliveryFeeCents: z.number().nonnegative(),
+    totalCents: z.number().nonnegative(),
+    addressText: z.string(),
+    notes: z.string().optional(),
+    paymentMethod: z.enum(['pix', 'card', 'cash']).optional().default('pix'),
+    restaurantId: z.string().optional(),
+});
+
+router.post('/orders', async (req, res) => {
+    try {
+        const data = createOrderSchema.parse(req.body);
+
+        const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
+        const order = await ordersRepo.createOrder({ ...data, items: processedItems });
+
+        let pixQrCode = '';
+        let pixQrBase64 = '';
+        let paymentReference = '';
+        let paymentUrl = '';
+
+        // PIX: Generate real QR code (or mock if no API key)
+        if (data.paymentMethod === 'pix' || !data.paymentMethod) {
+            try {
+                const pixResult = await pixPaymentService.createPixPayment({
+                    orderId: order.id,
+                    totalCents: data.totalCents,
+                    customerName: data.customerName || 'Cliente',
+                    customerEmail: data.customerEmail as string | undefined,
+                });
+                pixQrCode = pixResult.qrCode;
+                pixQrBase64 = pixResult.qrCodeBase64;
+                paymentReference = pixResult.paymentId;
+
+                // Persist PIX data into the order row
+                const { getDb } = await import('../db/db.client');
+                const db = await getDb();
+                await db.run(
+                    `UPDATE orders SET payment_qr_code=?, payment_qr_base64=?, payment_reference=?,
+                     payment_provider=?, payment_method=?, customer_name=?, customer_phone=? WHERE id=?`,
+                    [
+                        pixQrCode,
+                        pixQrBase64,
+                        paymentReference,
+                        pixResult.isMock ? 'mercadopago_mock' : 'mercadopago',
+                        'pix',
+                        data.customerName || null,
+                        data.customerPhone || null,
+                        order.id
+                    ]
+                );
+            } catch (pixErr: any) {
+                console.error('[Orders/PIX] Failed to generate PIX:', pixErr.message);
+            }
+        } else {
+            // Non-PIX: keep legacy preference URL
+            paymentUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
+        }
+
+        // WhatsApp notification (non-blocking)
+        sendNotification({
+            orderId: order.id,
+            event: 'order_created',
+            customerPhone: data.customerPhone,
+            customerName: data.customerName,
+            totalCents: data.totalCents,
+            extra: { items: processedItems, paymentMethod: data.paymentMethod, addressText: data.addressText }
+        });
+
+        res.status(201).json({
+            ...order,
+            payment_url: paymentUrl || undefined,
+            pix_qr_code: pixQrCode || undefined,
+            pix_qr_base64: pixQrBase64 || undefined,
+            payment_reference: paymentReference || undefined,
+        });
+    } catch (e: any) {
+        if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
+router.post('/orders/:id/cancel', async (req, res) => {
+    try {
+        const reason = req.body.reason || 'Requested by customer';
+        const success = await ordersRepo.cancelOrder(req.params.id, reason);
+        if (success) {
+            // Trigger cancellation notification
+            const order = await ordersRepo.getOrderById(req.params.id);
+            if (order) {
+                sendNotification({
+                    orderId: req.params.id,
+                    event: 'order_cancelled',
+                    customerPhone: (order as any).customer_phone,
+                    customerName: (order as any).customer_name,
+                    totalCents: (order as any).total_cents,
+                });
+            }
+            res.json({ success: true, message: 'Order cancelled' });
+        } else {
+            res.status(400).json({ error: 'Failed to cancel order' });
+        }
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// ORDER RATINGS — must be BEFORE /:slug/* routes to avoid conflict
+// ---------------------------------------------------------
+
+// Public: Submit rating (after order is completed)
+router.post('/orders/:id/rating', async (req, res) => {
+    try {
+        const { v4: uuidv4 } = await import('uuid');
+        const orderId = req.params.id;
+        const { stars, comment, customerName } = req.body;
+
+        if (!stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Stars must be 1–5' });
+
+        const order = await ordersRepo.getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        if ((order as any).status !== 'completed') return res.status(400).json({ error: 'Só é possível avaliar pedidos concluídos' });
+
+        const db = await (await import('../db/db.client')).getDb();
+        const id = uuidv4();
+        await db.run(
+            `INSERT INTO order_ratings (id, order_id, restaurant_id, customer_name, stars, comment)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [id, orderId, (order as any).restaurant_id || 'default_tenant', customerName || null, stars, comment || null]
+        );
+        res.status(201).json({ success: true, id });
+    } catch (e: any) {
+        if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Este pedido já foi avaliado' });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Public: Get rating for an order
+router.get('/orders/:id/rating', async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const rating = await db.get(`SELECT * FROM order_ratings WHERE order_id = ?`, [req.params.id]);
+        if (!rating) return res.status(404).json({ error: 'No rating found' });
+        res.json(rating);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// SAAS MULTI-TENANT ENDPOINTS
+// ---------------------------------------------------------
+
+router.get('/:slug/menu', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const category = req.query.category as string;
+        let items = [];
+        if (category) {
+            items = await menuRepo.getMenuByCategory(tenantId, category, true);
+        } else {
+            items = await menuRepo.listMenu(tenantId, true);
+        }
+        res.json(items);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get single menu item with full option_groups (MUST come before /:slug/menu route registered first, but expressed as specific path)
+router.get('/:slug/menu/item/:id', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const db = await (await import('../db/db.client')).getDb();
+
+        const item = await db.get(
+            `SELECT * FROM menu_items WHERE id = ? AND restaurant_id = ? AND hidden != 1`,
+            [req.params.id, tenantId]
+        );
+        if (!item) return res.status(404).json({ error: 'Item not found' });
+
+        const groups = await db.all(
+            `SELECT * FROM option_groups WHERE menu_item_id = ? ORDER BY sort_order ASC`,
+            [req.params.id]
+        );
+
+        const enrichedGroups = await Promise.all(groups.map(async (g) => {
+            const options = await db.all(
+                `SELECT * FROM option_items WHERE option_group_id = ? AND available = 1 ORDER BY sort_order ASC`,
+                [g.id]
+            );
+            return { ...g, options };
+        }));
+
+        res.json({ ...item, option_groups: enrichedGroups });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Get distinct categories for a tenant
+router.get('/:slug/menu/categories', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const cats = await db.all(
+            `SELECT DISTINCT category FROM menu_items WHERE restaurant_id = ? AND available = 1 AND hidden != 1 AND category IS NOT NULL ORDER BY MIN(sort_order) ASC`,
+            [tenantId]
+        );
+        res.json(cats.map(c => c.category));
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/:slug/menu/search', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const q = req.query.q as string;
+        if (!q) return res.status(400).json({ error: "Missing 'q' query parameter" });
+        const items = await menuRepo.searchMenu(tenantId, q);
+        res.json(items);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/:slug/orders/:id', async (req, res) => {
+    try {
+        // Tenants share the same table but UUIDs are unique anyway,
+        // we could assert the order belongs to the tenant here.
+        const order = await ordersRepo.getOrderById(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        res.json(order);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/:slug/orders', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const data = createOrderSchema.parse(req.body);
+
+        // Extra fields not in Zod schema (pass-through)
+        const paymentMethod: string = (req.body.paymentMethod as string) || 'pix';
+        const discountCents: number = Number(req.body.discountCents) || 0;
+        const couponCode: string | undefined = req.body.couponCode;
+
+        const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
+        const order = await ordersRepo.createOrder({
+            ...data,
+            items: processedItems,
+            restaurantId: tenantId
+        });
+
+        // Persist payment_method, discount_cents, coupon_code (safe ALTER migrations added above)
+        const db = await (await import('../db/db.client')).getDb();
+        await db.run(
+            `UPDATE orders SET payment_method = ?, discount_cents = ?, coupon_code = ? WHERE id = ?`,
+            [paymentMethod, discountCents, couponCode || null, order.id]
+        );
+
+        // Increment coupon usage counter
+        if (couponCode) {
+            await db.run(
+                `UPDATE coupons SET used_count = used_count + 1 WHERE restaurant_id = ? AND code = ?`,
+                [tenantId, couponCode.toUpperCase().trim()]
+            ).catch(() => { }); // Non-blocking
+        }
+
+        const checkoutUrl = await mercadoPagoService.createPreference(
+            order.id,
+            data.totalCents,
+            processedItems
+        );
+        order.payment_url = checkoutUrl;
+
+        const response = {
+            ...order,
+            status: (order as any).status || 'pending_payment',
+            restaurant_id: tenantId,
+            payment_method: paymentMethod,
+            discount_cents: discountCents,
+            coupon_code: couponCode || null,
+        };
+
+        res.status(201).json(response);
+    } catch (e: any) {
+        if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
+// ---------------------------------------------------------
+// ADMIN ENDPOINTS (Protected)
+// ---------------------------------------------------------
+
+router.post('/admin/login', async (req, res) => {
+    const { secret } = req.body;
+    process.env.ADMIN_SECRET = process.env.ADMIN_SECRET || 'admin_secret_123';
+    process.env.JWT_SECRET = process.env.JWT_SECRET || 'fallback_jwt_secret_123';
+
+    if (secret === process.env.ADMIN_SECRET) {
+        const token = jwt.sign({ role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '8h' });
+        return res.json({ success: true, token });
+    } else {
+        return res.status(401).json({ error: 'Invalid credentials' });
+    }
+});
+
+router.get('/admin/orders', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const orders = await db.all(
+            `SELECT o.*, cu.name as customer_name, cu.phone as customer_phone, o.address_text as customer_address
+             FROM orders o
+             LEFT JOIN customers cu ON o.customer_id = cu.id AND cu.restaurant_id = o.restaurant_id
+             WHERE o.restaurant_id = ?
+             ORDER BY o.created_at DESC
+             LIMIT 200`,
+            [tenantId]
+        );
+        const mapped = orders.map(o => ({ ...o, items: JSON.parse(o.items || '[]') }));
+        res.json(mapped);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// SSE: real-time orders stream for admin
+router.get('/admin/orders/stream', adminAuthMiddleware, async (req: any, res: any) => {
+    const slug = req.query.slug as string || 'default';
+    let tenantId: string;
+    try { tenantId = await resolveTenant(slug); } catch { tenantId = 'default_tenant'; }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    // Register client
+    const clients = sseClients.get(tenantId) || [];
+    clients.push(res);
+    sseClients.set(tenantId, clients);
+
+    // Send initial ping
+    res.write(`data: {"type":"connected","tenant":"${tenantId}"}\n\n`);
+
+    // Cleanup on disconnect
+    req.on('close', () => {
+        const updated = (sseClients.get(tenantId) || []).filter(c => c !== res);
+        sseClients.set(tenantId, updated);
+    });
+});
+
+router.put('/admin/orders/:id/status', adminAuthMiddleware, async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const { status } = req.body;
+        if (!orderId || !status) return res.status(400).json({ error: 'Missing orderId or status' });
+
+        const success = await ordersRepo.updateOrderStatus(orderId, status);
+        if (success) {
+            // Fetch order for notification + SSE broadcast
+            const order = await ordersRepo.getOrderById(orderId);
+
+            // Fire WhatsApp notification (never blocks)
+            const event = statusToEvent(status);
+            if (event && order) {
+                sendNotification({
+                    orderId,
+                    event,
+                    customerPhone: (order as any).customer_phone,
+                    customerName: (order as any).customer_name,
+                    totalCents: (order as any).total_cents,
+                    extra: { items: (order as any).items }
+                });
+            }
+
+            // Broadcast to SSE clients
+            if (order) {
+                const tenantId = (order as any).restaurant_id || 'default_tenant';
+                broadcastOrders(tenantId, { type: 'status_updated', orderId, status });
+            }
+
+            res.json({ success: true, status });
+        } else {
+            res.status(400).json({ error: 'Failed to update status' });
+        }
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/pdv/orders', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+
+        // Ensure the payload has the restaurantId explicitly bound from the admin's context
+        const data = { ...req.body, restaurantId: tenantId };
+
+        const order = await ordersRepo.createPDVOrder(data);
+        res.status(201).json({ success: true, id: order.id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ─── Notification Logs (Admin) ───────────────────────────────────────────────
+
+router.get('/admin/notification-logs', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const limit = Math.min(parseInt(req.query.limit as string || '50'), 200);
+        const orderId = req.query.order_id as string | undefined;
+
+        let query = `SELECT * FROM notification_logs`;
+        const params: any[] = [];
+        if (orderId) {
+            query += ` WHERE order_id = ?`;
+            params.push(orderId);
+        }
+        query += ` ORDER BY created_at DESC LIMIT ?`;
+        params.push(limit);
+
+        const logs = await db.all(query, params);
+        res.json(logs);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Health check for Evolution API connectivity
+router.get('/admin/whatsapp/status', adminAuthMiddleware, async (req, res) => {
+    const provider = (process.env.WHATSAPP_PROVIDER || 'mock').toLowerCase();
+    const baseUrl = process.env.WHATSAPP_BASE_URL;
+    const instance = process.env.WHATSAPP_INSTANCE;
+    const apiKey = process.env.WHATSAPP_API_KEY;
+
+    if (provider !== 'evolution' || !baseUrl || !instance || !apiKey) {
+        return res.json({
+            provider,
+            configured: false,
+            status: 'mock_mode',
+            message: 'Evolution API not configured — using mock provider',
+        });
+    }
+
+    try {
+        const url = `${baseUrl.replace(/\/$/, '')}/instance/fetchInstances`;
+        const checkRes = await fetch(url, {
+            headers: { apikey: apiKey },
+            signal: AbortSignal.timeout(5000),
+        });
+        if (checkRes.ok) {
+            const data = (await checkRes.json()) as any;
+            const inst = Array.isArray(data) ? data.find((i: any) => i.name === instance) : null;
+            res.json({
+                provider,
+                configured: true,
+                status: inst?.connectionStatus || 'unknown',
+                instance,
+                connected: inst?.connectionStatus === 'open',
+            });
+        } else {
+            res.json({ provider, configured: true, status: 'api_error', code: checkRes.status });
+        }
+    } catch (e: any) {
+        res.json({ provider, configured: true, status: 'unreachable', error: e.message });
+    }
+});
+
+
+// ─── Payment Logs (Admin) ─────────────────────────────────────────────────────
+
+router.get('/admin/payment-logs', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const limit = Math.min(parseInt(req.query.limit as string || '50'), 200);
+        const orderId = req.query.order_id as string | undefined;
+
+        let query = `SELECT * FROM payment_logs`;
+        const params: any[] = [];
+        if (orderId) { query += ` WHERE order_id = ?`; params.push(orderId); }
+        query += ` ORDER BY created_at DESC LIMIT ?`;
+        params.push(limit);
+
+        const logs = await db.all(query, params);
+        res.json({ logs, total: logs.length });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── PIX Payment Status (public) ──────────────────────────────────────────────
+
+router.get('/orders/:id/payment-status', async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const order = await db.get(
+            `SELECT id, payment_status, payment_reference, payment_qr_code, payment_qr_base64, paid_at, status
+             FROM orders WHERE id=? OR id LIKE ?`,
+            [req.params.id, `${req.params.id}%`]
+        );
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+
+        // If paid, no need to check MP
+        if (order.payment_status === 'paid') {
+            return res.json({ payment_status: 'paid', order_status: order.status, paid_at: order.paid_at });
+        }
+
+        // If we have a real MP reference, query live status
+        const { pixPaymentService } = await import('../payments/pix.service');
+        if (order.payment_reference && !order.payment_reference.startsWith('mock_')) {
+            const liveStatus = await pixPaymentService.getPaymentStatus(order.payment_reference);
+            if (liveStatus.status !== order.payment_status) {
+                await db.run(`UPDATE orders SET payment_status=? WHERE id=?`, [liveStatus.status, order.id]);
+            }
+            return res.json({
+                payment_status: liveStatus.status,
+                order_status: order.status,
+                pix_qr_code: order.payment_qr_code,
+            });
+        }
+
+        res.json({
+            payment_status: order.payment_status,
+            order_status: order.status,
+            pix_qr_code: order.payment_qr_code,
+            pix_qr_base64: order.payment_qr_base64,
+        });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+router.get('/admin/menu', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const items = await menuRepo.listMenu(tenantId, false); // list all, including inactive
+        res.json(items);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/menu', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const bodyWithTenant = { ...req.body, restaurant_id: tenantId };
+        const id = await menuRepo.createMenuItem(bodyWithTenant);
+        res.status(201).json({ success: true, id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/admin/menu/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const success = await menuRepo.updateMenuItem(req.params.id, req.body);
+        if (success) res.json({ success: true });
+        else res.status(404).json({ error: 'Menu item not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/admin/menu/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const success = await menuRepo.deleteMenuItem(req.params.id);
+        if (success) res.json({ success: true });
+        else res.status(404).json({ error: 'Menu item not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- ADMIN MENU OPTIONS ---
+
+router.get('/admin/menu/:id/options', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const groups = await db.all(`SELECT * FROM option_groups WHERE menu_item_id = ? ORDER BY sort_order ASC`, [req.params.id]);
+        const enrichedGroups = await Promise.all(groups.map(async (g) => {
+            const options = await db.all(`SELECT * FROM option_items WHERE option_group_id = ? ORDER BY sort_order ASC`, [g.id]);
+            return { ...g, options: options.map(o => ({ ...o, available: o.available === 1 })) };
+        }));
+        res.json(enrichedGroups.map(g => ({ ...g, required: g.required === 1 })));
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/menu/:id/options/groups', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const { v4: uuidv4 } = await import('uuid');
+        const groupId = uuidv4();
+        const { name, required, min_select, max_select, sort_order } = req.body;
+        await db.run(
+            `INSERT INTO option_groups (id, restaurant_id, menu_item_id, name, required, min_select, max_select, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [groupId, tenantId, req.params.id, name, required ? 1 : 0, min_select || 0, max_select || 1, sort_order || 0]
+        );
+        res.status(201).json({ success: true, id: groupId });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/admin/menu/options/groups/:groupId', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const { name, required, min_select, max_select, sort_order } = req.body;
+        await db.run(
+            `UPDATE option_groups SET name = ?, required = ?, min_select = ?, max_select = ?, sort_order = ? WHERE id = ?`,
+            [name, required ? 1 : 0, min_select || 0, max_select || 1, sort_order || 0, req.params.groupId]
+        );
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/admin/menu/options/groups/:groupId', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        await db.run(`DELETE FROM option_items WHERE option_group_id = ?`, [req.params.groupId]);
+        await db.run(`DELETE FROM option_groups WHERE id = ?`, [req.params.groupId]);
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/menu/options/groups/:groupId/items', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const { v4: uuidv4 } = await import('uuid');
+        const itemId = uuidv4();
+        const { name, price_cents, available, sort_order } = req.body;
+        await db.run(
+            `INSERT INTO option_items (id, restaurant_id, option_group_id, name, price_cents, available, sort_order)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [itemId, tenantId, req.params.groupId, name, price_cents || 0, available === undefined ? 1 : (available ? 1 : 0), sort_order || 0]
+        );
+        res.status(201).json({ success: true, id: itemId });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/admin/menu/options/items/:itemId', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const { name, price_cents, available, sort_order } = req.body;
+        await db.run(
+            `UPDATE option_items SET name = ?, price_cents = ?, available = ?, sort_order = ? WHERE id = ?`,
+            [name, price_cents || 0, available ? 1 : 0, sort_order || 0, req.params.itemId]
+        );
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/admin/menu/options/items/:itemId', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        await db.run(`DELETE FROM option_items WHERE id = ?`, [req.params.itemId]);
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/stats', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const ordersCount = await db.get(`SELECT COUNT(*) as c FROM orders`);
+        const restaurantsCount = await db.get(`SELECT COUNT(*) as c FROM restaurants`);
+
+        const stats = {
+            ai: aiMetrics.getStats(),
+            db: {
+                totalOrders: ordersCount?.c || 0,
+                totalTenants: restaurantsCount?.c || 0
+            }
+        };
+        res.json(stats);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- CRM (Customers) ---
+
+router.get('/admin/customers', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { customersRepo } = await import('../db/repositories/customers.repo');
+        const filters = {
+            q: req.query.q as string,
+            tag: req.query.tag as string
+        };
+        const customers = await customersRepo.listCustomers(tenantId, filters);
+        res.json(customers);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/customers/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { customersRepo } = await import('../db/repositories/customers.repo');
+        const customer = await customersRepo.getCustomerById(tenantId, req.params.id);
+        if (!customer) return res.status(404).json({ error: 'Customer not found' });
+        res.json(customer);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/customers', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { customersRepo } = await import('../db/repositories/customers.repo');
+        const id = await customersRepo.upsertCustomer(tenantId, req.body);
+        res.status(201).json({ success: true, id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/admin/customers/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { customersRepo } = await import('../db/repositories/customers.repo');
+        const success = await customersRepo.updateCustomer(tenantId, req.params.id, req.body);
+        if (success) res.json({ success: true });
+        else res.status(404).json({ error: 'Customer not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- INVENTORY ---
+
+router.get('/admin/inventory', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { inventoryRepo } = await import('../db/repositories/inventory.repo');
+        const items = await inventoryRepo.listItems(tenantId);
+        res.json(items);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/inventory', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { inventoryRepo } = await import('../db/repositories/inventory.repo');
+        const id = await inventoryRepo.createItem(tenantId, req.body);
+        res.status(201).json({ success: true, id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/admin/inventory/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { inventoryRepo } = await import('../db/repositories/inventory.repo');
+        const success = await inventoryRepo.updateItem(tenantId, req.params.id, req.body);
+        if (success) res.json({ success: true });
+        else res.status(404).json({ error: 'Item not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/inventory/:id/adjust', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { inventoryRepo } = await import('../db/repositories/inventory.repo');
+        const { qty, reason } = req.body;
+
+        await inventoryRepo.recordMovement(tenantId, req.params.id, 'adjust', qty, reason || 'manual_adjust');
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/inventory/alerts', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { inventoryRepo } = await import('../db/repositories/inventory.repo');
+        const alerts = await inventoryRepo.getAlerts(tenantId);
+        res.json(alerts);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/inventory/movements', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { inventoryRepo } = await import('../db/repositories/inventory.repo');
+        const movements = await inventoryRepo.getMovements(tenantId);
+        res.json(movements);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- RECIPES (BOM) ---
+
+router.get('/admin/recipes', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { recipesRepo } = await import('../db/repositories/recipes.repo');
+        const recipes = await recipesRepo.listRecipes(tenantId);
+        res.json(recipes);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/recipes/:menuItemId', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { recipesRepo } = await import('../db/repositories/recipes.repo');
+        const recipe = await recipesRepo.getRecipeForMenuItem(tenantId, req.params.menuItemId);
+        res.json(recipe || { id: null, items: [] });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/recipes', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { recipesRepo } = await import('../db/repositories/recipes.repo');
+        const { menuItemId, name, items } = req.body;
+
+        const recipeId = await recipesRepo.createRecipe(tenantId, menuItemId, name);
+        if (items && Array.isArray(items)) {
+            await recipesRepo.upsertRecipeItems(tenantId, recipeId, items);
+        }
+        res.status(201).json({ success: true, recipeId });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PDV / CAIXA ---
+
+router.post('/admin/pdv/order', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { financeRepo } = await import('../db/repositories/finance.repo');
+        const { ordersRepo } = await import('../db/repositories/orders.repo');
+        const { menuRepo } = await import('../db/repositories/menu.repo');
+
+        const { items, customer, payment } = req.body;
+
+        if (!items || !items.length) return res.status(400).json({ error: 'Items required' });
+
+        // Calculate totals
+        let subtotalCents = 0;
+        const processedItems = [];
+
+        for (const item of items) {
+            const product = await menuRepo.getById(item.menuItemId);
+            if (!product) continue;
+            const itemTotal = product.price_cents * item.qty;
+            subtotalCents += itemTotal;
+            processedItems.push({
+                menuItemId: product.id,
+                qty: item.qty,
+                notes: item.obs || '',
+                unitPriceCents: product.price_cents
+            });
+        }
+
+        const totalCents = subtotalCents; // No delivery fee in PDV
+        const paymentAmountCents = payment?.amount && payment.amount > totalCents ? payment.amount : totalCents;
+        const changeDue = paymentAmountCents - totalCents;
+
+        const order = await ordersRepo.createOrder({
+            customerId: 'pdv_customer', // Fallback
+            restaurantId: tenantId,
+            customerName: customer?.name || 'Cliente Balcão',
+            customerPhone: customer?.phone || '00000000000',
+            items: processedItems,
+            subtotalCents: subtotalCents,
+            deliveryFeeCents: 0,
+            totalCents: totalCents,
+            addressText: 'Balcão',
+            notes: 'Pedido via PDV'
+        });
+
+        // Register payment & cash movement
+        const session = await financeRepo.getOrOpenSession(tenantId);
+        await financeRepo.registerPayment(tenantId, order.id, payment?.method || 'cash', totalCents);
+        await financeRepo.registerMovement(tenantId, session.id, 'in', payment?.method || 'cash', totalCents, 'pdv_sale', order.id);
+
+        res.status(201).json({ success: true, orderId: order.id, totalCents, changeDueCents: changeDue });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/admin/pdv/cash/out', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { financeRepo } = await import('../db/repositories/finance.repo');
+        const { amount, reason } = req.body;
+
+        const session = await financeRepo.getOrOpenSession(tenantId);
+        await financeRepo.registerMovement(tenantId, session.id, 'out', 'cash', amount, reason || 'sangria');
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/pdv/summary', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { financeRepo } = await import('../db/repositories/finance.repo');
+        const date = req.query.date as string || new Date().toISOString().split('T')[0];
+
+        const summary = await financeRepo.getDailySummary(tenantId, date);
+        res.json(summary);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- FINANCEIRO (MINI-ERP) ---
+
+router.post('/admin/finance/expense', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { financeRepo } = await import('../db/repositories/finance.repo');
+
+        const id = await financeRepo.registerExpense(tenantId, req.body);
+        res.status(201).json({ success: true, id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/finance/expenses', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { financeRepo } = await import('../db/repositories/finance.repo');
+        const fromDate = req.query.from as string || '2000-01-01';
+        const toDate = req.query.to as string || '2099-12-31';
+
+        const expenses = await financeRepo.listExpenses(tenantId, fromDate, toDate);
+        res.json(expenses);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/finance/overview', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { financeRepo } = await import('../db/repositories/finance.repo');
+        const fromDate = req.query.from as string || '2000-01-01';
+        const toDate = req.query.to as string || '2099-12-31';
+
+        const overview = await financeRepo.getFinancialOverview(tenantId, fromDate, toDate);
+        res.json(overview);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- SAAS RESTAURANT ONBOARDING ENGINE ---
+
+router.post('/admin/restaurants', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { restaurantsRepo } = await import('../db/repositories/restaurants.repo');
+        const { menuRepo } = await import('../db/repositories/menu.repo');
+        const { name, phone, email, plan } = req.body;
+
+        if (!name) return res.status(400).json({ error: 'Restaurant name is required' });
+
+        // 1. Create Restaurant & Auto-Slug Generate
+        const { id, slug } = await restaurantsRepo.createRestaurant({ name, phone, email, plan });
+
+        // 2. Initialize Starter Data
+        await menuRepo.createMenuItem({
+            restaurant_id: id,
+            name: 'Açaí Exemplo Onboarding',
+            description: 'Produto criado automaticamente durante a ativação.',
+            price_cents: 1000,
+            category: 'Açaís',
+            tags: ['promo', 'novo'],
+            available: true,
+            image_url: null
+        });
+
+        // 3. Return Admin Token
+        const token = jwt.sign({ role: 'admin', tenant: slug }, process.env.JWT_SECRET || 'fallback_jwt_secret_123', { expiresIn: '7d' });
+
+        res.status(201).json({ success: true, id, slug, token });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.get('/admin/restaurants', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { restaurantsRepo } = await import('../db/repositories/restaurants.repo');
+        const restaurants = await restaurantsRepo.listRestaurants();
+        res.json(restaurants);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.put('/admin/restaurants/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { restaurantsRepo } = await import('../db/repositories/restaurants.repo');
+        const success = await restaurantsRepo.updateRestaurant(req.params.id, req.body);
+        if (success) res.json({ success: true });
+        else res.status(404).json({ error: 'Restaurant not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.delete('/admin/restaurants/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { restaurantsRepo } = await import('../db/repositories/restaurants.repo');
+        const success = await restaurantsRepo.deleteRestaurant(req.params.id);
+        if (success) res.json({ success: true });
+        else res.status(404).json({ error: 'Restaurant not found' });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// COUPONS — Public: validate | Admin: CRUD
+// ---------------------------------------------------------
+
+// Public: Validate coupon at checkout
+router.post('/:slug/coupons/validate', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const { code, orderTotalCents } = req.body;
+        if (!code) return res.status(400).json({ error: 'Coupon code is required' });
+
+        const db = await (await import('../db/db.client')).getDb();
+        const coupon = await db.get(
+            `SELECT * FROM coupons WHERE restaurant_id = ? AND code = ? AND active = 1`,
+            [tenantId, (code as string).toUpperCase().trim()]
+        );
+
+        if (!coupon) return res.status(404).json({ error: 'Cupom não encontrado ou inativo' });
+        if (coupon.expires_at && new Date(coupon.expires_at) < new Date())
+            return res.status(400).json({ error: 'Cupom expirado' });
+        if (coupon.max_uses > 0 && coupon.used_count >= coupon.max_uses)
+            return res.status(400).json({ error: 'Cupom esgotado' });
+        if (orderTotalCents < coupon.min_order_cents)
+            return res.status(400).json({ error: `Pedido mínimo de R$ ${(coupon.min_order_cents / 100).toFixed(2)} para usar este cupom` });
+
+        let discountCents = 0;
+        if (coupon.type === 'flat') {
+            discountCents = Math.min(coupon.discount_value, orderTotalCents);
+        } else if (coupon.type === 'percent') {
+            discountCents = Math.floor(orderTotalCents * coupon.discount_value / 10000);
+        }
+
+        const description = coupon.type === 'percent'
+            ? `Desconto de ${coupon.discount_value / 100}% aplicado`
+            : `Desconto de R$ ${(discountCents / 100).toFixed(2)} aplicado`;
+
+        res.json({ valid: true, discountCents, message: description, couponId: coupon.id });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: List coupons
+router.get('/admin/coupons', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const coupons = await db.all(
+            `SELECT * FROM coupons WHERE restaurant_id = ? ORDER BY created_at DESC`,
+            [tenantId]
+        );
+        res.json(coupons);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Create coupon
+router.post('/admin/coupons', adminAuthMiddleware, async (req, res) => {
+    try {
+        const { v4: uuidv4 } = await import('uuid');
+        const slug = req.query.slug as string || (req.body.slug as string) || 'default';
+        const tenantId = await resolveTenant(slug);
+        const { code, description, type, discount_value, min_order_cents, max_uses, expires_at } = req.body;
+
+        if (!code || !type || discount_value == null) return res.status(400).json({ error: 'code, type, discount_value required' });
+
+        const db = await (await import('../db/db.client')).getDb();
+        const id = uuidv4();
+        await db.run(
+            `INSERT INTO coupons (id, restaurant_id, code, description, type, discount_value, min_order_cents, max_uses, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, tenantId, (code as string).toUpperCase().trim(), description || null, type, discount_value, min_order_cents || 0, max_uses || 0, expires_at || null]
+        );
+        res.status(201).json({ success: true, id, code: (code as string).toUpperCase().trim() });
+    } catch (e: any) {
+        if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Código de cupom já existe' });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Toggle coupon active
+router.patch('/admin/coupons/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const { active, expires_at, max_uses } = req.body;
+        await db.run(
+            `UPDATE coupons SET active = COALESCE(?, active), expires_at = COALESCE(?, expires_at), max_uses = COALESCE(?, max_uses) WHERE id = ?`,
+            [active ?? null, expires_at ?? null, max_uses ?? null, req.params.id]
+        );
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Delete coupon
+router.delete('/admin/coupons/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        await db.run(`DELETE FROM coupons WHERE id = ?`, [req.params.id]);
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// ORDER RATINGS
+// ---------------------------------------------------------
+
+// Public: Submit rating (after order is completed)
+router.post('/orders/:id/rating', async (req, res) => {
+    try {
+        const { v4: uuidv4 } = await import('uuid');
+        const orderId = req.params.id;
+        const { stars, comment, customerName } = req.body;
+
+        if (!stars || stars < 1 || stars > 5) return res.status(400).json({ error: 'Stars must be 1–5' });
+
+        const order = await ordersRepo.getOrderById(orderId);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        if ((order as any).status !== 'completed') return res.status(400).json({ error: 'Só é possível avaliar pedidos concluídos' });
+
+        const db = await (await import('../db/db.client')).getDb();
+        const id = uuidv4();
+        await db.run(
+            `INSERT INTO order_ratings (id, order_id, restaurant_id, customer_name, stars, comment)
+             VALUES (?, ?, ?, ?, ?, ?)`,
+            [id, orderId, (order as any).restaurant_id || 'default_tenant', customerName || null, stars, comment || null]
+        );
+        res.status(201).json({ success: true, id });
+    } catch (e: any) {
+        if (e.message?.includes('UNIQUE')) return res.status(409).json({ error: 'Este pedido já foi avaliado' });
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Public: Get rating for an order
+router.get('/orders/:id/rating', async (req, res) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const rating = await db.get(`SELECT * FROM order_ratings WHERE order_id = ?`, [req.params.id]);
+        if (!rating) return res.status(404).json({ error: 'No rating found' });
+        res.json(rating);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: List all ratings for tenant
+router.get('/admin/ratings', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const ratings = await db.all(
+            `SELECT r.*, o.total_cents, o.created_at as order_date
+             FROM order_ratings r
+             JOIN orders o ON r.order_id = o.id
+             WHERE r.restaurant_id = ?
+             ORDER BY r.created_at DESC`,
+            [tenantId]
+        );
+        res.json(ratings);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// RESTAURANT OPERATIONS ENGINE
+// ---------------------------------------------------------
+
+// Public: Get store status (used by customer app to decide if checkout is allowed)
+router.get('/:slug/store', async (req, res) => {
+    try {
+        const tenantId = await resolveTenant(req.params.slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const r = await db.get(`SELECT store_status, temp_close_reason, opening_hours, timezone,
+            prep_time_minutes, delivery_fee_cents, min_order_cents, max_orders_simultaneous, name, description,
+            logo_url, banner_url, address, whatsapp FROM restaurants WHERE id = ?`, [tenantId]);
+        if (!r) return res.json({ store_status: 'open', name: 'X-Açaí', can_accept_orders: true });
+
+        // Check active orders vs capacity
+        let isAtCapacity = false;
+        if (r.max_orders_simultaneous > 0) {
+            const activeCount = await db.get(
+                `SELECT COUNT(*) as cnt FROM orders WHERE restaurant_id = ? AND status IN ('pending_payment','accepted','preparing')`,
+                [tenantId]
+            );
+            isAtCapacity = (activeCount?.cnt || 0) >= r.max_orders_simultaneous;
+        }
+
+        res.json({
+            ...r,
+            opening_hours: r.opening_hours ? JSON.parse(r.opening_hours) : null,
+            is_at_capacity: isAtCapacity,
+            can_accept_orders: r.store_status === 'open' && !isAtCapacity,
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Update store status (open/closed/paused + reason)
+router.patch('/admin/store', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || req.body.slug || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+
+        const allowed = ['open', 'closed', 'paused', 'busy'];
+        const { store_status, temp_close_reason } = req.body;
+
+        if (store_status && !allowed.includes(store_status)) {
+            return res.status(400).json({ error: `Invalid status. Use: ${allowed.join(', ')}` });
+        }
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        if (store_status) { updates.push('store_status = ?'); values.push(store_status); }
+        if (temp_close_reason !== undefined) { updates.push('temp_close_reason = ?'); values.push(temp_close_reason || null); }
+
+        if (updates.length) {
+            values.push(tenantId);
+            await db.run(`UPDATE restaurants SET ${updates.join(', ')} WHERE id = ?`, values);
+        }
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Update restaurant profile (name, hours, fees, prep time, etc.)
+router.get('/admin/profile', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const r = await db.get(`SELECT * FROM restaurants WHERE id = ?`, [tenantId]);
+        if (!r) return res.status(404).json({ error: 'Restaurant not found' });
+        res.json({ ...r, opening_hours: r.opening_hours ? JSON.parse(r.opening_hours) : null });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.patch('/admin/profile', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || req.body.slug || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+
+        const fields = ['name', 'description', 'phone', 'address', 'whatsapp', 'logo_url', 'banner_url',
+            'prep_time_minutes', 'delivery_fee_cents', 'min_order_cents', 'max_orders_simultaneous',
+            'timezone', 'opening_hours', 'store_status', 'temp_close_reason'];
+
+        const updates: string[] = [];
+        const values: any[] = [];
+
+        for (const f of fields) {
+            if (req.body[f] !== undefined) {
+                updates.push(`${f} = ?`);
+                values.push(f === 'opening_hours' && typeof req.body[f] === 'object'
+                    ? JSON.stringify(req.body[f])
+                    : req.body[f]);
+            }
+        }
+
+        if (updates.length === 0) return res.json({ success: true });
+        values.push(tenantId);
+        await db.run(`UPDATE restaurants SET ${updates.join(', ')} WHERE id = ?`, values);
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Toggle menu item availability (available/out_of_stock/hidden)
+router.patch('/admin/menu/:id/availability', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || req.body.slug || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+        const { available, out_of_stock, hidden } = req.body;
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        if (available !== undefined) { updates.push('available = ?'); values.push(available ? 1 : 0); }
+        if (out_of_stock !== undefined) { updates.push('out_of_stock = ?'); values.push(out_of_stock ? 1 : 0); }
+        if (hidden !== undefined) { updates.push('hidden = ?'); values.push(hidden ? 1 : 0); }
+
+        if (updates.length === 0) return res.json({ success: true });
+        values.push(req.params.id, tenantId);
+        await db.run(`UPDATE menu_items SET ${updates.join(', ')} WHERE id = ? AND restaurant_id = ?`, values);
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Admin: Get order detail
+router.get('/admin/orders/:id', adminAuthMiddleware, async (req, res) => {
+    try {
+        const order = await ordersRepo.getOrderById(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found' });
+        res.json(order);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// ---------------------------------------------------------
+// ANALYTICS / METRICS ENGINE
+// ---------------------------------------------------------
+
+router.get('/admin/metrics', adminAuthMiddleware, async (req, res) => {
+    try {
+        const slug = req.query.slug as string || 'default';
+        const tenantId = await resolveTenant(slug);
+        const db = await (await import('../db/db.client')).getDb();
+
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayISO = todayStart.toISOString().replace('T', ' ').slice(0, 19);
+
+        // Orders today
+        const todayOrders = await db.get(
+            `SELECT COUNT(*) as count, COALESCE(SUM(total_cents),0) as revenue
+             FROM orders WHERE restaurant_id = ? AND created_at >= ?`,
+            [tenantId, todayISO]
+        );
+
+        // Orders this week
+        const weekStart = new Date();
+        const day = weekStart.getDay();
+        const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1);
+        weekStart.setDate(diff);
+        weekStart.setHours(0, 0, 0, 0);
+        const weekISO = weekStart.toISOString().replace('T', ' ').slice(0, 19);
+        const weekOrders = await db.get(
+            `SELECT COUNT(*) as count, COALESCE(SUM(total_cents),0) as revenue
+             FROM orders WHERE restaurant_id = ? AND created_at >= ?`,
+            [tenantId, weekISO]
+        );
+
+        // Orders this month
+        const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+        const monthISO = monthStart.toISOString().replace('T', ' ').slice(0, 19);
+        const monthOrders = await db.get(
+            `SELECT COUNT(*) as count, COALESCE(SUM(total_cents),0) as revenue
+             FROM orders WHERE restaurant_id = ? AND created_at >= ?`,
+            [tenantId, monthISO]
+        );
+
+        // Orders by status
+        const byStatus = await db.all(
+            `SELECT status, COUNT(*) as count FROM orders WHERE restaurant_id = ? GROUP BY status`,
+            [tenantId]
+        );
+
+        // Top products (from items JSON — aggregate by menuItemId)
+        const allOrders = await db.all(
+            `SELECT items FROM orders WHERE restaurant_id = ? AND created_at >= ? AND status != 'cancelled'`,
+            [tenantId, monthISO]
+        );
+
+        const productCounts: Record<string, { name: string, qty: number }> = {};
+        for (const o of allOrders) {
+            try {
+                const items = JSON.parse(o.items);
+                for (const it of items) {
+                    const key = it.menuItemId;
+                    if (!productCounts[key]) productCounts[key] = { name: it.name || key, qty: 0 };
+                    productCounts[key].qty += it.qty || 1;
+                }
+            } catch { }
+        }
+        const topProducts = Object.entries(productCounts)
+            .sort((a, b) => b[1].qty - a[1].qty)
+            .slice(0, 5)
+            .map(([id, v]) => ({ menuItemId: id, name: v.name, qty: v.qty }));
+
+        // Avg rating
+        const avgRating = await db.get(
+            `SELECT AVG(stars) as avg, COUNT(*) as total FROM order_ratings WHERE restaurant_id = ?`,
+            [tenantId]
+        );
+
+        // Active orders right now
+        const activeOrders = await db.get(
+            `SELECT COUNT(*) as count FROM orders WHERE restaurant_id = ? AND status IN ('accepted','preparing','delivering')`,
+            [tenantId]
+        );
+
+        // Ticket médio (last 30 days)
+        const avgTicket = await db.get(
+            `SELECT AVG(total_cents) as avg FROM orders WHERE restaurant_id = ? AND status != 'cancelled' AND created_at >= ?`,
+            [tenantId, monthISO]
+        );
+
+        res.json({
+            today: { orders: todayOrders.count, revenue_cents: todayOrders.revenue },
+            week: { orders: weekOrders.count, revenue_cents: weekOrders.revenue },
+            month: { orders: monthOrders.count, revenue_cents: monthOrders.revenue },
+            active_orders: activeOrders.count,
+            avg_ticket_cents: Math.round(avgTicket.avg || 0),
+            orders_by_status: byStatus,
+            top_products: topProducts,
+            rating: { avg: avgRating.avg ? Math.round(avgRating.avg * 10) / 10 : null, total: avgRating.total },
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Customer: Get own order history by phone
+router.get('/orders/history/:phone', async (req, res) => {
+    try {
+        const orders = await ordersRepo.listOrdersByPhone(req.params.phone);
+        res.json(orders);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+export default router;

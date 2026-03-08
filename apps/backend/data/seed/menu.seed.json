@@ -1,0 +1,138 @@
+[
+    {
+        "id": "acai-300",
+        "name": "Açaí Tradicional 300ml",
+        "description": "Copo de 300ml com açaí puro. Inclui 2 acompanhamentos grátis.",
+        "price_cents": 1200,
+        "category": "Açaí no Copo",
+        "tags": [
+            "pequeno",
+            "tradicional",
+            "vegano"
+        ],
+        "available": true,
+        "image_url": "https://example.com/acai300.png"
+    },
+    {
+        "id": "acai-500",
+        "name": "Açaí Especial 500ml",
+        "description": "Copo de 500ml de açaí. Inclui 3 acompanhamentos grátis.",
+        "price_cents": 1800,
+        "category": "Açaí no Copo",
+        "tags": [
+            "medio",
+            "mais-vendido",
+            "vegano"
+        ],
+        "available": true,
+        "image_url": "https://example.com/acai500.png"
+    },
+    {
+        "id": "acai-700",
+        "name": "Açaí Monstro 700ml",
+        "description": "Copo gigante de 700ml de açaí puro. Inclui 4 acompanhamentos grátis.",
+        "price_cents": 2400,
+        "category": "Açaí no Copo",
+        "tags": [
+            "grande",
+            "fome"
+        ],
+        "available": true,
+        "image_url": "https://example.com/acai700.png"
+    },
+    {
+        "id": "barca-pequena",
+        "name": "Barca de Açaí (500g)",
+        "description": "Barca com 500g de açaí, morango, kiwi, leite em pó e leite condensado.",
+        "price_cents": 3500,
+        "category": "Barcas",
+        "tags": [
+            "combo",
+            "frutas",
+            "premium"
+        ],
+        "available": true,
+        "image_url": "https://example.com/barca_maq.png"
+    },
+    {
+        "id": "barca-grande",
+        "name": "Barca Premium Familia (1kg)",
+        "description": "Barca gigante com 1kg de açaí e até 8 acompanhamentos.",
+        "price_cents": 6000,
+        "category": "Barcas",
+        "tags": [
+            "combo",
+            "familia",
+            "premium"
+        ],
+        "available": true,
+        "image_url": "https://example.com/barca_gd.png"
+    },
+    {
+        "id": "acai-trufado",
+        "name": "Açaí Trufado 500ml",
+        "description": "Açaí batido com creme de avelã e morangos frescos.",
+        "price_cents": 2200,
+        "category": "Especiais",
+        "tags": [
+            "doce",
+            "nutella",
+            "morango"
+        ],
+        "available": true,
+        "image_url": "https://example.com/acai_truf.png"
+    },
+    {
+        "id": "adicional-leite-ninho",
+        "name": "Porção Leite Ninho",
+        "description": "Adicional extra de Leite Ninho",
+        "price_cents": 300,
+        "category": "Adicionais",
+        "tags": [
+            "extra",
+            "doce"
+        ],
+        "available": true,
+        "image_url": null
+    },
+    {
+        "id": "adicional-nutella",
+        "name": "Porção Nutella",
+        "description": "Adicional extra de Creme de Avelã (Nutella)",
+        "price_cents": 500,
+        "category": "Adicionais",
+        "tags": [
+            "extra",
+            "chocolate"
+        ],
+        "available": true,
+        "image_url": null
+    },
+    {
+        "id": "agua-mineral",
+        "name": "Água Mineral Sem Gás (500ml)",
+        "description": "Água mineral Crystal",
+        "price_cents": 400,
+        "category": "Bebidas",
+        "tags": [
+            "bebida",
+            "gelada"
+        ],
+        "available": true,
+        "image_url": null
+    },
+    {
+        "id": "suco-laranja",
+        "name": "Suco de Laranja Natural (400ml)",
+        "description": "Suco de laranja espremido na hora, sem açúcar adicionado.",
+        "price_cents": 800,
+        "category": "Bebidas",
+        "tags": [
+            "bebida",
+            "natural",
+            "gelada"
+        ],
+        "available": true,
+        "image_url": null
+    }
+]

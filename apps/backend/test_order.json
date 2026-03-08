@@ -1,0 +1,14 @@
+{
+    "customerId": "automacao_test_123",
+    "items": [
+        {
+            "menuItemId": "acai-500",
+            "qty": 2,
+            "notes": "Sem banana, muito leite condensado"
+        }
+    ],
+    "subtotalCents": 3000,
+    "deliveryFeeCents": 500,
+    "totalCents": 3500,
+    "addressText": "Rua Automatizada de Teste, 99. Bairro da Inteligência."
+}

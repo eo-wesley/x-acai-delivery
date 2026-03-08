@@ -1,0 +1,95 @@
+services:
+  # ---- Backend API (Express + SQLite) ----
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: xacai-backend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=/data/database.sqlite
+      - JWT_SECRET=${JWT_SECRET}
+      - ADMIN_SECRET=${ADMIN_SECRET}
+      - CORS_ORIGIN=${CORS_ORIGIN:-https://acaidedelivery.com.br}
+      - MERCADOPAGO_TOKEN=${MERCADOPAGO_TOKEN:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
+      - BASE_DOMAIN=${BASE_DOMAIN:-acaidedelivery.com.br}
+    volumes:
+      - db_data:/data
+    healthcheck:
+      test: [ "CMD", "wget", "-qO-", "http://localhost:3000/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - xacai
+
+  # ---- Web Backend (static) ----
+  backend-static:
+    type: web
+    name: x-acai-backend
+    env: docker
+    dockerfilePath: ./apps/backend/Dockerfile
+    dockerContext: ./apps/backend
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+  # ---- Frontend (Next.js) ----
+  frontend:
+    build:
+      context: ./apps/frontend
+      dockerfile: Dockerfile
+    container_name: xacai-frontend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-https://api.acaidedelivery.com.br}
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - xacai
+
+  # ---- Nginx Reverse Proxy ----
+  nginx:
+    image: nginx:alpine
+    container_name: xacai-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - xacai
+
+volumes:
+  db_data:
+    driver: local
+
+networks:
+  xacai:
+    driver: bridge

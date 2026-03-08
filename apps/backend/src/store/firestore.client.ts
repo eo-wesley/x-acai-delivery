@@ -34,20 +34,19 @@ let db: FirebaseFirestore.Firestore | null = null;
 let firebaseInitialized = false;
 
 try {
-  if (!admin.apps.length) {
+  if (serviceAccount && !admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
     });
+    db = admin.firestore();
+    firebaseInitialized = true;
+    console.log(`✅ Firebase Admin initialized successfully. ProjectID: ${serviceAccount.projectId || process.env.FIREBASE_PROJECT_ID || 'Unknown'}`);
+  } else if (!serviceAccount) {
+    console.warn(`⚠️ Firebase credentials missing. Running strictly Local/SQLite mode.`);
   }
-  db = admin.firestore();
-  firebaseInitialized = true;
-  console.log('✅ Firebase Admin initialized successfully');
-} catch (error) {
+} catch (error: any) {
   console.warn(
-    '⚠️ Firebase Admin initialization failed. ' +
-      'Continuing without Firestore. ' +
-      'Routes depending on Firestore will throw when invoked.',
-    error
+    `⚠️ Firebase Admin initialization failed [${error?.code || 'ERROR'}]: ${error?.message || error}. Continuing without Firestore.`
   );
 }
 
