@@ -1,13 +1,14 @@
 import { getDb } from '../db.client';
 import { randomUUID } from 'crypto';
+import { eventBus } from '../../core/eventBus';
 
 export interface InventoryItemPayload {
     name: string;
     sku?: string;
     unit: string; // ml, g, un, etc.
     current_qty: number;
-    min_qty: number;
-    cost_cents: number;
+    min_stock: number;
+    acquisition_cost_cents: number;
     supplier?: string;
     active?: boolean;
 }
@@ -22,7 +23,7 @@ export class InventoryRepo {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id, restaurantId, payload.name, payload.sku || null, payload.unit,
-                payload.current_qty || 0, payload.min_qty || 0, payload.cost_cents || 0,
+                payload.current_qty || 0, payload.min_stock || 0, payload.acquisition_cost_cents || 0,
                 payload.supplier || null, payload.active !== false ? 1 : 0
             ]
         );
@@ -65,7 +66,7 @@ export class InventoryRepo {
         const db = await getDb();
         return db.all(
             `SELECT * FROM inventory_items 
-             WHERE restaurant_id = ? AND active = 1 AND current_qty <= min_qty 
+             WHERE restaurant_id = ? AND active = 1 AND current_qty <= min_stock 
              ORDER BY current_qty ASC`,
             [restaurantId]
         );
@@ -109,6 +110,25 @@ export class InventoryRepo {
             `UPDATE inventory_items SET ${sqlDelta} WHERE id = ? AND restaurant_id = ?`,
             [finalQty, itemId, restaurantId]
         );
+
+        // Check for depletion
+        const item = await db.get(`SELECT name, current_qty, min_stock FROM inventory_items WHERE id = ?`, [itemId]);
+        if (item && item.current_qty <= 0) {
+            eventBus.emit('inventory_depleted', {
+                restaurantId,
+                itemId,
+                itemName: item.name,
+                currentQty: item.current_qty
+            });
+        } else if (item && item.current_qty <= item.min_stock) {
+            eventBus.emit('inventory_low', {
+                restaurantId,
+                itemId,
+                itemName: item.name,
+                currentQty: item.current_qty,
+                minStock: item.min_stock
+            });
+        }
     }
 
     async getMovements(restaurantId: string, limit = 50): Promise<any[]> {
@@ -121,6 +141,19 @@ export class InventoryRepo {
              ORDER BY m.created_at DESC LIMIT ?`,
             [restaurantId, limit]
         );
+    }
+
+    async getConsumptionByChannel(restaurantId: string): Promise<any[]> {
+        const db = await getDb();
+        return db.all(`
+            SELECT i.name as item_name, o.source, SUM(m.qty) as total_qty
+            FROM inventory_movements m
+            JOIN inventory_items i ON m.inventory_item_id = i.id
+            JOIN orders o ON m.ref_order_id = o.id
+            WHERE m.restaurant_id = ? AND m.type = 'out'
+            GROUP BY i.id, o.source
+            ORDER BY total_qty DESC
+        `, [restaurantId]);
     }
 }
 

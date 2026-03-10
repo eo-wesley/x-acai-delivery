@@ -1,8 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function Header() {
+    const pathname = usePathname();
+
+    // Hide header on admin pages
+    if (pathname?.startsWith('/admin')) return null;
     return (
         <header className="sticky top-0 z-50 bg-purple-600 shadow-md">
             <div className="w-full max-w-md mx-auto px-4 py-3 flex items-center justify-between">

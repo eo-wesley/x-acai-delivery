@@ -250,8 +250,8 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-purple-50 to-gray-50 pb-32">
-            <div className="p-4 space-y-5 max-w-md mx-auto">
+        <div className="min-h-screen bg-gradient-to-b from-purple-50 to-gray-50">
+            <div className="max-w-md mx-auto bg-white shadow-sm min-h-screen p-4 pb-32 relative">
                 {/* Header */}
                 <div className="flex items-center gap-3 pt-2">
                     <Link href={`/order/${id}`} className="text-purple-600 font-bold text-sm">← Meu Pedido</Link>
@@ -259,7 +259,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 {/* Status banner */}
-                <div className={`rounded-2xl px-4 py-3 text-center font-bold text-sm transition-all ${paymentStatus === 'paid'
+                <div className={`rounded-2xl px-4 py-3 text-center font-bold text-sm mt-5 transition-all ${paymentStatus === 'paid'
                     ? 'bg-green-100 text-green-800 border border-green-300'
                     : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
                     }`}>
@@ -278,7 +278,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 {/* QR Block */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mt-5">
                     <h2 className="font-black text-gray-800 text-sm uppercase tracking-wide mb-4 text-center">
                         📲 Escaneie com qualquer app de banco
                     </h2>
@@ -294,14 +294,14 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
 
                 {/* Total */}
                 {pixData?.totalCents && (
-                    <div className="bg-purple-600 text-white rounded-2xl px-5 py-4 flex justify-between items-center shadow-md">
+                    <div className="bg-purple-600 text-white rounded-2xl px-5 py-4 flex justify-between items-center shadow-md mt-5">
                         <span className="font-bold text-sm opacity-80">Total a pagar</span>
                         <span className="font-black text-2xl">{fmtCents(pixData.totalCents)}</span>
                     </div>
                 )}
 
                 {/* Instructions */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mt-5">
                     <h3 className="font-black text-gray-800 text-xs uppercase tracking-wide mb-3">💡 Como pagar</h3>
                     <ol className="space-y-2 text-sm text-gray-600">
                         {[
@@ -322,7 +322,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 {/* Tips */}
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800">
+                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 mt-5">
                     <p className="font-black text-xs uppercase tracking-wide mb-2">⚠️ Atenção</p>
                     <ul className="space-y-1 text-xs">
                         <li>• O QR Code expira em 30 minutos</li>
@@ -333,7 +333,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                 </div>
 
                 {/* Navigation */}
-                <div className="flex gap-3">
+                <div className="flex gap-3 mt-5">
                     <Link href={`/order/${id}`} className="flex-1">
                         <button className="w-full border-2 border-purple-600 text-purple-700 font-black py-3 rounded-xl transition hover:bg-purple-50">
                             Ver Pedido

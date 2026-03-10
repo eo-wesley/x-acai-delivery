@@ -24,20 +24,22 @@ export default function OrdersListPage() {
     };
 
     return (
-        <div className="p-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-6">Meus Pedidos</h2>
+        <div className="bg-gray-50 min-h-screen">
+            <div className="max-w-md mx-auto bg-white shadow-sm min-h-screen p-4 pb-20 relative">
+                <h2 className="text-xl font-bold text-gray-800 mb-6">Meus Pedidos</h2>
 
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
-                <span className="text-4xl block mb-4">🧾</span>
-                <p className="text-gray-600 mb-6">
-                    Seu histórico de pedidos do App e do Assistente IA (PadBase) serão unificados na sua conta principal em breve!
-                </p>
+                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
+                    <span className="text-4xl block mb-4">🧾</span>
+                    <p className="text-gray-600 mb-6">
+                        Seu histórico de pedidos do App e do Assistente IA (PadBase) serão unificados na sua conta principal em breve!
+                    </p>
 
-                <Link href="/">
-                    <button className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
-                        Ir para o Início
-                    </button>
-                </Link>
+                    <Link href="/">
+                        <button className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors">
+                            Ir para o Início
+                        </button>
+                    </Link>
+                </div>
             </div>
         </div>
     );

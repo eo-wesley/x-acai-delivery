@@ -1,12 +1,68 @@
 import { Router } from 'express';
 import { adminAuthMiddleware } from '../middlewares/auth.middleware';
+import { tenantMiddleware } from '../middlewares/tenant.middleware';
 import { getDb } from '../db/db.client';
 import { randomUUID } from 'crypto';
 
 export const restaurantsRouter = Router();
 
-// ======================== SUPER ADMIN ENDPOINTS ========================
+// ======================== TENANT CONFIG ENDPOINTS ========================
+// Get current restaurant details
+restaurantsRouter.get('/admin/restaurant/config', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const tenantId = req.tenantId;
+        const db = await getDb();
+        const restaurant = await db.get(`SELECT * FROM restaurants WHERE id = ?`, [tenantId]);
+        res.json(restaurant);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// Update restaurant branding & config
+restaurantsRouter.patch('/admin/restaurant/config', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const tenantId = req.tenantId;
+        const updates = req.body;
+        const db = await getDb();
+
+        const allowedFields = [
+            'name', 'phone', 'email', 'description', 'address',
+            'whatsapp', 'logo_url', 'banner_url', 'primary_color',
+            'secondary_color', 'store_status', 'prep_time_minutes',
+            'delivery_fee_cents', 'min_order_cents', 'custom_domain',
+            'theme_id', 'font_family', 'facebook_pixel_id',
+            'google_analytics_id', 'tiktok_pixel_id'
+        ];
+
+        const setClause = [];
+        const params = [];
+
+        for (const field of allowedFields) {
+            if (updates[field] !== undefined) {
+                setClause.push(`${field} = ?`);
+                params.push(updates[field]);
+            }
+        }
+
+        if (setClause.length === 0) {
+            return res.status(400).json({ error: 'No valid fields provided' });
+        }
+
+        params.push(tenantId);
+        await db.run(
+            `UPDATE restaurants SET ${setClause.join(', ')} WHERE id = ?`,
+            params
+        );
+
+        res.json({ success: true });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Create a new restaurant (Tenant)
+// (Existing super admin routes...)
 restaurantsRouter.post('/super/restaurants', adminAuthMiddleware, async (req: any, res: any) => {
     try {
         const { name, slogan, bannerUrl, logoUrl, primaryColor, theme } = req.body;

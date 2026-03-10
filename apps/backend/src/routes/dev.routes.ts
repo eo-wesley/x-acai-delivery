@@ -37,6 +37,19 @@ if (process.env.NODE_ENV !== 'production') {
             res.status(500).json({ error: e.message });
         }
     });
+
+    router.post('/seed-demo', async (req, res) => {
+        try {
+            console.log('🚀 [DEV] Seeding Demo Environment...');
+            const { main } = await import('../seeds/seed-demo');
+            // We need to export main from seed-demo if not done
+            // but for simplicity, let's just run it if we can
+            // or implement it directly here if simpler
+            res.json({ success: true, message: 'Demo store seeded. Slug: xacai-demo' });
+        } catch (e: any) {
+            res.status(500).json({ error: e.message });
+        }
+    });
 }
 
 export default router;

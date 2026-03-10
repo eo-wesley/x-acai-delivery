@@ -34,10 +34,16 @@ interface CartContextData {
     updateQty: (cartKey: string, qty: number) => void;
     clearCart: () => void;
     cartCount: number;
+    totalCents: number;
     subtotalCents: number;
     coupon: CouponState | null;
     applyCoupon: (code: string, discountCents: number) => void;
     removeCoupon: () => void;
+    // Revenue AI & Proactive Sales
+    freeDeliveryThreshold: number;
+    progressToFreeDelivery: number; // 0 to 100
+    isFreeDeliveryEligible: boolean;
+    getRecommendations: (allProducts: any[]) => any[];
 }
 
 const CartContext = createContext<CartContextData>({} as CartContextData);
@@ -92,6 +98,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     const cartCount = items.reduce((acc, item) => acc + item.qty, 0);
     const subtotalCents = items.reduce((acc, item) => acc + item.price_cents * item.qty, 0);
+    const totalCents = Math.max(0, subtotalCents - (coupon?.discountCents || 0));
+
+    // Revenue AI: Proactive Thresholds (Hardcoded for MVP, could be dynamic per tenant)
+    const freeDeliveryThreshold = 5000; // R$ 50,00
+    const isFreeDeliveryEligible = subtotalCents >= freeDeliveryThreshold;
+    const progressToFreeDelivery = Math.min(100, (subtotalCents / freeDeliveryThreshold) * 100);
 
     const applyCoupon = useCallback((code: string, discountCents: number) => {
         setCoupon({ code, discountCents });
@@ -101,8 +113,34 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         setCoupon(null);
     }, []);
 
+    /**
+     * getRecommendations — Revenue AI Algorithm
+     * Recommends items based on what's NOT in the cart but belongs to complementary categories.
+     */
+    const getRecommendations = useCallback((allProducts: any[]) => {
+        if (items.length === 0) return [];
+
+        const inCartIds = items.map(i => i.menuItemId);
+        const categoriesInCart = items.map(i => i.name.toLowerCase()); // Simple heuristic
+
+        // Priority: Beverages and Sides if only Açaí is in cart
+        return allProducts
+            .filter(p => !inCartIds.includes(p.id) && p.available !== 0 && p.out_of_stock !== 1)
+            .sort((a, b) => {
+                // Heuristic: boost popular tags or specific categories
+                if (a.tags?.includes('popular')) return -1;
+                if (a.category === 'Bebidas' || a.category === 'Sucos') return -1;
+                return 0;
+            })
+            .slice(0, 3);
+    }, [items]);
+
     return (
-        <CartContext.Provider value={{ items, addToCart, removeFromCart, updateQty, clearCart, cartCount, subtotalCents, coupon, applyCoupon, removeCoupon }}>
+        <CartContext.Provider value={{
+            items, addToCart, removeFromCart, updateQty, clearCart,
+            cartCount, subtotalCents, totalCents, coupon, applyCoupon, removeCoupon,
+            freeDeliveryThreshold, progressToFreeDelivery, isFreeDeliveryEligible, getRecommendations
+        }}>
             {children}
         </CartContext.Provider>
     );

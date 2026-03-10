@@ -20,6 +20,7 @@ export function setupEventSubscribers() {
             try {
                 // Pass directly to the notification service (which handles providers)
                 await sendNotification({
+                    restaurantId: payload.restaurantId,
                     orderId: payload.orderId,
                     event: evt as any,
                     customerPhone: payload.customerPhone,

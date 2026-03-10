@@ -68,6 +68,8 @@ loyaltyRouter.put('/admin/loyalty/rewards/:rewardId/redeem', adminAuthMiddleware
 
 // ======================== PUBLIC ENDPOINTS ========================
 
+// ======================== PUBLIC ENDPOINTS ========================
+
 // GET /api/:slug/loyalty/me?phone=...
 loyaltyRouter.get('/:slug/loyalty/me', tenantMiddleware, async (req: any, res: any) => {
     try {
@@ -77,23 +79,45 @@ loyaltyRouter.get('/:slug/loyalty/me', tenantMiddleware, async (req: any, res: a
 
         const { getDb } = await import('../db/db.client');
         const db = await getDb();
-        const customer = await db.get(`SELECT id, name FROM customers WHERE restaurant_id = ? AND phone = ?`, [tenantId, phone]);
+        const customer = await db.get(`SELECT id, name, referral_code, is_vip, vip_expires_at FROM customers WHERE restaurant_id = ? AND phone = ?`, [tenantId, phone]);
 
         if (!customer) return res.status(404).json({ error: 'Cliente não encontrado' });
 
         const points = await loyaltyRepo.getCustomerPoints(tenantId, customer.id);
         const tier = await loyaltyRepo.getCustomerTier(tenantId, customer.id);
         const rewards = await loyaltyRepo.listAvailableRewards(tenantId, customer.id);
+        const walletBalance = await loyaltyRepo.getWalletBalance(tenantId, customer.id);
 
         res.json({
             customerId: customer.id,
             customerName: customer.name,
+            referralCode: customer.referral_code,
+            isVip: customer.is_vip === 1,
+            vipExpiresAt: customer.vip_expires_at,
             points,
             tier,
-            availableRewards: rewards
+            availableRewards: rewards,
+            walletBalance
         });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/:slug/loyalty/referral/check
+loyaltyRouter.post('/:slug/loyalty/referral/check', tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const tenantId = req.tenantId;
+        const { referralCode, customerId } = req.body;
+
+        if (!referralCode || !customerId) {
+            return res.status(400).json({ error: 'referralCode e customerId são obrigatórios' });
+        }
+
+        await loyaltyRepo.processReferral(tenantId, referralCode, customerId);
+        res.json({ success: true, message: 'Indicação vinculada com sucesso! Você ganhará o prêmio após o primeiro pedido do seu amigo.' });
+    } catch (e: any) {
+        res.status(400).json({ error: e.message });
     }
 });
 
@@ -118,6 +142,20 @@ loyaltyRouter.post('/:slug/loyalty/redeem', tenantMiddleware, async (req: any, r
         if (e.message.includes('Insufficient points')) {
             return res.status(400).json({ error: e.message });
         }
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// POST /api/admin/loyalty/:customerId/vip
+loyaltyRouter.post('/admin/loyalty/:customerId/vip', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const tenantId = req.tenantId;
+        const customerId = req.params.customerId;
+        const { isVip, durationDays } = req.body;
+
+        await loyaltyRepo.toggleVip(tenantId, customerId, isVip, durationDays);
+        res.json({ success: true });
+    } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
 });

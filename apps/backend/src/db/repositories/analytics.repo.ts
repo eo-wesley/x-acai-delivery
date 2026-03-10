@@ -114,8 +114,135 @@ export class AnalyticsRepo {
             topItems,
             dailyRevenue,
             hourlyHeatmap,
-            paymentMethods
+            payment_methods: paymentMethods
         };
+    }
+
+    async getConsolidatedKPIs(tenantId: string) {
+        const db = await getDb();
+
+        // 1. Hoje
+        const todayStr = new Date().toISOString().split('T')[0];
+        const today = await db.get(`
+            SELECT COUNT(id) as orders, SUM(total_cents) as revenue 
+            FROM orders 
+            WHERE restaurant_id = ? AND status = 'completed' 
+            AND created_at >= ?
+        `, [tenantId, todayStr]);
+
+        // 2. Caixa
+        const session = await db.get(`
+            SELECT initial_value_cents FROM cash_sessions 
+            WHERE restaurant_id = ? AND status = 'open'
+        `, [tenantId]);
+
+        const entriesIn = await db.get(`
+            SELECT SUM(value_cents) as total FROM financial_entries 
+            WHERE restaurant_id = ? AND type = 'in' AND cash_session_id IS NOT NULL
+        `, [tenantId]);
+
+        const entriesOut = await db.get(`
+            SELECT SUM(value_cents) as total FROM financial_entries 
+            WHERE restaurant_id = ? AND type = 'out' AND cash_session_id IS NOT NULL
+        `, [tenantId]);
+
+        const currentCash = (session?.initial_value_cents || 0) + (entriesIn?.total || 0) - (entriesOut?.total || 0);
+
+        // 3. Logística
+        const activeDrivers = await db.get(`SELECT COUNT(id) as total FROM drivers WHERE restaurant_id = ? AND status = 'active'`, [tenantId]);
+
+        // 4. Operação
+        const pendingOrders = await db.get(`SELECT COUNT(id) as total FROM orders WHERE restaurant_id = ? AND status IN ('pending', 'accepted', 'preparing')`, [tenantId]);
+
+        // 5. Saúde dos Clientes (Churn Prediction)
+        const health = await this.getCustomerHealthStats(tenantId);
+
+        // 6. Yield Management
+        const yieldData = await db.get('SELECT yield_balance_cents FROM restaurants WHERE id = ?', [tenantId]);
+
+        return {
+            today: {
+                orders: today.orders || 0,
+                revenue_cents: today.revenue || 0
+            },
+            current_cash_cents: currentCash,
+            active_drivers: activeDrivers.total || 0,
+            pending_orders: pendingOrders.total || 0,
+            customer_health: health,
+            yield_cents: yieldData?.yield_balance_cents || 0
+        };
+    }
+
+    async getCustomerHealthStats(tenantId: string) {
+        const db = await getDb();
+
+        // Define ranges
+        const now = new Date();
+        const fifteenDaysAgo = new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000)).toISOString();
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+
+        const stats = await db.get(`
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN last_order_at >= ? THEN 1 ELSE 0 END) as healthy,
+                SUM(CASE WHEN last_order_at < ? AND last_order_at >= ? THEN 1 ELSE 0 END) as at_risk,
+                SUM(CASE WHEN last_order_at < ? OR last_order_at IS NULL THEN 1 ELSE 0 END) as inactive
+            FROM customers 
+            WHERE restaurant_id = ?
+        `, [fifteenDaysAgo, fifteenDaysAgo, thirtyDaysAgo, thirtyDaysAgo, tenantId]);
+
+        return {
+            total: stats.total || 0,
+            healthy: stats.healthy || 0,
+            atRisk: stats.at_risk || 0,
+            inactive: stats.inactive || 0,
+            ranges: {
+                healthy: '0-15 dias',
+                atRisk: '16-30 dias',
+                inactive: '+30 dias'
+            }
+        };
+    }
+
+    async getOperationalPerformance(tenantId: string, days = 30) {
+        const db = await getDb();
+        const dateStr = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
+        // 1. Average Prep Time (approximate using created_at and updated_at for completed orders)
+        const prepTime = await db.get(`
+            SELECT AVG(julianday(updated_at) - julianday(created_at)) * 1440 as avg_minutes
+            FROM orders
+            WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
+        `, [tenantId, dateStr]);
+
+        // 2. Orders per Staff (Audit logs)
+        const staffActivity = await db.all(`
+            SELECT u.name, COUNT(a.id) as actions_count
+            FROM audit_logs a
+            JOIN users u ON a.user_id = u.id
+            WHERE a.restaurant_id = ? AND a.created_at >= ?
+            GROUP BY u.id, u.name
+            ORDER BY actions_count DESC
+            LIMIT 10
+        `, [tenantId, dateStr]);
+
+        return {
+            staffActivity
+        };
+    }
+
+    async getLTVRanking(tenantId: string, limit = 10) {
+        const db = await getDb();
+        return await db.all(`
+            SELECT 
+                id, name, phone, 
+                total_spent_cents as ltv_cents,
+                total_orders as orders_count
+            FROM customers
+            WHERE restaurant_id = ?
+            ORDER BY total_spent_cents DESC
+            LIMIT ?
+        `, [tenantId, limit]);
     }
 }
 

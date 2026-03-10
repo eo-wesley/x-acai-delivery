@@ -11,6 +11,12 @@ class EventBus {
         console.log(`[EventBus] Registered handler for: ${eventName}`);
     }
 
+    public off(eventName: string, callback: EventCallback) {
+        if (!this.handlers[eventName]) return;
+        this.handlers[eventName] = this.handlers[eventName].filter(cb => cb !== callback);
+        console.log(`[EventBus] Removed handler for: ${eventName}`);
+    }
+
     public async emit(eventName: string, payload: any) {
         if (!this.handlers[eventName]) return;
 

@@ -3,6 +3,7 @@ import { menuRepo } from '../db/repositories/menu.repo';
 import { tenantMiddleware } from '../middlewares/tenant.middleware';
 import { menuCacheService } from '../services/cache/menu.cache';
 import { getDb } from '../db/db.client';
+import { PricingService } from '../services/pricing.service';
 
 export const menuRouter = Router();
 
@@ -28,7 +29,19 @@ menuRouter.get('/:slug/menu', tenantMiddleware, async (req: any, res: any) => {
         const items = category
             ? await menuRepo.getMenuByCategory(tenantId, category, true)
             : await menuCacheService.getMenu(tenantId, true);
-        res.json(items);
+
+        // Apply Dynamic Pricing (Happy Hour)
+        const enrichedItems = await Promise.all(items.map(async (item: any) => {
+            const pricing = await PricingService.calculateItemPrice(tenantId, item);
+            return {
+                ...item,
+                original_price_cents: item.price_cents,
+                price_cents: pricing.finalPriceCents,
+                is_happy_hour: pricing.isHappyHour
+            };
+        }));
+
+        res.json(enrichedItems);
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -58,7 +71,14 @@ menuRouter.get('/:slug/menu/item/:id', tenantMiddleware, async (req: any, res: a
             return { ...g, options };
         }));
 
-        res.json({ ...item, option_groups: enrichedGroups });
+        const pricing = await PricingService.calculateItemPrice(tenantId, item);
+        res.json({
+            ...item,
+            price_cents: pricing.finalPriceCents,
+            original_price_cents: item.price_cents,
+            is_happy_hour: pricing.isHappyHour,
+            option_groups: enrichedGroups
+        });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }

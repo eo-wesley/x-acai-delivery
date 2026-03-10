@@ -5,6 +5,9 @@ import { pixPaymentService } from '../payments/pix.service';
 import { mercadoPagoService } from '../payments/mercadopago.service';
 import { tenantMiddleware } from '../middlewares/tenant.middleware';
 import { eventBus } from '../core/eventBus';
+import { loyaltyRepo } from '../db/repositories/loyalty.repo';
+import { PricingService } from '../services/pricing.service';
+import { menuRepo } from '../db/repositories/menu.repo';
 
 export const ordersRouter = Router();
 
@@ -30,7 +33,7 @@ const createOrderSchema = z.object({
     totalCents: z.number().nonnegative(),
     addressText: z.string(),
     notes: z.string().optional(),
-    paymentMethod: z.enum(['pix', 'card', 'cash']).optional().default('pix'),
+    paymentMethod: z.enum(['pix', 'card', 'cash', 'wallet']).optional().default('pix'),
     restaurantId: z.string().optional(),
 });
 
@@ -91,11 +94,16 @@ ordersRouter.post('/orders', async (req, res) => {
         }
 
         eventBus.emit('order_created', {
+            restaurantId: 'default_tenant',
             orderId: order.id,
             customerPhone: data.customerPhone,
             customerName: data.customerName,
             totalCents: data.totalCents,
-            extra: { items: processedItems, paymentMethod: data.paymentMethod, addressText: data.addressText }
+            extra: {
+                paymentMethod: data.paymentMethod,
+                addressText: data.addressText,
+                items: processedItems
+            }
         });
 
         res.status(201).json({
@@ -120,17 +128,41 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
         const discountCents = Number(req.body.discountCents) || 0;
         const couponCode = req.body.couponCode;
 
-        const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
+        // Apply Dynamic Pricing (Surge & Happy Hour)
+        const surge = await PricingService.calculateDeliveryFee(tenantId, data.deliveryFeeCents);
+        const finalDeliveryFee = surge.finalFeeCents;
+
+        const processedItems = await Promise.all(data.items.map(async (i) => {
+            const itemBase = await menuRepo.getMenuItemById(tenantId, i.menuItemId);
+            if (!itemBase) return { ...i, unitPriceCents: 0 };
+
+            const pricing = await PricingService.calculateItemPrice(tenantId, itemBase);
+            let unitPrice = pricing.finalPriceCents;
+
+            // Add options price
+            if (i.selected_options) {
+                unitPrice += i.selected_options.reduce((sum, opt) => sum + opt.price_cents, 0);
+            }
+
+            return { ...i, unitPriceCents: unitPrice };
+        }));
+
+        const finalSubtotal = processedItems.reduce((sum, i) => sum + (i.unitPriceCents * i.qty), 0);
+        const finalTotal = finalSubtotal + finalDeliveryFee - discountCents;
+
         const order = await ordersRepo.createOrder({
             ...data,
             items: processedItems,
+            deliveryFeeCents: finalDeliveryFee,
+            subtotalCents: finalSubtotal,
+            totalCents: finalTotal,
             restaurantId: tenantId
         });
 
         const db = await (await import('../db/db.client')).getDb();
         await db.run(
-            `UPDATE orders SET payment_method = ?, discount_cents = ?, coupon_code = ? WHERE id = ?`,
-            [paymentMethod, discountCents, couponCode || null, order.id]
+            `UPDATE orders SET payment_method = ?, discount_cents = ?, coupon_code = ?, is_surge = ?, is_happy_hour = ? WHERE id = ?`,
+            [paymentMethod, discountCents, couponCode || null, surge.isSurge ? 1 : 0, 0, order.id] // Simplified HH tracking
         );
 
         if (couponCode) {
@@ -140,8 +172,47 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             ).catch(() => { });
         }
 
-        const checkoutUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
-        (order as any).payment_url = checkoutUrl;
+        if (paymentMethod === 'wallet') {
+            const balance = await loyaltyRepo.getWalletBalance(tenantId, order.customer_id);
+            if (balance < data.totalCents) {
+                // We should probably cancel the order here or throw an error before creation
+                // But for now, let's just mark it as pending and return an error
+                await db.run(`UPDATE orders SET status = 'cancelled' WHERE id = ?`, [order.id]);
+                return res.status(400).json({ error: 'Saldo insuficiente na carteira.' });
+            }
+
+            await loyaltyRepo.updateWalletBalance(
+                tenantId,
+                order.customer_id,
+                data.totalCents,
+                'debit',
+                `Pagamento do pedido ${order.id.substring(0, 8)}`,
+                order.id
+            );
+
+            await db.run(
+                `UPDATE orders SET payment_status = 'paid', paid_at = CURRENT_TIMESTAMP WHERE id = ?`,
+                [order.id]
+            );
+            (order as any).status = 'confirmed'; // Auto confirm wallet payments
+            await db.run(`UPDATE orders SET status = 'confirmed' WHERE id = ?`, [order.id]);
+        } else if (paymentMethod === 'pix' || paymentMethod === 'card') {
+            const checkoutUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
+            (order as any).payment_url = checkoutUrl;
+        }
+
+        eventBus.emit('order_created', {
+            restaurantId: tenantId,
+            orderId: order.id,
+            customerPhone: data.customerPhone,
+            customerName: data.customerName,
+            totalCents: data.totalCents,
+            extra: {
+                paymentMethod: paymentMethod,
+                addressText: data.addressText,
+                items: processedItems
+            }
+        });
 
         res.status(201).json({
             ...order,
@@ -214,5 +285,24 @@ ordersRouter.get('/track/:id', async (req, res) => {
         res.json(order);
     } catch (error: any) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+ordersRouter.post('/orders/:id/rate', async (req, res) => {
+    try {
+        const { rating, feedback } = req.body;
+        if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+            return res.status(400).json({ error: 'Rating must be between 1 and 5' });
+        }
+        const success = await ordersRepo.submitRating(req.params.id, rating, feedback);
+        if (success) {
+            // Also log event
+            await ordersRepo.logOrderEvent(req.params.id, 'order_rated', { rating, feedback });
+            res.json({ success: true, message: 'Rating submitted' });
+        } else {
+            res.status(404).json({ error: 'Order not found' });
+        }
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 });

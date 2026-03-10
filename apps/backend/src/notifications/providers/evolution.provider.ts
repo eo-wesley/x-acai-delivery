@@ -56,12 +56,44 @@ export class EvolutionWhatsAppProvider implements NotificationProvider {
 
         const phone = this.sanitizePhone(payload.customerPhone);
         const text = buildMessage(payload);
-        const url = `${this.baseUrl}/message/sendText/${this.instance}`;
+
+        // Get dynamic configuration for the restaurant
+        let config = {
+            baseUrl: this.baseUrl,
+            instance: this.instance,
+            apiKey: this.apiKey
+        };
+
+        if (payload.restaurantId) {
+            try {
+                const { getDb } = await import('../../db/db.client');
+                const db = await getDb();
+                const dbConfig = await db.get('SELECT * FROM whatsapp_configs WHERE restaurant_id = ? AND active = 1', [payload.restaurantId]);
+                if (dbConfig) {
+                    config = {
+                        baseUrl: dbConfig.base_url.replace(/\/$/, ''),
+                        instance: dbConfig.instance,
+                        apiKey: dbConfig.apikey
+                    };
+                }
+            } catch (e) {
+                console.error('[EvolutionProvider] Failed to load db config:', e);
+            }
+        }
+
+        if (!config.baseUrl || !config.instance || !config.apiKey) {
+            console.warn(
+                `[EvolutionProvider] Configuration missing for restaurant ${payload.restaurantId || 'global'}. Falling back to mock.`
+            );
+            return this.fallback.send(payload);
+        }
+
+        const url = `${config.baseUrl}/message/sendText/${config.instance}`;
 
         const requestBody = {
             number: phone,
             text,
-            delay: 1000, // 1s delay between messages (Evolution API param)
+            delay: 1000,
         };
 
         try {
@@ -69,7 +101,7 @@ export class EvolutionWhatsAppProvider implements NotificationProvider {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    apikey: this.apiKey,
+                    apikey: config.apiKey,
                 },
                 body: JSON.stringify(requestBody),
                 signal: AbortSignal.timeout(10000), // 10s timeout

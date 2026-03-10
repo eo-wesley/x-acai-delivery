@@ -1,5 +1,19 @@
 services:
-  # ---- Backend API (Express + SQLite) ----
+  # ---- Database (PostgreSQL) ----
+  postgres:
+    image: postgres:15-alpine
+    container_name: xacai-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-postgres}
+      - POSTGRES_DB=xacai
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks:
+      - xacai
+
+  # ---- Backend API ----
   backend:
     build:
       context: ./apps/backend
@@ -11,7 +25,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - DATABASE_URL=/data/database.sqlite
+      - DATABASE_URL=${DATABASE_URL:-postgres://postgres:postgres@postgres:5432/xacai}
       - JWT_SECRET=${JWT_SECRET}
       - ADMIN_SECRET=${ADMIN_SECRET}
       - CORS_ORIGIN=${CORS_ORIGIN:-https://acaidedelivery.com.br}
@@ -21,6 +35,8 @@ services:
       - BASE_DOMAIN=${BASE_DOMAIN:-acaidedelivery.com.br}
     volumes:
       - db_data:/data
+    depends_on:
+      - postgres
     healthcheck:
       test: [ "CMD", "wget", "-qO-", "http://localhost:3000/health" ]
       interval: 30s
@@ -88,6 +104,8 @@ services:
 
 volumes:
   db_data:
+    driver: local
+  pg_data:
     driver: local
 
 networks:

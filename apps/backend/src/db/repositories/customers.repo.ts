@@ -29,10 +29,12 @@ export class CustomersRepo {
         }
 
         const id = randomUUID();
+        const referralCode = id.substring(0, 6).toUpperCase(); // Simple referral code
+
         await db.run(
-            `INSERT INTO customers (id, restaurant_id, name, phone, email, tags, notes) 
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [id, restaurantId, payload.name, payload.phone, payload.email || null, payload.tags || null, payload.notes || null]
+            `INSERT INTO customers (id, restaurant_id, name, phone, email, tags, notes, referral_code) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, restaurantId, payload.name, payload.phone, payload.email || null, payload.tags || null, payload.notes || null, referralCode]
         );
         return id;
     }
@@ -45,6 +47,39 @@ export class CustomersRepo {
     async getCustomerById(restaurantId: string, id: string): Promise<any> {
         const db = await getDb();
         return db.get(`SELECT * FROM customers WHERE restaurant_id = ? AND id = ?`, [restaurantId, id]);
+    }
+
+    async listCustomersWithHealth(restaurantId: string, filters: { q?: string, status?: 'healthy' | 'at_risk' | 'inactive' } = {}): Promise<any[]> {
+        const db = await getDb();
+        const now = new Date();
+        const fifteenDaysAgo = new Date(now.getTime() - (15 * 24 * 60 * 60 * 1000)).toISOString();
+        const thirtyDaysAgo = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)).toISOString();
+
+        let query = `
+            SELECT *,
+                CASE 
+                    WHEN last_order_at >= ? THEN 'healthy'
+                    WHEN last_order_at < ? AND last_order_at >= ? THEN 'at_risk'
+                    ELSE 'inactive'
+                END as health_status
+            FROM customers 
+            WHERE restaurant_id = ?
+        `;
+        const params: any[] = [fifteenDaysAgo, fifteenDaysAgo, thirtyDaysAgo, restaurantId];
+
+        if (filters.q) {
+            query += ` AND (name LIKE ? OR phone LIKE ?)`;
+            params.push(`%${filters.q}%`, `%${filters.q}%`);
+        }
+
+        if (filters.status) {
+            query = `SELECT * FROM (${query}) WHERE health_status = ?`;
+            params.push(filters.status);
+        } else {
+            query += ` ORDER BY last_order_at DESC NULLS LAST`;
+        }
+
+        return db.all(query, params);
     }
 
     async listCustomers(restaurantId: string, filters: { q?: string, tag?: string } = {}): Promise<any[]> {
@@ -100,17 +135,31 @@ export class CustomersRepo {
         );
     }
 
-    async customerStats(restaurantId: string): Promise<any> {
+    async updateOTP(restaurantId: string, phone: string, code: string, expiresAt: Date): Promise<void> {
         const db = await getDb();
-        const row = await db.get(
-            `SELECT COUNT(*) as total_customers, SUM(total_spent_cents) as lifetime_value 
-             FROM customers WHERE restaurant_id = ?`,
-            [restaurantId]
+        await db.run(
+            `UPDATE customers SET otp_code = ?, otp_expires_at = ? WHERE restaurant_id = ? AND phone = ?`,
+            [code, expiresAt.toISOString(), restaurantId, phone]
         );
-        return {
-            totalCustomers: row?.total_customers || 0,
-            lifetimeValueCents: row?.lifetime_value || 0
-        };
+    }
+
+    async getAddresses(customerId: string): Promise<any[]> {
+        const db = await getDb();
+        return db.all(`SELECT * FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC`, [customerId]);
+    }
+
+    async addAddress(customerId: string, address: any): Promise<string> {
+        const db = await getDb();
+        const id = randomUUID();
+        if (address.is_default) {
+            await db.run(`UPDATE customer_addresses SET is_default = 0 WHERE customer_id = ?`, [customerId]);
+        }
+        await db.run(
+            `INSERT INTO customer_addresses (id, customer_id, label, street, number, complement, neighborhood, city, is_default)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [id, customerId, address.label || null, address.street, address.number, address.complement || null, address.neighborhood, address.city, address.is_default ? 1 : 0]
+        );
+        return id;
     }
 }
 

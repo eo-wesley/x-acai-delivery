@@ -16,17 +16,28 @@ export default function CustomersPage() {
     const [rewardName, setRewardName] = useState('');
     const [rewardCost, setRewardCost] = useState('');
 
-    const fetchCustomers = async (slug = 'default', q = '') => {
+    const [healthStats, setHealthStats] = useState<any>(null);
+    const [selectedStatus, setSelectedStatus] = useState<string>('');
+
+    const fetchCustomers = async (slug = 'default', q = '', status = '') => {
         setLoading(true);
         try {
             const token = localStorage.getItem('admin_token');
             const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-            const res = await fetch(`${API_URL}/api/admin/customers?slug=${slug}&q=${encodeURIComponent(q)}`, {
+            const res = await fetch(`${API_URL}/api/admin/customers?slug=${slug}&q=${encodeURIComponent(q)}&status=${status}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (res.ok) {
                 const data = await res.json();
                 setCustomers(data);
+            }
+
+            // Fetch health stats
+            const statsRes = await fetch(`${API_URL}/api/admin/customers/health?slug=${slug}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (statsRes.ok) {
+                setHealthStats(await statsRes.json());
             }
         } catch (e) {
             console.error(e);
@@ -49,7 +60,14 @@ export default function CustomersPage() {
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         const slug = localStorage.getItem('admin_slug') || 'default';
-        fetchCustomers(slug, searchTerm);
+        fetchCustomers(slug, searchTerm, selectedStatus);
+    };
+
+    const handleStatusFilter = (status: string) => {
+        const newStatus = selectedStatus === status ? '' : status;
+        setSelectedStatus(newStatus);
+        const slug = localStorage.getItem('admin_slug') || 'default';
+        fetchCustomers(slug, searchTerm, newStatus);
     };
 
     const handleSelectCustomer = async (customer: any) => {
@@ -121,12 +139,91 @@ export default function CustomersPage() {
         }
     };
 
+    const handleToggleVip = async (isVip: boolean) => {
+        if (!selectedCustomer) return;
+        const token = localStorage.getItem('admin_token');
+        const slug = localStorage.getItem('admin_slug') || 'default';
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            const res = await fetch(`${API_URL}/api/admin/loyalty/${selectedCustomer.id}/vip?slug=${slug}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ isVip, durationDays: 30 })
+            });
+            if (res.ok) handleSelectCustomer(selectedCustomer);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleUpdateWallet = async (amountCents: number) => {
+        if (!selectedCustomer) return;
+        const token = localStorage.getItem('admin_token');
+        const slug = localStorage.getItem('admin_slug') || 'default';
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            const res = await fetch(`${API_URL}/api/admin/loyalty/${selectedCustomer.id}/wallet?slug=${slug}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ amountCents })
+            });
+            if (res.ok) handleSelectCustomer(selectedCustomer);
+        } catch (e) { console.error(e); }
+    };
+
+    const handleRecoveryMessage = async (customer: any) => {
+        const token = localStorage.getItem('admin_token');
+        const slug = localStorage.getItem('admin_slug') || 'default';
+        try {
+            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+            const res = await fetch(`${API_URL}/api/admin/customers/${customer.id}/recovery?slug=${slug}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                const whatsappUrl = `https://wa.me/55${customer.phone.replace(/\D/g, '')}?text=${encodeURIComponent(data.message)}`;
+                window.open(whatsappUrl, '_blank');
+            }
+        } catch (e) { console.error('Failed to trigger recovery', e); }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
                 <h1 className="text-3xl font-black text-gray-800 flex items-center gap-2">
                     👥 CRM de Clientes
                 </h1>
+            </div>
+
+            {/* AI Churn Prediction Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div
+                    onClick={() => handleStatusFilter('')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition ${!selectedStatus ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-gray-100 text-gray-800'}`}
+                >
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-80">Total</p>
+                    <p className="text-2xl font-black">{healthStats?.total || 0}</p>
+                </div>
+                <div
+                    onClick={() => handleStatusFilter('healthy')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition ${selectedStatus === 'healthy' ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-100 text-gray-800'}`}
+                >
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-80">Saudáveis (0-15d)</p>
+                    <p className="text-2xl font-black">{healthStats?.healthy || 0}</p>
+                </div>
+                <div
+                    onClick={() => handleStatusFilter('at_risk')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition ${selectedStatus === 'at_risk' ? 'bg-orange-500 border-orange-500 text-white' : 'bg-white border-gray-100 text-gray-800'}`}
+                >
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-80">Em Risco (16-30d)</p>
+                    <p className="text-2xl font-black">{healthStats?.atRisk || 0}</p>
+                </div>
+                <div
+                    onClick={() => handleStatusFilter('inactive')}
+                    className={`p-4 rounded-2xl border cursor-pointer transition ${selectedStatus === 'inactive' ? 'bg-red-500 border-red-500 text-white' : 'bg-white border-gray-100 text-gray-800'}`}
+                >
+                    <p className="text-xs font-bold uppercase tracking-widest opacity-80">Inativos (+30d)</p>
+                    <p className="text-2xl font-black">{healthStats?.inactive || 0}</p>
+                </div>
             </div>
 
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex gap-4">
@@ -155,11 +252,21 @@ export default function CustomersPage() {
                                     <h3 className="font-bold text-lg text-gray-800">{c.name}</h3>
                                     <p className="text-gray-500 text-sm">{c.phone}</p>
                                 </div>
-                                {c.tags && (
-                                    <span className="bg-purple-100 text-purple-700 text-xs font-bold px-2 py-1 rounded-full">
-                                        {c.tags}
-                                    </span>
-                                )}
+                                <div className="flex flex-col items-end gap-1">
+                                    {c.health_status && (
+                                        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter
+                                            ${c.health_status === 'healthy' ? 'bg-green-100 text-green-700' :
+                                                c.health_status === 'at_risk' ? 'bg-orange-100 text-orange-700' : 'bg-red-100 text-red-700'}
+                                        `}>
+                                            {c.health_status === 'healthy' ? 'Saudável' : c.health_status === 'at_risk' ? 'Em Risco' : 'Inativo'}
+                                        </span>
+                                    )}
+                                    {c.tags && (
+                                        <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                            {c.tags}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 text-sm mb-4">
@@ -193,7 +300,16 @@ export default function CustomersPage() {
                                 <h2 className="text-2xl font-black text-gray-800">{selectedCustomer.name}</h2>
                                 <p className="text-gray-500 font-medium">{selectedCustomer.phone}</p>
                             </div>
-                            <button onClick={() => setSelectedCustomer(null)} className="text-gray-400 hover:text-red-500 font-bold text-xl p-2">✕</button>
+                            <div className="flex gap-2 items-center">
+                                <button
+                                    onClick={() => handleRecoveryMessage(selectedCustomer)}
+                                    className="bg-green-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-black hover:bg-green-600 transition"
+                                >
+                                    <span>RECUPERAR</span>
+                                    <span className="bg-white/20 p-1 rounded-lg">💬</span>
+                                </button>
+                                <button onClick={() => setSelectedCustomer(null)} className="text-gray-400 hover:text-red-500 font-bold text-xl p-2">✕</button>
+                            </div>
                         </div>
 
                         {/* Corpo Modal */}
@@ -211,18 +327,52 @@ export default function CustomersPage() {
                                     </div>
                                 </div>
                                 <div className="flex-1 bg-yellow-50 p-4 rounded-xl border border-yellow-100 flex flex-col justify-between">
-                                    <div className="text-yellow-600 font-bold text-xs uppercase tracking-wider mb-1">🪙 Sistema de Pontos</div>
+                                    <div className="text-yellow-600 font-bold text-xs uppercase tracking-wider mb-1">🪙 Fidelidade & VIP</div>
                                     <div className="text-2xl font-black text-yellow-900 mb-2">
-                                        {loadingLoyalty ? '...' : (loyaltyData?.points || 0)} <span className="text-sm font-medium text-yellow-700">Pts Livres</span>
+                                        {loadingLoyalty ? '...' : (loyaltyData?.points || 0)} <span className="text-sm font-medium text-yellow-700">Pts</span>
                                     </div>
                                     <div className="flex justify-between items-center text-sm border-t border-yellow-200 pt-2">
-                                        <span className="text-gray-600 font-medium">Recompensas Emitidas</span>
-                                        <span className="font-bold text-yellow-700 bg-yellow-200 px-2 py-0.5 rounded-full">{loyaltyData?.availableRewards?.length || 0}</span>
+                                        <button
+                                            onClick={() => handleToggleVip(!loyaltyData?.isVip)}
+                                            className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest transition ${loyaltyData?.isVip ? 'bg-yellow-400 text-white' : 'bg-gray-200 text-gray-500'}`}
+                                        >
+                                            {loyaltyData?.isVip ? 'MEMBRO VIP ★' : 'TORNAR VIP'}
+                                        </button>
+                                        <span className="font-bold text-yellow-700 bg-yellow-200 px-2 py-0.5 rounded-full">{loyaltyData?.tier?.name || 'BRONZE'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex-1 bg-emerald-50 p-4 rounded-xl border border-emerald-100 flex flex-col justify-between">
+                                    <div className="text-emerald-600 font-bold text-xs uppercase tracking-wider mb-1">🏦 Carteira (Cashback)</div>
+                                    <div className="text-2xl font-black text-emerald-900 mb-2">
+                                        R$ {loadingLoyalty ? '...' : ((loyaltyData?.walletBalance || 0) / 100).toFixed(2).replace('.', ',')}
+                                    </div>
+                                    <div className="flex items-center gap-1 border-t border-emerald-200 pt-2">
+                                        <input
+                                            id="walletAmount"
+                                            type="number"
+                                            placeholder="± R$"
+                                            className="w-full text-[10px] p-1 border rounded"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                const input = document.getElementById('walletAmount') as HTMLInputElement;
+                                                handleUpdateWallet(parseFloat(input.value) * 100);
+                                                input.value = '';
+                                            }}
+                                            className="bg-emerald-600 text-white p-1 rounded hover:bg-emerald-700"
+                                        >
+                                            OK
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Detalhes do Cliente (Última visita) */}
+                            <div className="bg-gray-50 flex justify-between items-center p-4 rounded-xl border border-gray-100">
+                                <span className="text-gray-500 font-bold text-xs uppercase">Código de Indicação</span>
+                                <span className="font-black text-purple-600 tracking-widest uppercase">
+                                    {loyaltyData?.referralCode || '---'}
+                                </span>
+                            </div>
                             <div className="bg-gray-50 flex justify-between items-center p-4 rounded-xl border border-gray-100">
                                 <span className="text-gray-500 font-bold text-xs uppercase">Última Visita</span>
                                 <span className="font-bold text-gray-800">

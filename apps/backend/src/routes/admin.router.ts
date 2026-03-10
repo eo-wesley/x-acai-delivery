@@ -9,6 +9,7 @@ import { marketingService } from '../services/marketing.service';
 import jwt from 'jsonwebtoken';
 import { menuCacheService } from '../services/cache/menu.cache';
 import { v4 as uuidv4 } from 'uuid';
+import { auditService } from '../services/audit.service';
 
 export const adminRouter = Router();
 let sseClients: any[] = [];
@@ -85,6 +86,14 @@ adminRouter.put('/admin/orders/:id/status', adminAuthMiddleware, tenantMiddlewar
 
         const success = await ordersRepo.updateOrderStatus(req.params.id, status);
         if (success) {
+            await auditService.log({
+                restaurantId: tenantId,
+                userId: req.user.userId || 'admin_legacy',
+                action: 'UPDATE_ORDER_STATUS',
+                resource: 'orders',
+                resourceId: req.params.id,
+                payload: { status }
+            });
             sseClients.filter(c => c.tenantId === tenantId).forEach(c => c.res.write(`data: ${JSON.stringify({ orderId: req.params.id, status })}\n\n`));
             res.json({ success: true, status });
         } else {
@@ -135,6 +144,9 @@ adminRouter.get('/admin/metrics', adminAuthMiddleware, tenantMiddleware, async (
 
         const avgRating = await db.get(`SELECT AVG(stars) as avg, COUNT(*) as total FROM order_ratings WHERE restaurant_id = ?`, [tenantId]);
 
+        const { analyticsRepo } = await import('../db/repositories/analytics.repo');
+        const dashboard = await analyticsRepo.getTenantDashboard(tenantId, 30);
+
         res.json({
             today: { orders: todayOrders.count, revenueCents: todayOrders.revenue },
             week: { orders: weekOrders.count, revenueCents: weekOrders.revenue },
@@ -142,7 +154,8 @@ adminRouter.get('/admin/metrics', adminAuthMiddleware, tenantMiddleware, async (
             byStatus,
             activeOrders: activeOrders.count,
             avgRating: avgRating.avg || 0,
-            topProducts: []
+            topProducts: dashboard.topItems,
+            dashboard
         });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -183,6 +196,16 @@ adminRouter.patch('/admin/profile', adminAuthMiddleware, tenantMiddleware, async
         if (updates.length === 0) return res.json({ success: true });
         values.push(req.tenantId);
         await db.run(`UPDATE restaurants SET ${updates.join(', ')} WHERE id = ?`, values);
+
+        await auditService.log({
+            restaurantId: req.tenantId,
+            userId: req.user.userId || 'admin_legacy',
+            action: 'UPDATE_PROFILE',
+            resource: 'restaurants',
+            resourceId: req.tenantId,
+            payload: req.body
+        });
+
         res.json({ success: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
@@ -202,6 +225,15 @@ adminRouter.patch('/admin/store', adminAuthMiddleware, tenantMiddleware, async (
         if (updates.length) {
             values.push(req.tenantId);
             await db.run(`UPDATE restaurants SET ${updates.join(', ')} WHERE id = ?`, values);
+
+            await auditService.log({
+                restaurantId: req.tenantId,
+                userId: req.user.userId || 'admin_legacy',
+                action: 'UPDATE_STORE_STATUS',
+                resource: 'restaurants',
+                resourceId: req.tenantId,
+                payload: { store_status, temp_close_reason }
+            });
         }
         res.json({ success: true });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -218,6 +250,14 @@ adminRouter.post('/admin/menu', adminAuthMiddleware, tenantMiddleware, async (re
     try {
         const { menuRepo } = await import('../db/repositories/menu.repo');
         const id = await menuRepo.createMenuItem({ ...req.body, restaurant_id: req.tenantId });
+        await auditService.log({
+            restaurantId: req.tenantId,
+            userId: req.user?.id || 'admin',
+            action: 'CREATE_MENU_ITEM',
+            resource: 'menu_items',
+            resourceId: id,
+            payload: req.body
+        });
         menuCacheService.invalidate(req.tenantId);
         res.status(201).json({ success: true, id });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -466,3 +506,133 @@ adminRouter.post('/admin/pdv/orders', adminAuthMiddleware, tenantMiddleware, asy
         res.status(500).json({ error: error.message });
     }
 });
+
+// AI Customer Retention & Health
+adminRouter.get('/admin/customers/health', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const { analyticsRepo } = await import('../db/repositories/analytics.repo');
+        const stats = await analyticsRepo.getCustomerHealthStats(req.tenantId);
+        res.json(stats);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+adminRouter.get('/admin/customers', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const { customersRepo } = await import('../db/repositories/customers.repo');
+        const { q, status } = req.query;
+        const customers = await customersRepo.listCustomersWithHealth(req.tenantId, { q, status });
+        res.json(customers);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+adminRouter.post('/admin/customers/:id/recovery', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const { customersRepo } = await import('../db/repositories/customers.repo');
+        const customer = await customersRepo.getCustomerById(req.tenantId, id);
+
+        if (!customer) return res.status(404).json({ error: 'Customer not found' });
+
+        // Simulate AI message generation
+        const message = `Olá ${customer.name}! Notamos que você não pede um Açaí há algum tempo. Que tal matar a saudade com um desconto de 15%? Use o cupom VOLTOU15.`;
+
+        // Log the recovery attempt (could trigger an actual WhatsApp message here)
+        await auditService.log({
+            restaurantId: req.tenantId,
+            userId: req.user?.id || 'admin',
+            action: 'CUSTOMER_RECOVERY_TRIGGERED',
+            resource: 'customers',
+            resourceId: id,
+            payload: { message }
+        });
+
+        res.json({ success: true, message });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+// AI Pricing & Yield Management
+adminRouter.get('/admin/pricing/rules', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        const restaurant = await db.get('SELECT pricing_rules FROM restaurants WHERE id = ?', [req.tenantId]);
+        res.json(restaurant?.pricing_rules ? JSON.parse(restaurant.pricing_rules) : {});
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+adminRouter.post('/admin/pricing/rules', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const db = await (await import('../db/db.client')).getDb();
+        await db.run(
+            'UPDATE restaurants SET pricing_rules = ? WHERE id = ?',
+            [JSON.stringify(req.body), req.tenantId]
+        );
+        res.json({ success: true });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+// Logistics Admin Endpoints
+adminRouter.get('/admin/logistics/overview', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const { driversRepo } = await import('../db/repositories/drivers.repo');
+        const { ordersRepo } = await import('../db/repositories/orders.repo');
+        const { getDb } = await import('../db/db.client');
+        const db = await getDb();
+
+        const tenantId = req.tenantId;
+        const [drivers, orders, activeDeliveries] = await Promise.all([
+            driversRepo.getDriverActivity(tenantId),
+            driversRepo.getOrdersReadyForDispatch(tenantId),
+            db.all(`SELECT COUNT(*) as count FROM driver_orders WHERE restaurant_id = ? AND status IN ('assigned', 'picked_up')`, [tenantId])
+        ]);
+
+        const totalDrivers = await db.get(`SELECT COUNT(*) as count FROM drivers WHERE restaurant_id = ?`, [tenantId]);
+        const activeOnline = await db.get(`SELECT COUNT(*) as count FROM drivers WHERE restaurant_id = ? AND is_online = 1`, [tenantId]);
+
+        res.json({
+            stats: {
+                total_drivers: totalDrivers?.count || 0,
+                active_drivers: activeOnline?.count || 0,
+                delivering_now: activeDeliveries[0]?.count || 0,
+                pending_orders: orders.length
+            },
+            drivers,
+            orders
+        });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+adminRouter.post('/admin/logistics/batch-assign', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const { driverId, orderIds } = req.body;
+        const tenantId = req.tenantId;
+
+        if (!driverId || !orderIds || !Array.isArray(orderIds)) {
+            return res.status(400).json({ error: 'Data incomplete' });
+        }
+
+        const { driversRepo } = await import('../db/repositories/drivers.repo');
+        const { ordersRepo } = await import('../db/repositories/orders.repo');
+
+        for (const orderId of orderIds) {
+            const order = await ordersRepo.getOrderById(orderId);
+            if (!order) continue;
+
+            const feeCents = order.delivery_fee_cents || 0;
+            await driversRepo.assignOrder(tenantId, driverId, orderId, feeCents);
+            await ordersRepo.updateOrderStatus(orderId, 'delivering');
+        }
+
+        await driversRepo.markDispatched(tenantId, driverId);
+
+        res.json({ success: true, count: orderIds.length });
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+adminRouter.get('/admin/drivers/:id/stats', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const { id } = req.params;
+        const { driversRepo } = await import('../db/repositories/drivers.repo');
+        const stats = await driversRepo.getDriverStats(req.tenantId, id);
+        res.json(stats);
+    } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+

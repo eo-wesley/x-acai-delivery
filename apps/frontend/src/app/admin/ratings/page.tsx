@@ -16,7 +16,13 @@ type Rating = {
 };
 
 function Stars({ n }: { n: number }) {
-    return <span>{Array.from({ length: 5 }, (_, i) => <span key={i} className={i < n ? 'text-yellow-400' : 'text-gray-200'}>★</span>)}</span>;
+    return (
+        <div className="flex gap-0.5">
+            {Array.from({ length: 5 }, (_, i) => (
+                <span key={i} className={`text-lg ${i < n ? 'text-yellow-400' : 'text-gray-200'}`}>★</span>
+            ))}
+        </div>
+    );
 }
 
 function getToken() { return localStorage.getItem('admin_token') || ''; }
@@ -40,61 +46,92 @@ export default function AdminRatings() {
 
     const avg = ratings.length ? (ratings.reduce((s, r) => s + r.stars, 0) / ratings.length).toFixed(1) : '–';
 
-    return (
-        <div>
-            <h1 className="text-2xl font-black text-gray-800 mb-6">⭐ Avaliações dos Clientes</h1>
+    const getSentiment = (stars: number) => {
+        if (stars >= 4) return { label: 'Satisfeito', color: 'bg-green-100 text-green-700', icon: '😊' };
+        if (stars === 3) return { label: 'Neutro', color: 'bg-yellow-100 text-yellow-700', icon: '😐' };
+        return { label: 'Crítico', color: 'bg-red-100 text-red-700', icon: '🚨' };
+    };
 
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
-                    <div className="text-3xl font-black text-yellow-500">{avg}</div>
-                    <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Média ⭐</div>
+    return (
+        <div className="max-w-5xl mx-auto pb-20">
+            <header className="mb-8">
+                <h1 className="text-3xl font-black text-gray-800 flex items-center gap-2">
+                    ⭐ Avaliações e Sentimento
+                </h1>
+                <p className="text-gray-500">Acompanhe a satisfação dos seus clientes em tempo real.</p>
+            </header>
+
+            {/* Premium Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl p-6 text-white shadow-lg shadow-yellow-100">
+                    <div className="text-sm font-bold uppercase opacity-80 tracking-widest">Média Geral</div>
+                    <div className="flex items-end gap-2 mt-2">
+                        <span className="text-5xl font-black">{avg}</span>
+                        <span className="text-xl mb-1 opacity-80">/ 5.0</span>
+                    </div>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
-                    <div className="text-3xl font-black text-purple-600">{ratings.length}</div>
-                    <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">Total</div>
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+                    <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">Total de Reviews</div>
+                    <div className="text-4xl font-black text-purple-600 mt-2">{ratings.length}</div>
+                    <div className="mt-4 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-full bg-purple-500" style={{ width: '100%' }}></div>
+                    </div>
                 </div>
-                <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
-                    <div className="text-3xl font-black text-green-600">{ratings.filter(r => r.stars >= 4).length}</div>
-                    <div className="text-xs text-gray-500 mt-1 uppercase tracking-wide">4-5 estrelas ✅</div>
+                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
+                    <div className="text-sm font-bold text-gray-400 uppercase tracking-widest">Satisfação</div>
+                    <div className="text-4xl font-black text-green-600 mt-2">
+                        {ratings.length ? Math.round((ratings.filter(r => r.stars >= 4).length / ratings.length) * 100) : 0}%
+                    </div>
+                    <p className="text-xs text-gray-400 mt-2">Baseado em avaliações 4-5 estrelas.</p>
                 </div>
             </div>
 
-            {/* Ratings list */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            {/* Ratings List */}
+            <div className="space-y-4">
                 {loading ? (
-                    <div className="p-8 text-center text-gray-400 animate-pulse">Carregando...</div>
+                    <div className="grid grid-cols-1 gap-4">
+                        {[1, 2, 3].map(i => <div key={i} className="h-32 bg-gray-100 animate-pulse rounded-2xl"></div>)}
+                    </div>
                 ) : ratings.length === 0 ? (
-                    <div className="p-8 text-center text-gray-400">
-                        <div className="text-4xl mb-3">⭐</div>
-                        <p>Nenhuma avaliação ainda.</p>
-                        <p className="text-xs mt-1">As avaliações aparecem após pedidos serem concluídos.</p>
+                    <div className="bg-white rounded-3xl p-12 text-center border-2 border-dashed border-gray-100">
+                        <div className="text-6xl mb-4">📭</div>
+                        <h3 className="text-xl font-bold text-gray-700">Tudo calmo por aqui</h3>
+                        <p className="text-gray-400 max-w-xs mx-auto mt-2">As avaliações aparecerão conforme os clientes concluírem seus pedidos.</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-gray-100">
-                        {ratings.map(r => (
-                            <div key={r.id} className="p-4 hover:bg-gray-50 transition">
-                                <div className="flex items-start justify-between gap-3 flex-wrap">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
+                    ratings.map(r => {
+                        const sentiment = getSentiment(r.stars);
+                        return (
+                            <div key={r.id} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-all group relative overflow-hidden">
+                                <div className={`absolute left-0 top-0 bottom-0 w-1 ${r.stars >= 4 ? 'bg-green-500' : r.stars === 3 ? 'bg-yellow-500' : 'bg-red-500'}`}></div>
+
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
                                             <Stars n={r.stars} />
-                                            <span className="text-sm font-black text-gray-700">{r.customer_name || 'Cliente'}</span>
+                                            <span className="text-lg font-black text-gray-800">{r.customer_name || 'Cliente'}</span>
+                                            <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${sentiment.color}`}>
+                                                {sentiment.icon} {sentiment.label}
+                                            </span>
                                         </div>
-                                        {r.comment && (
-                                            <p className="text-sm text-gray-600 italic mt-1">"{r.comment}"</p>
+                                        {r.comment ? (
+                                            <p className="text-gray-600 bg-gray-50 p-4 rounded-2xl mt-3 italic relative">
+                                                <span className="text-3xl text-gray-200 absolute -top-2 left-2 font-serif opacity-50">"</span>
+                                                {r.comment}
+                                            </p>
+                                        ) : (
+                                            <p className="text-gray-400 text-sm mt-2 italic">Sem comentário adicional.</p>
                                         )}
-                                        <p className="text-xs text-gray-400 mt-1.5">
-                                            Pedido #{r.order_id.slice(0, 8).toUpperCase()} · R$ {(r.total_cents / 100).toFixed(2).replace('.', ',')} ·{' '}
-                                            {new Date(r.created_at).toLocaleDateString('pt-BR')}
-                                        </p>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full text-xs font-bold flex-shrink-0 ${r.stars >= 4 ? 'bg-green-100 text-green-700' : r.stars === 3 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-600'}`}>
-                                        {r.stars >= 4 ? '😄 Ótimo' : r.stars === 3 ? '😐 Regular' : '😞 Ruim'}
+                                    <div className="text-right flex flex-col items-end gap-1">
+                                        <div className="text-sm font-black text-gray-800">Pedido #{r.order_id.slice(0, 8).toUpperCase()}</div>
+                                        <div className="text-xs text-gray-400">R$ {(r.total_cents / 100).toFixed(2).replace('.', ',')}</div>
+                                        <div className="text-[10px] text-gray-300 font-bold uppercase mt-2">{new Date(r.created_at).toLocaleString('pt-BR')}</div>
                                     </div>
                                 </div>
                             </div>
-                        ))}
-                    </div>
+                        );
+                    })
                 )}
             </div>
         </div>

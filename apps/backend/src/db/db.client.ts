@@ -1,18 +1,86 @@
 import sqlite3 from 'sqlite3';
 import { open, Database } from 'sqlite';
 import path from 'path';
+import { Pool } from 'pg';
+import dotenv from 'dotenv';
 
-let dbInstance: Database | null = null;
+dotenv.config();
 
-export async function getDb(): Promise<Database> {
+// Minimal interface to support both drivers
+export interface IDatabase {
+    exec(sql: string): Promise<void>;
+    all(sql: string, params?: any[]): Promise<any[]>;
+    get(sql: string, params?: any[]): Promise<any>;
+    run(sql: string, params?: any[]): Promise<any>;
+}
+
+let dbInstance: any = null;
+let pgPool: Pool | null = null;
+
+export async function getDb(): Promise<any> {
     if (dbInstance) return dbInstance;
 
-    dbInstance = await open({
-        filename: path.resolve(process.cwd(), 'database.sqlite'),
-        driver: sqlite3.Database
-    });
+    const isPostgres = process.env.DATABASE_URL?.startsWith('postgres');
 
-    console.log('✅ SQLite Local Database connected successfully.');
+    if (isPostgres) {
+        if (!pgPool) {
+            pgPool = new Pool({
+                connectionString: process.env.DATABASE_URL,
+                max: 20, // Max concurrent connections for Enterprise
+                idleTimeoutMillis: 30000,
+                connectionTimeoutMillis: 2000,
+            });
+        }
+
+        console.log('✅ PostgreSQL Database connected successfully.');
+
+        // Wrapper para manter compatibilidade com interface SQLite (run/get/all)
+        dbInstance = {
+            run: async (sql: string, params: any[] = []) => {
+                const client = await pgPool!.connect();
+                try {
+                    const res = await client.query(sql.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+                    return { lastID: null, changes: res.rowCount };
+                } finally {
+                    client.release();
+                }
+            },
+            get: async (sql: string, params: any[] = []) => {
+                const client = await pgPool!.connect();
+                try {
+                    const res = await client.query(sql.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+                    return res.rows[0];
+                } finally {
+                    client.release();
+                }
+            },
+            all: async (sql: string, params: any[] = []) => {
+                const client = await pgPool!.connect();
+                try {
+                    const res = await client.query(sql.replace(/\?/g, (_, i) => `$${i + 1}`), params);
+                    return res.rows;
+                } finally {
+                    client.release();
+                }
+            },
+            exec: async (sql: string) => {
+                const client = await pgPool!.connect();
+                try {
+                    return await client.query(sql);
+                } finally {
+                    client.release();
+                }
+            }
+        };
+    } else {
+        // SQLite fallback for local dev
+        dbInstance = await open({
+            filename: process.env.DATABASE_URL || './database.sqlite',
+            driver: sqlite3.Database
+        });
+        console.log('✅ SQLite Local Database connected successfully.');
+    }
+
     return dbInstance;
 }
 
@@ -33,6 +101,7 @@ export async function setupDatabase() {
             subscription_plan TEXT DEFAULT 'starter', -- 'starter', 'pro', 'enterprise'
             subscription_status TEXT DEFAULT 'active',
             onboarding_step INTEGER DEFAULT 0,
+            owner_id TEXT, -- Para agrupar múltiplas lojas sob o mesmo dono
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
     `);
@@ -61,6 +130,8 @@ export async function setupDatabase() {
             name TEXT NOT NULL,
             phone TEXT NOT NULL,
             email TEXT,
+            otp_code TEXT,
+            otp_expires_at DATETIME,
             tags TEXT,
             notes TEXT,
             last_order_at DATETIME,
@@ -82,6 +153,8 @@ export async function setupDatabase() {
             delivery_fee_cents INTEGER NOT NULL,
             total_cents INTEGER NOT NULL,
             address_text TEXT NOT NULL,
+            latitude REAL,
+            longitude REAL,
             notes TEXT,
             payment_status TEXT DEFAULT 'pending_payment',
             payment_provider TEXT,
@@ -129,6 +202,19 @@ export async function setupDatabase() {
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN subscription_plan TEXT DEFAULT 'starter'"); } catch (e) { }
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN subscription_status TEXT DEFAULT 'active'"); } catch (e) { }
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN onboarding_step INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN owner_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN custom_domain TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN theme_id TEXT DEFAULT 'classic'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN primary_color TEXT DEFAULT '#7c3aed'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN secondary_color TEXT DEFAULT '#ffffff'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN font_family TEXT DEFAULT 'Inter'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN facebook_pixel_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN google_analytics_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN tiktok_pixel_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN pricing_rules TEXT"); } catch (e) { } // JSON string
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN yield_balance_cents INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN franchise_id TEXT"); } catch (e) { }
+
 
     // Set default tenant as store mode
     try { await db.exec("UPDATE restaurants SET mode = 'store', subscription_plan = 'enterprise' WHERE id = 'default_tenant'"); } catch (e) { }
@@ -138,6 +224,16 @@ export async function setupDatabase() {
     try { await db.exec("ALTER TABLE customers ADD COLUMN birthday DATE"); } catch (e) { }
 
     try { await db.exec("ALTER TABLE orders ADD COLUMN restaurant_id TEXT DEFAULT 'default_tenant'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN source TEXT DEFAULT 'internal'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN external_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN fiscal_status TEXT DEFAULT 'pending'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN nfe_number TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN nfe_url TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN tax_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN type TEXT DEFAULT 'delivery'"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN table_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN is_surge INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE orders ADD COLUMN is_happy_hour INTEGER DEFAULT 0"); } catch (e) { }
 
     // CRM Migrations
     try { await db.exec("ALTER TABLE customers ADD COLUMN email TEXT"); } catch (e) { }
@@ -145,7 +241,28 @@ export async function setupDatabase() {
     try { await db.exec("ALTER TABLE customers ADD COLUMN notes TEXT"); } catch (e) { }
     try { await db.exec("ALTER TABLE customers ADD COLUMN last_order_at DATETIME"); } catch (e) { }
     try { await db.exec("ALTER TABLE customers ADD COLUMN total_orders INTEGER DEFAULT 0"); } catch (e) { }
-    try { await db.exec("ALTER TABLE customers ADD COLUMN total_spent_cents INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE inventory_items ADD COLUMN acquisition_cost_cents INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE inventory_items ADD COLUMN min_stock REAL DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE customers ADD COLUMN otp_code TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE customers ADD COLUMN tax_id TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE customer_campaigns ADD COLUMN scheduled_for DATETIME"); } catch (e) { }
+
+    // Customer Addresses Table
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS customer_addresses (
+            id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL,
+            label TEXT, -- 'Casa', 'Trabalho', etc.
+            street TEXT NOT NULL,
+            number TEXT NOT NULL,
+            complement TEXT,
+            neighborhood TEXT NOT NULL,
+            city TEXT NOT NULL,
+            is_default INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        );
+    `);
 
     // ERP: Inventory & Recipes Tables
     await db.exec(`
@@ -156,8 +273,8 @@ export async function setupDatabase() {
             sku TEXT,
             unit TEXT NOT NULL,
             current_qty REAL DEFAULT 0,
-            min_qty REAL DEFAULT 0,
-            cost_cents INTEGER DEFAULT 0,
+            min_stock REAL DEFAULT 0,
+            acquisition_cost_cents INTEGER DEFAULT 0,
             supplier TEXT,
             active INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -193,6 +310,163 @@ export async function setupDatabase() {
             ref_order_id TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (inventory_item_id) REFERENCES inventory_items(id)
+        );
+
+        -- CRM & Marketing Tables
+        CREATE TABLE IF NOT EXISTS promo_codes (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            code TEXT NOT NULL,
+            type TEXT NOT NULL, -- 'fixed' or 'percentage'
+            value INTEGER NOT NULL,
+            min_order_value_cents INTEGER DEFAULT 0,
+            max_discount_cents INTEGER,
+            usage_limit INTEGER,
+            used_count INTEGER DEFAULT 0,
+            expires_at DATETIME,
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(restaurant_id, code)
+        );
+
+        CREATE TABLE IF NOT EXISTS marketing_campaigns (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL,
+            message_template TEXT NOT NULL,
+            audience_filter TEXT,
+            status TEXT DEFAULT 'draft',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Financial Tables
+        CREATE TABLE IF NOT EXISTS cash_sessions (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            opened_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            closed_at DATETIME,
+            initial_value_cents INTEGER NOT NULL,
+            final_value_cents INTEGER,
+            expected_value_cents INTEGER,
+            status TEXT DEFAULT 'open' -- 'open', 'closed'
+        );
+
+        CREATE TABLE IF NOT EXISTS financial_entries (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            cash_session_id TEXT,
+            type TEXT NOT NULL, -- 'in' (suprimento/venda), 'out' (sangria/despesa)
+            category TEXT NOT NULL, -- 'sale', 'supply', 'bleed', 'expense'
+            value_cents INTEGER NOT NULL,
+            description TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (cash_session_id) REFERENCES cash_sessions(id)
+        );
+
+        -- Supply Chain Management
+        CREATE TABLE IF NOT EXISTS suppliers (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            contact_name TEXT,
+            phone TEXT,
+            email TEXT,
+            category TEXT, -- 'food', 'packaging', 'service'
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS inventory_purchases (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            supplier_id TEXT NOT NULL,
+            total_value_cents INTEGER NOT NULL,
+            status TEXT DEFAULT 'completed', -- 'pending', 'completed', 'cancelled'
+            purchase_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+            observation TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS inventory_purchase_items (
+            id TEXT PRIMARY KEY,
+            purchase_id TEXT,
+            inventory_item_id TEXT,
+            quantity REAL,
+            unit_price_cents INTEGER,
+            total_price_cents INTEGER,
+            FOREIGN KEY(purchase_id) REFERENCES inventory_purchases(id),
+            FOREIGN KEY(inventory_item_id) REFERENCES inventory_items(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS restaurant_tables (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT,
+            number TEXT,
+            capacity INTEGER,
+            location TEXT,
+            status TEXT DEFAULT 'free', -- 'free', 'occupied', 'check_requested'
+            qr_code_token TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS table_orders (
+            table_id TEXT,
+            order_id TEXT,
+            PRIMARY KEY(table_id, order_id),
+            FOREIGN KEY(table_id) REFERENCES restaurant_tables(id),
+            FOREIGN KEY(order_id) REFERENCES orders(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS marketing_campaign_messages (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            message TEXT NOT NULL,
+            filters TEXT, -- JSON string
+            status TEXT DEFAULT 'pending', -- 'pending', 'sending', 'completed', 'failed'
+            total_target INTEGER DEFAULT 0,
+            sent_count INTEGER DEFAULT 0,
+            error_count INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS marketing_campaign_deliveries (
+            id TEXT PRIMARY KEY,
+            campaign_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL,
+            status TEXT NOT NULL, -- 'sent', 'failed'
+            error_message TEXT,
+            sent_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (campaign_id) REFERENCES marketing_campaigns(id),
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS notification_logs (
+            id TEXT PRIMARY KEY,
+            order_id TEXT,
+            phone TEXT,
+            event TEXT NOT NULL,
+            message TEXT,
+            status TEXT NOT NULL, -- 'sent', 'failed', 'skipped'
+            provider TEXT NOT NULL,
+            error_message TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS whatsapp_configs (
+            restaurant_id TEXT PRIMARY KEY,
+            base_url TEXT NOT NULL,
+            instance TEXT NOT NULL,
+            apikey TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
         );
     `);
 
@@ -353,17 +627,27 @@ export async function setupDatabase() {
             FOREIGN KEY (order_id) REFERENCES orders(id)
         );
 
-        CREATE INDEX IF NOT EXISTS idx_drivers_tenant ON drivers(restaurant_id);
-        CREATE INDEX IF NOT EXISTS idx_driver_orders_tenant ON driver_orders(restaurant_id);
         CREATE INDEX IF NOT EXISTS idx_driver_orders_did ON driver_orders(driver_id);
+
+        -- Safe Migrations 
+        try { await db.exec("ALTER TABLE driver_orders ADD COLUMN settled INTEGER DEFAULT 0"); } catch (e) { }
+        try { await db.exec("ALTER TABLE driver_orders ADD COLUMN distance_km REAL"); } catch (e) { }
+        try { await db.exec("ALTER TABLE driver_orders ADD COLUMN estimated_minutes INTEGER"); } catch (e) { }
+        try { await db.exec("ALTER TABLE drivers ADD COLUMN rating REAL DEFAULT 5.0"); } catch (e) { }
+        try { await db.exec("ALTER TABLE drivers ADD COLUMN is_online INTEGER DEFAULT 0"); } catch (e) { }
+        try { await db.exec("ALTER TABLE drivers ADD COLUMN last_dispatch_at DATETIME"); } catch (e) { }
+        try { await db.exec("ALTER TABLE drivers ADD COLUMN access_code TEXT"); } catch (e) { }
     `);
 
     // Driver System Refinement (Phase 17)
     try { await db.exec("ALTER TABLE drivers ADD COLUMN cnh TEXT"); } catch (e) { }
     try { await db.exec("ALTER TABLE drivers ADD COLUMN pix_key TEXT"); } catch (e) { }
+    try { await db.exec("ALTER TABLE drivers ADD COLUMN is_online INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE drivers ADD COLUMN last_dispatch_at DATETIME"); } catch (e) { }
     try { await db.exec("ALTER TABLE driver_orders ADD COLUMN distance_km REAL DEFAULT 0"); } catch (e) { }
     try { await db.exec("ALTER TABLE driver_orders ADD COLUMN estimated_time_minutes INTEGER DEFAULT 0"); } catch (e) { }
-    try { await db.exec("ALTER TABLE driver_orders ADD COLUMN settled INTEGER DEFAULT 0"); } catch (e) { } // 1 if paid to driver
+    try { await db.exec("ALTER TABLE driver_orders ADD COLUMN settled INTEGER DEFAULT 0"); } catch (e) { }
+    try { await db.exec("ALTER TABLE drivers ADD COLUMN access_code TEXT"); } catch (e) { }
 
     // Safe migration: add payment_method and coupon columns to orders
     try { await db.exec("ALTER TABLE orders ADD COLUMN payment_method TEXT DEFAULT 'pix'"); } catch { }
@@ -400,11 +684,41 @@ export async function setupDatabase() {
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN description TEXT"); } catch { }
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN address TEXT"); } catch { }
     try { await db.exec("ALTER TABLE restaurants ADD COLUMN whatsapp TEXT"); } catch { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN primary_color TEXT DEFAULT '#9333ea'"); } catch { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN secondary_color TEXT DEFAULT '#ffffff'"); } catch { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN cnpj TEXT"); } catch { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN state_registration TEXT"); } catch { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN focus_nfe_token TEXT"); } catch { }
+    try { await db.exec("ALTER TABLE restaurants ADD COLUMN fiscal_environment TEXT DEFAULT 'sandbox'"); } catch { }
 
     // Menu item fields
     try { await db.exec("ALTER TABLE menu_items ADD COLUMN out_of_stock INTEGER DEFAULT 0"); } catch { }
     try { await db.exec("ALTER TABLE menu_items ADD COLUMN hidden INTEGER DEFAULT 0"); } catch { }
     try { await db.exec("ALTER TABLE menu_items ADD COLUMN sort_order INTEGER DEFAULT 0"); } catch { }
+
+    // --- Logs ---
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS system_logs (
+            id TEXT PRIMARY KEY,
+            level TEXT NOT NULL,
+            message TEXT NOT NULL,
+            context TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    // --- Logistics (Driver Tracking) ---
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS driver_locations (
+            driver_id TEXT PRIMARY KEY,
+            order_id TEXT,
+            latitude REAL NOT NULL,
+            longitude REAL NOT NULL,
+            heading REAL,
+            last_update DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(order_id) REFERENCES orders(id)
+        )
+    `);
 
     // Restaurant Settings (key-value store per tenant)
     await db.exec(`
@@ -519,11 +833,254 @@ export async function setupDatabase() {
         CREATE INDEX IF NOT EXISTS idx_campaigns_tenant ON customer_campaigns(restaurant_id);
         CREATE INDEX IF NOT EXISTS idx_campaigns_customer ON customer_campaigns(customer_id);
 
-        -- Performance Optimization Indices (Phase 20)
+        -- Performance Optimization Indices (Phase 31)
         CREATE INDEX IF NOT EXISTS idx_menu_tenant_cat ON menu_items(restaurant_id, category);
+        CREATE INDEX IF NOT EXISTS idx_menu_tenant_vis ON menu_items(restaurant_id, hidden, available);
         CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
-        CREATE INDEX IF NOT EXISTS idx_orders_created ON orders(created_at);
         CREATE INDEX IF NOT EXISTS idx_orders_tenant_created ON orders(restaurant_id, created_at);
+        CREATE INDEX IF NOT EXISTS idx_orders_tenant_status ON orders(restaurant_id, status);
+        CREATE INDEX IF NOT EXISTS idx_orders_payment_status ON orders(payment_status);
+        CREATE INDEX IF NOT EXISTS idx_customers_tenant_phone ON customers(restaurant_id, phone);
+
+        -- Enterprise Security & RBAC (Phase 35)
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            username TEXT NOT NULL,
+            password_hash TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'staff', -- 'owner' | 'manager' | 'staff'
+            last_login DATETIME,
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            UNIQUE(restaurant_id, username)
+        );
+
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            action TEXT NOT NULL,
+            resource TEXT NOT NULL,
+            resource_id TEXT,
+            payload TEXT, -- JSON details
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (user_id) REFERENCES users(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(restaurant_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_tenant ON audit_logs(restaurant_id);
+        CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id);
+
+        -- Marketplace Hub (Phase 45)
+        CREATE TABLE IF NOT EXISTS marketplace_integrations (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            platform TEXT NOT NULL, -- 'ifood', 'rappi'
+            status TEXT DEFAULT 'disconnected', -- 'connected', 'disconnected'
+            config_json TEXT, -- API keys, tokens, etc.
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            UNIQUE(restaurant_id, platform)
+        );
+
+        CREATE TABLE IF NOT EXISTS product_mappings (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            internal_id TEXT NOT NULL,
+            external_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (internal_id) REFERENCES menu_items(id),
+            UNIQUE(restaurant_id, internal_id, platform),
+            UNIQUE(restaurant_id, external_id, platform)
+        );
+
+        CREATE TABLE IF NOT EXISTS customer_wallets (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL,
+            balance_cents INTEGER DEFAULT 0,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (customer_id) REFERENCES customers(id),
+            UNIQUE(restaurant_id, customer_id)
+        );
+
+        CREATE TABLE IF NOT EXISTS wallet_movements (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL,
+            type TEXT NOT NULL, -- 'credit', 'debit'
+            amount_cents INTEGER NOT NULL,
+            reason TEXT NOT NULL, -- 'referral', 'cashback', 'refund', 'purchase'
+            ref_order_id TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS referrals (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            referrer_id TEXT NOT NULL, -- Quem indicou
+            referred_id TEXT NOT NULL, -- Quem foi indicado
+            status TEXT DEFAULT 'pending', -- 'pending', 'rewarded'
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id),
+            FOREIGN KEY (referrer_id) REFERENCES customers(id),
+            FOREIGN KEY (referred_id) REFERENCES customers(id),
+            UNIQUE(referred_id) -- Um cliente só pode ser indicado uma vez
+        );
+
+        -- Add columns to customers
+        try { await db.exec("ALTER TABLE customers ADD COLUMN referral_code TEXT"); } catch (e) { }
+        try { await db.exec("ALTER TABLE customers ADD COLUMN is_vip INTEGER DEFAULT 0"); } catch (e) { }
+        try { await db.exec("ALTER TABLE customers ADD COLUMN vip_expires_at DATETIME"); } catch (e) { }
+        
+        -- Indices for Loyalty 2.0
+        CREATE INDEX IF NOT EXISTS idx_wallet_cust ON customer_wallets(customer_id);
+        CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+        CREATE INDEX IF NOT EXISTS idx_customers_ref_code ON customers(referral_code);
+
+        -- Marketplace Logs (Phase 48)
+        CREATE TABLE IF NOT EXISTS marketplace_logs (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            platform TEXT NOT NULL,
+            action TEXT NOT NULL,
+            details TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_mkt_logs_tenant ON marketplace_logs(restaurant_id);
+
+        -- Franchise Engine (Phase 80)
+        CREATE TABLE IF NOT EXISTS franchise_locations (
+            id TEXT PRIMARY KEY,
+            franchise_id TEXT NOT NULL,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            slug TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (restaurant_id) REFERENCES restaurants(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS franchise_plans (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            description TEXT,
+            monthly_price_cents INTEGER NOT NULL,
+            commission_bps INTEGER DEFAULT 0, -- Basis points (100 = 1%)
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS franchise_billing (
+            id TEXT PRIMARY KEY,
+            franchise_id TEXT NOT NULL,
+            restaurant_id TEXT NOT NULL,
+            period_start DATETIME NOT NULL,
+            period_end DATETIME NOT NULL,
+            base_fee_cents INTEGER NOT NULL,
+            commission_cents INTEGER NOT NULL,
+            total_cents INTEGER NOT NULL,
+            status TEXT DEFAULT 'pending', -- 'pending', 'paid', 'overdue'
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS franchise_settings (
+            id TEXT PRIMARY KEY,
+            franchise_id TEXT NOT NULL,
+            key TEXT NOT NULL,
+            value TEXT,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(franchise_id, key)
+        );
+
+        -- Growth Engine (Phase 78)
+        CREATE TABLE IF NOT EXISTS customer_segments (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            description TEXT,
+            query_json TEXT NOT NULL, -- Critérios de segmentação
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS campaigns (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            segment_id TEXT,
+            type TEXT NOT NULL, -- 'whatsapp', 'email', 'push'
+            status TEXT DEFAULT 'draft', -- 'draft', 'scheduled', 'sending', 'completed'
+            message_template TEXT NOT NULL,
+            scheduled_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (segment_id) REFERENCES customer_segments(id)
+        );
+
+        CREATE TABLE IF NOT EXISTS campaign_logs (
+            id TEXT PRIMARY KEY,
+            campaign_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL,
+            status TEXT NOT NULL, -- 'sent', 'delivered', 'read', 'failed'
+            error_message TEXT,
+            delivered_at DATETIME,
+            read_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (campaign_id) REFERENCES campaigns(id),
+            FOREIGN KEY (customer_id) REFERENCES customers(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_franchise_loc_rest ON franchise_locations(restaurant_id);
+        CREATE INDEX IF NOT EXISTS idx_campaigns_tenant ON campaigns(restaurant_id);
+        CREATE INDEX IF NOT EXISTS idx_campaign_logs_camp ON campaign_logs(campaign_id);
+
+        -- Customer Migration System (Anti-iFood)
+        CREATE TABLE IF NOT EXISTS qr_campaigns (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT,
+            name TEXT,
+            discount_value REAL,
+            discount_type TEXT, -- 'amount' or 'percentage'
+            landing_slug TEXT,
+            scan_count INTEGER DEFAULT 0,
+            conversions INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS qr_scans (
+            id TEXT PRIMARY KEY,
+            campaign_id TEXT,
+            scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            ip_address TEXT,
+            user_agent TEXT
+        );
+
+        CREATE TABLE IF NOT EXISTS coupons (
+            id TEXT PRIMARY KEY,
+            restaurant_id TEXT,
+            code TEXT UNIQUE,
+            discount_value REAL,
+            discount_type TEXT,
+            is_one_time INTEGER DEFAULT 1,
+            usage_limit INTEGER DEFAULT 1,
+            usage_count INTEGER DEFAULT 0,
+            expires_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS customer_sources (
+            customer_id TEXT PRIMARY KEY,
+            source TEXT, -- 'ifood', 'qr_campaign', 'referral', 'organic'
+            campaign_id TEXT,
+            migrated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
     `);
 
     console.log('📦 Database Schema initialized.');

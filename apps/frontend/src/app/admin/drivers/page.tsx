@@ -10,7 +10,7 @@ export default function DriversPage() {
     const [stats, setStats] = useState<Record<string, any>>({});
 
     const [showForm, setShowForm] = useState(false);
-    const [formData, setFormData] = useState({ name: '', phone: '', vehicle: 'Moto' });
+    const [formData, setFormData] = useState({ name: '', phone: '', vehicle: 'Moto', access_code: '' });
 
     const fetchData = async (slug = 'default') => {
         setLoading(true);
@@ -66,7 +66,7 @@ export default function DriversPage() {
                 body: JSON.stringify(formData)
             });
             setShowForm(false);
-            setFormData({ name: '', phone: '', vehicle: 'Moto' });
+            setFormData({ name: '', phone: '', vehicle: 'Moto', access_code: '' });
             fetchData(slug);
         } catch (e) {
             console.error(e);
@@ -146,6 +146,10 @@ export default function DriversPage() {
                             <option value="Carro">Carro</option>
                         </select>
                     </div>
+                    <div className="w-32">
+                        <label className="text-xs font-bold text-gray-500 uppercase">Código App</label>
+                        <input required type="text" maxLength={4} placeholder="1234" className="w-full border p-2 mt-1 rounded outline-none focus:border-purple-500 font-mono" value={formData.access_code} onChange={e => setFormData({ ...formData, access_code: e.target.value })} />
+                    </div>
                     <div className="flex gap-2">
                         <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 font-bold text-gray-500 hover:bg-gray-100 rounded">Cancelar</button>
                         <button type="submit" className="bg-green-600 text-white font-bold px-6 py-2 rounded hover:bg-green-700 shadow-sm">Gravar</button>
@@ -185,7 +189,7 @@ export default function DriversPage() {
                                                         <span className={`w-2 h-2 rounded-full ${drv.status === 'active' ? 'bg-green-500' : 'bg-red-500'}`}></span>
                                                         <div>
                                                             <div>{drv.name}</div>
-                                                            <div className="text-[10px] text-gray-400 font-normal uppercase">{drv.vehicle}</div>
+                                                            <div className="text-[10px] text-gray-400 font-normal uppercase">{drv.vehicle} • Cód: <span className="font-bold text-purple-600">{drv.access_code || '---'}</span></div>
                                                         </div>
                                                     </div>
                                                 </td>

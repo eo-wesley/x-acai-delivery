@@ -1,5 +1,6 @@
 import { getDb } from '../db.client';
 import { randomUUID } from 'crypto';
+import { cacheService } from '../../services/cache.service';
 
 export interface MenuItem {
     id: string;
@@ -27,13 +28,21 @@ export class MenuRepo {
     }
 
     async listMenu(restaurantId: string, availableOnly: boolean = true): Promise<MenuItem[]> {
+        const cacheKey = `menu:${restaurantId}:${availableOnly}`;
+        const cached = await cacheService.get(cacheKey);
+        if (cached) return cached;
+
         const db = await getDb();
         const query = availableOnly
             ? 'SELECT * FROM menu_items WHERE restaurant_id = ? AND available = 1'
             : 'SELECT * FROM menu_items WHERE restaurant_id = ?';
 
         const rows = await db.all(query, [restaurantId]);
-        return rows.map(this.mapToModel);
+        const result = rows.map(this.mapToModel);
+
+        // Cache por 5 minutos para Enterprise
+        await cacheService.set(cacheKey, result, 300);
+        return result;
     }
 
     async searchMenu(restaurantId: string, query: string): Promise<MenuItem[]> {
@@ -55,6 +64,13 @@ export class MenuRepo {
         return this.mapToModel(row);
     }
 
+    async getMenuItemById(restaurantId: string, id: string): Promise<MenuItem | null> {
+        const db = await getDb();
+        const row = await db.get(`SELECT * FROM menu_items WHERE id = ? AND restaurant_id = ?`, [id, restaurantId]);
+        if (!row) return null;
+        return this.mapToModel(row);
+    }
+
     async getMenuByCategory(restaurantId: string, category: string, availableOnly: boolean = true): Promise<MenuItem[]> {
         const db = await getDb();
         const availableClause = availableOnly ? 'AND available = 1' : '';
@@ -72,6 +88,11 @@ export class MenuRepo {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
             [id, data.name, data.description || null, data.price_cents, data.category || null, tagsJson, data.available ? 1 : 0, data.image_url || null, data.restaurant_id || 'default_tenant']
         );
+
+        // Invalidação de Cache
+        await cacheService.del(`menu:${data.restaurant_id}:true`);
+        await cacheService.del(`menu:${data.restaurant_id}:false`);
+
         return id;
     }
 
@@ -94,7 +115,14 @@ export class MenuRepo {
         values.push(id, restaurantId);
 
         const result = await db.run(`UPDATE menu_items SET ${fields.join(', ')} WHERE id = ? AND restaurant_id = ?`, values);
-        return result.changes !== undefined && result.changes > 0;
+        const success = result.changes !== undefined && result.changes > 0;
+
+        if (success) {
+            await cacheService.del(`menu:${restaurantId}:true`);
+            await cacheService.del(`menu:${restaurantId}:false`);
+        }
+
+        return success;
     }
 
     async deleteMenuItem(id: string, restaurantId: string): Promise<boolean> {

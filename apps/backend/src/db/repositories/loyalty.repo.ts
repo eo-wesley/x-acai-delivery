@@ -2,6 +2,8 @@ import { getDb } from '../db.client';
 import { randomUUID } from 'crypto';
 
 export class LoyaltyRepo {
+    // ======================== POINTS SYSTEM (PHASE 4) ========================
+
     async getCustomerPoints(tenantId: string, customerId: string): Promise<number> {
         const db = await getDb();
         const res = await db.get(
@@ -86,6 +88,116 @@ export class LoyaltyRepo {
         return db.all(
             `SELECT * FROM customer_rewards WHERE restaurant_id = ? AND customer_id = ? AND status = 'available' ORDER BY created_at DESC`,
             [tenantId, customerId]
+        );
+    }
+
+    // ======================== WALLET SYSTEM (PHASE 50) ========================
+
+    async getWalletBalance(tenantId: string, customerId: string): Promise<number> {
+        const db = await getDb();
+        const res = await db.get(
+            `SELECT balance_cents FROM customer_wallets WHERE restaurant_id = ? AND customer_id = ?`,
+            [tenantId, customerId]
+        );
+        return res?.balance_cents || 0;
+    }
+
+    async updateWalletBalance(
+        tenantId: string,
+        customerId: string,
+        amountCents: number,
+        type: 'credit' | 'debit',
+        reason: string,
+        refOrderId?: string
+    ) {
+        const db = await getDb();
+        const id = randomUUID();
+
+        // 1. Record movement
+        await db.run(
+            `INSERT INTO wallet_movements (id, restaurant_id, customer_id, type, amount_cents, reason, ref_order_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [id, tenantId, customerId, type, Math.abs(amountCents), reason, refOrderId || null]
+        );
+
+        // 2. Update actual balance
+        const delta = type === 'credit' ? Math.abs(amountCents) : -Math.abs(amountCents);
+
+        await db.run(`
+            INSERT INTO customer_wallets (id, restaurant_id, customer_id, balance_cents)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(restaurant_id, customer_id) DO UPDATE SET
+                balance_cents = balance_cents + ?,
+                updated_at = CURRENT_TIMESTAMP
+        `, [randomUUID(), tenantId, customerId, delta, delta]);
+
+        return id;
+    }
+
+    // ======================== REFERRAL SYSTEM (PHASE 50) ========================
+
+    async processReferral(tenantId: string, referralCode: string, referredCustomerId: string) {
+        const db = await getDb();
+
+        const referrer = await db.get(
+            `SELECT id FROM customers WHERE restaurant_id = ? AND referral_code = ?`,
+            [tenantId, referralCode]
+        );
+
+        if (!referrer) throw new Error('Código de indicação inválido.');
+        if (referrer.id === referredCustomerId) throw new Error('Você não pode indicar a si mesmo.');
+
+        try {
+            await db.run(
+                `INSERT INTO referrals (id, restaurant_id, referrer_id, referred_id, status)
+                 VALUES (?, ?, ?, ?, 'pending')`,
+                [randomUUID(), tenantId, referrer.id, referredCustomerId]
+            );
+        } catch (e: any) {
+            if (e.message.includes('UNIQUE constraint failed')) {
+                throw new Error('Este cliente já foi indicado anteriormente.');
+            }
+            throw e;
+        }
+    }
+
+    async rewardReferral(tenantId: string, referredCustomerId: string) {
+        const db = await getDb();
+
+        const referral = await db.get(
+            `SELECT referrer_id FROM referrals WHERE restaurant_id = ? AND referred_id = ? AND status = 'pending'`,
+            [tenantId, referredCustomerId]
+        );
+
+        if (referral) {
+            const rewardAmount = 500;
+
+            await this.updateWalletBalance(
+                tenantId,
+                referral.referrer_id,
+                rewardAmount,
+                'credit',
+                'Bônus de Indicação'
+            );
+
+            await db.run(
+                `UPDATE referrals SET status = 'rewarded' WHERE restaurant_id = ? AND referred_id = ?`,
+                [tenantId, referredCustomerId]
+            );
+        }
+    }
+
+    // ======================== VIP CLUB (PHASE 50) ========================
+
+    async toggleVip(tenantId: string, customerId: string, isVip: boolean, durationDays = 30) {
+        const db = await getDb();
+        const expiresAt = isVip
+            ? new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000).toISOString()
+            : null;
+
+        await db.run(
+            `UPDATE customers SET is_vip = ?, vip_expires_at = ? WHERE id = ? AND restaurant_id = ?`,
+            [isVip ? 1 : 0, expiresAt, customerId, tenantId]
         );
     }
 }

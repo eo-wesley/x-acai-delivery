@@ -2,136 +2,122 @@ import { getDb } from '../db.client';
 import { randomUUID } from 'crypto';
 
 export class FinanceRepo {
-
-    // --- CASH SESSIONS ---
-    async getActiveSession(restaurantId: string) {
+    async getCurrentSession(tenantId: string) {
         const db = await getDb();
-        return db.get(`SELECT * FROM cash_sessions WHERE restaurant_id = ? AND status = 'open' LIMIT 1`, [restaurantId]);
+        return db.get(`
+            SELECT * FROM cash_sessions 
+            WHERE restaurant_id = ? AND status = 'open'
+            ORDER BY opened_at DESC
+        `, [tenantId]);
     }
 
-    async getOrOpenSession(restaurantId: string) {
-        let session = await this.getActiveSession(restaurantId);
-        if (!session) {
-            const db = await getDb();
-            const id = randomUUID();
-            await db.run(
-                `INSERT INTO cash_sessions (id, restaurant_id, opening_amount, status) VALUES (?, ?, ?, ?)`,
-                [id, restaurantId, 0, 'open']
-            );
-            session = await this.getActiveSession(restaurantId);
+    async openCash(tenantId: string, userId: string, initialValueCents: number) {
+        const db = await getDb();
+        const id = randomUUID();
+        await db.run(`
+            INSERT INTO cash_sessions (id, restaurant_id, user_id, initial_value_cents, status)
+            VALUES (?, ?, ?, ?, 'open')
+        `, [id, tenantId, userId, initialValueCents]);
+        return id;
+    }
+
+    async closeCash(tenantId: string, sessionId: string, finalValueCents: number) {
+        const db = await getDb();
+
+        // Calcular valor esperado (inicial + entradas - saídas)
+        const entries = await db.all(`
+            SELECT type, SUM(value_cents) as total
+            FROM financial_entries
+            WHERE cash_session_id = ?
+            GROUP BY type
+        `, [sessionId]);
+
+        const totalIn = entries.find(e => e.type === 'in')?.total || 0;
+        const totalOut = entries.find(e => e.type === 'out')?.total || 0;
+
+        const session = await db.get(`SELECT initial_value_cents FROM cash_sessions WHERE id = ?`, [sessionId]);
+        const expectedValueCents = (session?.initial_value_cents || 0) + totalIn - totalOut;
+
+        await db.run(`
+            UPDATE cash_sessions 
+            SET final_value_cents = ?, expected_value_cents = ?, status = 'closed', closed_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND restaurant_id = ?
+        `, [finalValueCents, expectedValueCents, sessionId, tenantId]);
+
+        return { expectedValueCents };
+    }
+
+    async addEntry(tenantId: string, sessionId: string | null, data: { type: 'in' | 'out', category: string, valueCents: number, description?: string }) {
+        const db = await getDb();
+        const id = randomUUID();
+        await db.run(`
+            INSERT INTO financial_entries (id, restaurant_id, cash_session_id, type, category, value_cents, description)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [id, tenantId, sessionId, data.type, data.category, data.valueCents, data.description || null]);
+        return id;
+    }
+
+    async listEntries(tenantId: string, sessionId?: string) {
+        const db = await getDb();
+        if (sessionId) {
+            return db.all(`SELECT * FROM financial_entries WHERE cash_session_id = ? ORDER BY created_at DESC`, [sessionId]);
         }
-        return session;
+        return db.all(`SELECT * FROM financial_entries WHERE restaurant_id = ? ORDER BY created_at DESC LIMIT 50`, [tenantId]);
     }
 
-    async closeSession(restaurantId: string, closingAmount: number) {
+    async getDRE(tenantId: string, startDate: string, endDate: string) {
         const db = await getDb();
-        const active = await this.getActiveSession(restaurantId);
-        if (!active) throw new Error('No active cash session found');
 
-        await db.run(
-            `UPDATE cash_sessions SET status = 'closed', closed_at = CURRENT_TIMESTAMP, closing_amount = ? WHERE id = ?`,
-            [closingAmount, active.id]
-        );
-        return true;
-    }
+        // Receitas (Sales)
+        const sales = await db.get(`
+            SELECT SUM(total_cents) as total FROM orders 
+            WHERE restaurant_id = ? AND status = 'completed' 
+            AND created_at BETWEEN ? AND ?
+        `, [tenantId, startDate, endDate]);
 
-    // --- CASH MOVEMENTS & PAYMENTS ---
-    async registerMovement(restaurantId: string, sessionId: string, type: 'in' | 'out', method: string, amount: number, reason: string, refOrderId?: string) {
-        const db = await getDb();
-        const id = randomUUID();
-        await db.run(
-            `INSERT INTO cash_movements (id, restaurant_id, session_id, type, method, amount, reason, ref_order_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, restaurantId, sessionId, type, method, amount, reason, refOrderId || null]
-        );
-        return id;
-    }
+        // Entradas Manuais
+        const manualIn = await db.get(`
+            SELECT SUM(value_cents) as total FROM financial_entries 
+            WHERE restaurant_id = ? AND type = 'in' AND category != 'sale'
+            AND created_at BETWEEN ? AND ?
+        `, [tenantId, startDate, endDate]);
 
-    async registerPayment(restaurantId: string, orderId: string, method: string, amount: number) {
-        const db = await getDb();
-        const id = randomUUID();
-        await db.run(
-            `INSERT INTO payments (id, restaurant_id, order_id, method, amount, status)
-            VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, restaurantId, orderId, method, amount, 'approved']
-        );
-        return id;
-    }
+        // Saídas (Despesas/Sangrias)
+        const totalOut = await db.get(`
+            SELECT SUM(value_cents) as total FROM financial_entries 
+            WHERE restaurant_id = ? AND type = 'out'
+            AND created_at BETWEEN ? AND ?
+        `, [tenantId, startDate, endDate]);
 
-    async getDailySummary(restaurantId: string, dateStr: string) {
-        // dateStr format: YYYY-MM-DD
-        const db = await getDb();
-        // sum payments
-        const payments = await db.all(
-            `SELECT method, SUM(amount) as total FROM payments WHERE restaurant_id = ? AND date(created_at) = ? AND status = 'approved' GROUP BY method`,
-            [restaurantId, dateStr]
-        );
-
-        const ordersRows = await db.get(
-            `SELECT COUNT(*) as qtd FROM orders WHERE restaurant_id = ? AND date(created_at) = ?`,
-            [restaurantId, dateStr]
-        );
+        const revenue = (sales?.total || 0) + (manualIn?.total || 0);
+        const expenses = totalOut?.total || 0;
 
         return {
-            date: dateStr,
-            payments,
-            totalOrders: ordersRows?.qtd || 0
+            revenue_cents: revenue,
+            expenses_cents: expenses,
+            net_profit_cents: revenue - expenses
         };
     }
 
-    // --- EXPENSES ---
-    async registerExpense(restaurantId: string, payload: { date: string, category: string, description: string, amount: number, method: string }) {
+    async registerPayment(tenantId: string, orderId: string, method: string, amountCents: number) {
         const db = await getDb();
         const id = randomUUID();
-        await db.run(
-            `INSERT INTO expenses (id, restaurant_id, date, category, description, amount, method)
-            VALUES (?, ?, ?, ?, ?, ?, ?)`,
-            [id, restaurantId, payload.date, payload.category, payload.description || null, payload.amount, payload.method || null]
-        );
+        await db.run(`
+            INSERT INTO payments (id, restaurant_id, order_id, method, amount, status)
+            VALUES (?, ?, ?, ?, ?, 'approved')
+        `, [id, tenantId, orderId, method, amountCents]);
+
+        // Também registrar no caixa se houver uma sessão aberta
+        const session = await this.getCurrentSession(tenantId);
+        if (session) {
+            await this.addEntry(tenantId, session.id, {
+                type: 'in',
+                category: 'sale',
+                valueCents: amountCents,
+                description: `Pagamento Pedido ${orderId.substring(0, 8)}`
+            });
+        }
         return id;
-    }
-
-    async listExpenses(restaurantId: string, fromDate: string, toDate: string) {
-        const db = await getDb();
-        return db.all(
-            `SELECT * FROM expenses WHERE restaurant_id = ? AND date >= ? AND date <= ? ORDER BY date DESC, created_at DESC`,
-            [restaurantId, fromDate, toDate]
-        );
-    }
-
-    // --- OVERVIEW (DRE) ---
-    async getFinancialOverview(restaurantId: string, fromDate: string, toDate: string) {
-        const db = await getDb();
-        const incomeRow = await db.get(
-            `SELECT SUM(amount) as total_bruto FROM payments WHERE restaurant_id = ? AND date(created_at) >= ? AND date(created_at) <= ? AND status = 'approved'`,
-            [restaurantId, fromDate, toDate]
-        );
-
-        const expensesRow = await db.get(
-            `SELECT SUM(amount) as total_expenses FROM expenses WHERE restaurant_id = ? AND date >= ? AND date <= ?`,
-            [restaurantId, fromDate, toDate]
-        );
-
-        const totalOrdersRow = await db.get(
-            `SELECT COUNT(*) as qtd FROM orders WHERE restaurant_id = ? AND date(created_at) >= ? AND date(created_at) <= ?`,
-            [restaurantId, fromDate, toDate]
-        );
-
-        const receitaBruta = incomeRow?.total_bruto || 0;
-        const totalDespesas = expensesRow?.total_expenses || 0;
-        const lucroBruto = receitaBruta - totalDespesas;
-        const totalOrders = totalOrdersRow?.qtd || 0;
-        const ticketMedio = totalOrders > 0 ? receitaBruta / totalOrders : 0;
-
-        return {
-            fromDate,
-            toDate,
-            receitaBrutaCents: receitaBruta,
-            despesasCents: totalDespesas,
-            lucroAproximadoCents: lucroBruto,
-            ticketMedioCents: ticketMedio,
-            totalPedidos: totalOrders
-        };
     }
 }
 

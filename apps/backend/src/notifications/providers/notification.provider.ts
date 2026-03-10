@@ -12,7 +12,10 @@ export type NotificationEvent =
     | 'order_delivering'
     | 'order_delivered'
     | 'order_cancelled'
-    | 'order_dispatched';
+    | 'order_dispatched'
+    | 'promotion'
+    | 'stock_alert'
+    | 'marketing_campaign';
 
 export interface OrderItem {
     menuItemId: string;
@@ -29,12 +32,14 @@ export interface OrderItem {
 }
 
 export interface NotificationPayload {
+    restaurantId?: string;
     orderId: string;
     customerPhone?: string;
     customerName?: string;
     restaurantName?: string;
     totalCents?: number;
     event: NotificationEvent;
+    customMessage?: string;
     extra?: {
         items?: OrderItem[];
         paymentMethod?: string;
@@ -90,6 +95,9 @@ export function buildMessage(payload: NotificationPayload): string {
         ? `\n📍 *Endereço:* ${payload.extra.addressText}`
         : '';
 
+    const trackingUrl = `https://${restaurant.toLowerCase().replace(/\s/g, '-')}.delivery/order/${payload.orderId}`;
+    const trackingMsg = `\n\n📍 *Acompanhe seu pedido em tempo real:* \n${trackingUrl}`;
+
     const templates: Record<NotificationEvent, string> = {
         order_created:
             `🍇 Olá${firstName}! Seu pedido *#${orderId}* foi recebido por ${restaurant}! ` +
@@ -97,20 +105,29 @@ export function buildMessage(payload: NotificationPayload): string {
             itemsText +
             total +
             payment +
-            address,
+            address +
+            trackingMsg,
         order_accepted:
-            `✅ ${restaurant}: Seu pedido *#${orderId}* foi *aceito*! Já vamos começar a preparar. Aguarde!`,
+            `✅ ${restaurant}: Seu pedido *#${orderId}* foi *aceito*! Já vamos começar a preparar. ` +
+            trackingMsg,
         order_preparing:
-            `🍳 ${restaurant}: Seu pedido *#${orderId}* está sendo *preparado* com muito carinho! Em breve sai para entrega.`,
+            `🍳 ${restaurant}: Seu pedido *#${orderId}* está sendo *preparado* com muito carinho! ` +
+            trackingMsg,
         order_delivering:
-            `🏍️ ${restaurant}: Seu pedido *#${orderId}* *saiu para entrega*! Nosso entregador já está a caminho.`,
+            `🏍️ ${restaurant}: Seu pedido *#${orderId}* *saiu para entrega*! Nosso entregador já está a caminho. ` +
+            trackingMsg,
         order_delivered:
-            `✅ ${restaurant}: Seu pedido *#${orderId}* foi *entregue*! Obrigado pela preferência. Bom apetite! 🍇`,
+            `✅ ${restaurant}: Seu pedido *#${orderId}* foi *entregue*! Obrigado pela preferência. Bom apetite! 🍇` +
+            `\n\n⭐ *Avalie seu pedido:* \n${trackingUrl}`,
         order_cancelled:
             `❌ ${restaurant}: Infelizmente seu pedido *#${orderId}* foi *cancelado*. Entre em contato conosco para mais informações.`,
         order_dispatched:
-            `🚀 Pedido *#${orderId}* foi despachado para entrega!`,
+            `🚀 Pedido *#${orderId}* foi despachado para entrega! ` +
+            trackingMsg,
+        promotion: payload.customMessage || 'Novidade especial para você! 🍇',
+        stock_alert: payload.extra?.body as string || `⚠️ Alerta de estoque em ${restaurant}`,
+        marketing_campaign: payload.extra?.body as string || `📢 Novidade em ${restaurant}`
     };
 
-    return (payload.extra?.body as string) || templates[payload.event] || `Atualização do pedido #${orderId} — ${restaurant}`;
+    return payload.customMessage || (payload.extra?.body as string) || templates[payload.event] || `Atualização do pedido #${orderId} — ${restaurant}`;
 }

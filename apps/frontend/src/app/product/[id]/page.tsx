@@ -4,6 +4,47 @@ import { useState, useEffect, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, buildCartKey, SelectedOption } from '../../../components/CartContext';
 import { useTenant, getApiBase } from '../../../hooks/useTenant';
+import { Metadata } from 'next';
+
+// ─── Metadata ────────────────────────────────────────────────────────────────
+// This runs on the server to generate SEO tags for WhatsApp/Social sharing
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+    const { id } = await params;
+    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
+    // In server-side, we can't easily use useTenant hook. 
+    // We'd typically read the Host header, but for now we'll fetch with a placeholder slug
+    // or assume 'default' if no other info. A more robust way would be reading headers.
+    const slug = 'default';
+
+    try {
+        const res = await fetch(`${API}/api/${slug}/menu/item/${id}`, { next: { revalidate: 3600 } });
+        const product = await res.json();
+
+        if (!product || !product.id) return { title: 'Produto não encontrado' };
+
+        const price = (product.price_cents / 100).toFixed(2).replace('.', ',');
+
+        return {
+            title: `${product.name} | R$ ${price} | X-Açaí`,
+            description: product.description || `Peça já o seu ${product.name}! Personalize do seu jeito.`,
+            openGraph: {
+                title: `${product.name} - O Melhor Açaí`,
+                description: `Apenas R$ ${price}. Clique para montar o seu do seu jeito! 🥣✨`,
+                images: product.image_url ? [{ url: product.image_url }] : [],
+                type: 'website',
+            },
+            twitter: {
+                card: 'summary_large_image',
+                title: product.name,
+                description: `Apenas R$ ${price}. Peça agora!`,
+                images: product.image_url ? [product.image_url] : [],
+            }
+        };
+    } catch {
+        return { title: 'X-Açaí Delivery' };
+    }
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface OptionItem {
@@ -155,6 +196,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
     // selections[groupId] = array of selected optionItem IDs
     const [selections, setSelections] = useState<Record<string, string[]>>({});
+    const [currentStep, setCurrentStep] = useState(0); // 0 = main info, 1..N = option groups
 
     useEffect(() => {
         if (!ready) return;
@@ -164,12 +206,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             .then(data => {
                 if (data && data.id) {
                     setProduct(data);
-                    // Initialize selections (empty for all groups)
+                    // Initialize selections
                     const init: Record<string, string[]> = {};
                     (data.option_groups || []).forEach((g: OptionGroup) => { init[g.id] = []; });
                     setSelections(init);
                 } else {
-                    // fallback: try getting from list
                     return fetch(`${API}/api/${slug}/menu`)
                         .then(r => r.json())
                         .then(items => {
@@ -186,10 +227,35 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         setSelections(prev => ({ ...prev, [groupId]: optIds }));
     }, []);
 
-    // Validation: all required groups must have at least min_select items
+    const optionGroups = product?.option_groups || [];
+    const totalSteps = optionGroups.length + 1; // Info + Groups
+
+    // Step Validation
+    const isStepValid = (stepIdx: number) => {
+        if (stepIdx === 0) return true;
+        const group = optionGroups[stepIdx - 1];
+        if (!group.required) return true;
+        return (selections[group.id] || []).length >= group.min_select;
+    };
+
+    const nextStep = () => {
+        if (isStepValid(currentStep) && currentStep < totalSteps - 1) {
+            setCurrentStep(currentStep + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
+    const prevStep = () => {
+        if (currentStep > 0) {
+            setCurrentStep(currentStep - 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    };
+
+    // Validation groups missing
     const validationErrors: string[] = [];
     if (product) {
-        for (const g of product.option_groups || []) {
+        for (const g of optionGroups) {
             if (g.required && (selections[g.id] || []).length < g.min_select) {
                 validationErrors.push(g.name);
             }
@@ -198,22 +264,19 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     const isValid = validationErrors.length === 0;
 
     // Price calculation
-    const modifierTotal = product
-        ? (product.option_groups || []).flatMap(g =>
-            (selections[g.id] || []).map(optId => {
-                const opt = g.options.find(o => o.id === optId);
-                return opt ? opt.price_cents : 0;
-            })
-        ).reduce((a, b) => a + b, 0)
-        : 0;
+    const modifierTotal = optionGroups.flatMap(g =>
+        (selections[g.id] || []).map(optId => {
+            const opt = g.options.find(o => o.id === optId);
+            return opt ? opt.price_cents : 0;
+        })
+    ).reduce((a, b) => a + b, 0);
 
     const totalPerItem = product ? product.price_cents + modifierTotal : 0;
     const totalWithQty = totalPerItem * qty;
 
-    // Build selected_options array for cart
     const buildSelectedOptions = (): SelectedOption[] => {
         if (!product) return [];
-        return (product.option_groups || []).flatMap(g =>
+        return optionGroups.flatMap(g =>
             (selections[g.id] || []).map(optId => {
                 const opt = g.options.find(o => o.id === optId)!;
                 return { groupId: g.id, groupName: g.name, optionId: opt.id, optionName: opt.name, price_cents: opt.price_cents };
@@ -246,7 +309,6 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 <div className="h-7 bg-gray-200 rounded-xl w-3/4" />
                 <div className="h-4 bg-gray-100 rounded-xl" />
                 <div className="h-32 bg-gray-100 rounded-2xl" />
-                <div className="h-32 bg-gray-100 rounded-2xl" />
             </div>
         </div>
     );
@@ -260,105 +322,117 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     );
 
     return (
-        <div className="pb-36 min-h-screen bg-gray-50">
-            {/* Hero */}
-            <div className="w-full h-52 bg-gradient-to-br from-purple-700 to-purple-900 flex items-center justify-center relative">
-                <button onClick={() => router.back()}
-                    className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm p-2 rounded-full shadow font-bold w-10 h-10 flex items-center justify-center text-gray-700 hover:bg-white">
-                    ←
-                </button>
-                {product.image_url
-                    ? <img src={product.image_url} alt={product.name} className="h-40 w-40 object-cover rounded-2xl shadow-xl" onError={e => (e.currentTarget.style.display = 'none')} />
-                    : <span className="text-9xl">🥣</span>
-                }
-            </div>
+        <div className="bg-white min-h-screen">
+            <div className="max-w-md mx-auto min-h-screen pb-36 relative">
+                {/* Header / Stepper Progress */}
+                <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-4 py-3">
+                    <div className="flex items-center justify-between gap-4">
+                        <button onClick={() => currentStep === 0 ? router.back() : prevStep()}
+                            className="bg-gray-100 p-2 rounded-full w-10 h-10 flex items-center justify-center hover:bg-gray-200 transition">
+                            {currentStep === 0 ? '✕' : '←'}
+                        </button>
+                        <div className="flex-1">
+                            <div className="flex justify-between text-[10px] font-black uppercase text-gray-400 mb-1">
+                                <span>{currentStep === 0 ? 'Detalhes' : `Passo ${currentStep}`}</span>
+                                <span>{Math.round(((currentStep + 1) / totalSteps) * 100)}%</span>
+                            </div>
+                            <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-600 transition-all duration-500" style={{ width: `${((currentStep + 1) / totalSteps) * 100}%` }} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-            {/* Product Info */}
-            <div className="bg-white px-5 pt-5 pb-4 shadow-sm">
-                {product.category && (
-                    <span className="text-xs bg-purple-100 text-purple-600 font-bold px-3 py-1 rounded-full">{product.category}</span>
-                )}
-                <h1 className="text-2xl font-black text-gray-800 mt-2">{product.name}</h1>
-                {product.description && (
-                    <p className="text-gray-500 mt-1 text-sm leading-relaxed">{product.description}</p>
-                )}
-                <div className="mt-3 text-2xl font-black text-purple-700">
-                    {Rfull(product.price_cents)}
-                    {modifierTotal > 0 && (
-                        <span className="text-base text-gray-500 font-semibold ml-2">+ {Rfull(modifierTotal)} em opções</span>
+                {/* Step Content */}
+                <div className="p-4 anim-fade-in">
+                    {currentStep === 0 && (
+                        <div className="space-y-6">
+                            {/* Hero Image */}
+                            <div className="w-full h-64 bg-purple-50 rounded-3xl overflow-hidden flex items-center justify-center relative shadow-inner">
+                                {product.image_url
+                                    ? <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                                    : <span className="text-9xl grayscale opacity-20">🥣</span>
+                                }
+                                <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full text-xs font-black text-purple-700 shadow-sm uppercase tracking-widest">
+                                    {product.category || 'Premium'}
+                                </div>
+                            </div>
+
+                            <div>
+                                <h1 className="text-3xl font-black text-gray-900 leading-tight">{product.name}</h1>
+                                <p className="text-gray-500 mt-2 text-base leading-relaxed">{product.description || 'Uma experiência única de sabor preparada especialmente para você.'}</p>
+                            </div>
+
+                            <div className="bg-purple-50 p-6 rounded-3xl border border-purple-100">
+                                <span className="text-xs font-black text-purple-400 uppercase tracking-widest block mb-1">A partir de</span>
+                                <span className="text-4xl font-black text-purple-700">{Rfull(product.price_cents)}</span>
+                            </div>
+
+                            <div className="bg-gray-50 p-4 rounded-2xl flex items-center gap-3">
+                                <span className="text-xl">✨</span>
+                                <p className="text-xs text-gray-500 font-medium">Configure seu pedido nos próximos passos para uma experiência personalizada.</p>
+                            </div>
+                        </div>
+                    )}
+
+                    {currentStep > 0 && (
+                        <div className="space-y-6">
+                            <GroupSelector
+                                group={optionGroups[currentStep - 1]}
+                                selected={selections[optionGroups[currentStep - 1].id] || []}
+                                onChange={optIds => setGroupSelection(optionGroups[currentStep - 1].id, optIds)}
+                            />
+
+                            {/* Show summary if last step */}
+                            {currentStep === totalSteps - 1 && (
+                                <div className="bg-gray-50 rounded-2xl p-4 mt-6">
+                                    <label className="block text-xs font-black text-gray-400 mb-2 uppercase tracking-wide">Observações Finais</label>
+                                    <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
+                                        placeholder="Ex: sem talheres, guardanapo extra..."
+                                        className="w-full border border-gray-200 rounded-xl p-3 outline-none focus:border-purple-500 resize-none text-sm bg-white" />
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
-            </div>
 
-            {/* Option Groups */}
-            <div className="px-4 py-4 space-y-4">
-                {(product.option_groups || []).map(group => (
-                    <GroupSelector
-                        key={group.id}
-                        group={group}
-                        selected={selections[group.id] || []}
-                        onChange={optIds => setGroupSelection(group.id, optIds)}
-                    />
-                ))}
+                {/* Bottom Navigation */}
+                <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] p-4 z-50">
+                    <div className="flex gap-4">
+                        {currentStep > 0 && (
+                            <div className="flex items-center bg-gray-100 rounded-2xl p-1 px-2">
+                                <button onClick={() => setQty(Math.max(1, qty - 1))} className="w-8 h-8 font-bold text-gray-500">-</button>
+                                <span className="w-6 text-center font-black text-sm">{qty}</span>
+                                <button onClick={() => setQty(qty + 1)} className="w-8 h-8 font-bold text-purple-600">+</button>
+                            </div>
+                        )}
 
-                {/* Removed floating Qty (moved to bottom CTA) */}
-
-                {/* Notes */}
-                <div className="bg-white rounded-2xl border border-gray-100 p-4">
-                    <label className="block text-sm font-black text-gray-700 mb-2 uppercase tracking-wide">Observações (opcional)</label>
-                    <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)}
-                        placeholder="Ex: sem morango, extra nutella..."
-                        className="w-full border border-gray-200 rounded-xl p-3 outline-none focus:border-purple-500 resize-none text-sm" />
-                </div>
-
-                {/* Validation error hint */}
-                {!isValid && (
-                    <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
-                        <p className="text-sm font-bold text-orange-700">⚠️ Complete os itens obrigatórios:</p>
-                        <ul className="mt-1 list-disc list-inside">
-                            {validationErrors.map(e => <li key={e} className="text-sm text-orange-600">{e}</li>)}
-                        </ul>
-                    </div>
-                )}
-            </div>
-
-            {/* Sticky CTA */}
-            <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 shadow-[0_-10px_30px_rgba(0,0,0,0.05)] p-4 pt-3 z-50">
-                <div className="max-w-md mx-auto flex gap-3 items-center">
-                    {/* Qty Controls */}
-                    <div className="flex items-center justify-between gap-3 bg-gray-100 rounded-2xl p-2 px-4 shadow-inner">
-                        <button onClick={() => setQty(Math.max(1, qty - 1))}
-                            className="text-2xl font-bold text-gray-500 hover:text-purple-600 transition w-6 text-center select-none active:scale-90">
-                            −
-                        </button>
-                        <span className="font-black text-lg w-4 text-center select-none">{qty}</span>
-                        <button onClick={() => setQty(qty + 1)}
-                            className="text-2xl font-bold text-purple-600 transition w-6 text-center select-none active:scale-90">
-                            +
-                        </button>
-                    </div>
-
-                    <button
-                        onClick={handleAdd}
-                        disabled={!isValid || added}
-                        className={`flex-1 font-black py-4 rounded-2xl shadow-lg transition text-base flex justify-between items-center px-5 ${added
-                            ? 'bg-green-500 text-white'
-                            : !isValid
-                                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                                : 'bg-purple-600 hover:bg-purple-700 active:scale-95 text-white'
-                            }`}>
-                        {added
-                            ? <span className="mx-auto">✓ Adicionado!</span>
-                            : !isValid
-                                ? <span className="mx-auto text-sm">Faltam Obrigatórios</span>
-                                : (
+                        {currentStep < totalSteps - 1 ? (
+                            <button
+                                onClick={nextStep}
+                                disabled={!isStepValid(currentStep)}
+                                className={`flex-1 font-black py-4 rounded-2xl shadow-lg transition text-base flex justify-center items-center gap-2 ${isStepValid(currentStep) ? 'bg-purple-600 text-white shadow-purple-200' : 'bg-gray-100 text-gray-400'
+                                    }`}
+                            >
+                                {currentStep === 0 ? 'Começar Montagem' : 'Próximo Passo'}
+                                <span className="opacity-50">→</span>
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleAdd}
+                                disabled={!isValid || added}
+                                className={`flex-1 font-black py-4 rounded-2xl shadow-lg transition text-base flex justify-between items-center px-6 ${added ? 'bg-green-500 text-white' : !isValid ? 'bg-gray-100 text-gray-400' : 'bg-purple-600 text-white'
+                                    }`}
+                            >
+                                {added ? '✓ Adicionado' : (
                                     <>
-                                        <span>Adicionar</span>
+                                        <span>Fechar Pedido</span>
                                         <span>{Rfull(totalWithQty)}</span>
                                     </>
-                                )
-                        }
-                    </button>
+                                )}
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>

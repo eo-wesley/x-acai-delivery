@@ -7,9 +7,9 @@ export class SaaSOnboardingService {
         const id = randomUUID();
 
         await db.run(
-            `INSERT INTO restaurants (id, name, slug, phone, email, mode, subscription_plan, subscription_status, onboarding_step) 
-             VALUES (?, ?, ?, ?, ?, 'saas', 'starter', 'active', 1)`,
-            [id, data.name, data.slug, data.phone, data.email]
+            `INSERT INTO restaurants (id, name, slug, phone, email, mode, subscription_plan, subscription_status, onboarding_step, primary_color) 
+             VALUES (?, ?, ?, ?, ?, 'saas', 'starter', 'active', 1, ?)`,
+            [id, data.name, data.slug, data.phone, data.email, '#7c3aed']
         );
 
         // Inicializar configurações básicas do restaurante

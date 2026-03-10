@@ -1,89 +1,89 @@
 import { Router } from 'express';
-import { marketingService } from '../services/marketing.service';
-import { getDb } from '../db/db.client';
-import { randomUUID } from 'crypto';
+import { marketingRepo } from '../db/repositories/marketing.repo';
+import { campaignService } from '../marketing/campaign.service';
+import { adminAuthMiddleware } from '../middlewares/auth.middleware';
+import { z } from 'zod';
 
-const marketingRouter = Router();
+const router = Router();
 
-// Listar triggers configurados
-marketingRouter.get('/admin/marketing/triggers', async (req: any, res: any) => {
+const campaignSchema = z.object({
+    name: z.string().min(3),
+    message: z.string().min(5),
+    filters: z.object({
+        lastOrderDays: z.number().optional(),
+        minOrders: z.number().optional(),
+        minSpentCents: z.number().optional(),
+        tag: z.string().optional()
+    })
+});
+
+// GET /api/admin/marketing/segmented-count - Calculate potential audience
+router.get('/segmented-count', adminAuthMiddleware, async (req, res) => {
     try {
-        const restaurantId = req.query.slug || 'default';
-        const db = await getDb();
-        const triggers = await db.all(`SELECT * FROM marketing_triggers WHERE restaurant_id = ?`, [restaurantId]);
-        res.json(triggers);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        const tenantId = req.headers['x-tenant-id'] as string;
+        const filters = {
+            lastOrderDays: req.query.lastOrderDays ? parseInt(req.query.lastOrderDays as string) : undefined,
+            minOrders: req.query.minOrders ? parseInt(req.query.minOrders as string) : undefined,
+            minSpentCents: req.query.minSpentCents ? parseInt(req.query.minSpentCents as string) : undefined,
+            tag: req.query.tag as string
+        };
+
+        const customers = await marketingRepo.getSegmentedCustomers(tenantId, filters);
+        res.json({ count: customers.length });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 });
 
-// Upsert trigger
-marketingRouter.post('/admin/marketing/triggers', async (req: any, res: any) => {
+// POST /api/admin/marketing/campaigns - Create and Start Campaign
+router.post('/campaigns', adminAuthMiddleware, async (req, res) => {
     try {
-        const { type, name, days_inactive, order_count, discount_type, discount_value, active } = req.body;
-        const restaurantId = req.query.slug || 'default';
-        const db = await getDb();
+        const tenantId = req.headers['x-tenant-id'] as string;
+        const body = campaignSchema.parse(req.body);
 
-        const id = randomUUID();
-        await db.run(
-            `INSERT INTO marketing_triggers (id, restaurant_id, name, type, days_inactive, order_count, discount_type, discount_value, active)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-             ON CONFLICT(restaurant_id, type) DO UPDATE SET
-                name = excluded.name,
-                days_inactive = excluded.days_inactive,
-                order_count = excluded.order_count,
-                discount_type = excluded.discount_type,
-                discount_value = excluded.discount_value,
-                active = excluded.active`,
-            [id, restaurantId, name, type, days_inactive || null, order_count || null, discount_type || 'flat', discount_value || 0, active !== undefined ? active : 1]
+        const customers = await marketingRepo.getSegmentedCustomers(tenantId, body.filters);
+
+        if (customers.length === 0) {
+            return res.status(400).json({ error: 'Nenhum cliente encontrado para estes filtros.' });
+        }
+
+        const campaignId = await marketingRepo.createCampaign(
+            tenantId,
+            body.name,
+            body.message,
+            body.filters,
+            customers.length
         );
 
-        res.json({ success: true });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        // Execute in background
+        campaignService.executeCampaign(tenantId, campaignId);
+
+        res.json({ id: campaignId, totalTarget: customers.length });
+    } catch (e: any) {
+        res.status(400).json({ error: e.message });
     }
 });
 
-// Executar verificação de winback manualmente (Trigger via Job/CRON)
-marketingRouter.post('/admin/marketing/run-winback', async (req: any, res: any) => {
+// GET /api/admin/marketing/campaigns - List campaigns
+router.get('/campaigns', adminAuthMiddleware, async (req, res) => {
     try {
-        const restaurantId = req.query.slug || 'default';
-        await marketingService.processWinback(restaurantId);
-        res.json({ success: true, message: 'Winback process started' });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        const tenantId = req.headers['x-tenant-id'] as string;
+        const campaigns = await marketingRepo.getCampaigns(tenantId);
+        res.json(campaigns);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 });
 
-// Executar verificação de aniversariantes manualmente
-marketingRouter.post('/admin/marketing/run-birthdays', async (req: any, res: any) => {
+// GET /api/admin/marketing/campaigns/:id - Details
+router.get('/campaigns/:id', adminAuthMiddleware, async (req, res) => {
     try {
-        const restaurantId = req.query.slug || 'default';
-        await marketingService.processBirthdays(restaurantId);
-        res.json({ success: true, message: 'Birthday check started' });
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
+        const campaign = await marketingRepo.getCampaignDetails(req.params.id);
+        if (!campaign) return res.status(404).json({ error: 'Campanha não encontrada.' });
+        res.json(campaign);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
     }
 });
 
-// Listar campanhas enviadas
-marketingRouter.get('/admin/marketing/history', async (req: any, res: any) => {
-    try {
-        const restaurantId = req.query.slug || 'default';
-        const db = await getDb();
-        const history = await db.all(
-            `SELECT c.*, cust.name as customer_name, coup.code as coupon_code 
-             FROM customer_campaigns c
-             JOIN customers cust ON c.customer_id = cust.id
-             LEFT JOIN coupons coup ON c.coupon_id = coup.id
-             WHERE c.restaurant_id = ?
-             ORDER BY c.created_at DESC LIMIT 100`,
-            [restaurantId]
-        );
-        res.json(history);
-    } catch (error: any) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-export { marketingRouter };
+export default router;

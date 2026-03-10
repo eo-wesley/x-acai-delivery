@@ -21,11 +21,14 @@ export interface CreateOrderInput {
     totalCents: number;
     addressText: string;
     notes?: string;
+    source?: string;
+    externalId?: string;
+    taxId?: string;
 }
 
 export class OrdersRepo {
 
-    async createOrder(input: CreateOrderInput & { customerName?: string, customerPhone?: string }): Promise<{ id: string, payment_url?: string }> {
+    async createOrder(input: CreateOrderInput & { customerName?: string, customerPhone?: string }): Promise<{ id: string, customer_id: string, payment_url?: string }> {
         const db = await getDb();
         const id = randomUUID();
         const tenantId = input.restaurantId || 'default_tenant';
@@ -43,12 +46,12 @@ export class OrdersRepo {
 
         await db.run(
             `INSERT INTO orders 
-            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, restaurant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, restaurant_id, source, external_id, tax_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 finalCustomerId,
-                'pending_payment', // Changed from pending
+                'pending_payment',
                 itemsJson,
                 input.subtotalCents,
                 input.deliveryFeeCents,
@@ -56,13 +59,25 @@ export class OrdersRepo {
                 input.addressText,
                 input.notes || null,
                 'pending_payment',
-                'mercadopago_mock', // Gateway placeholder configurable later
-                input.restaurantId || 'default_tenant'
+                'mercadopago_mock',
+                tenantId,
+                input.source || 'internal',
+                input.externalId || null,
+                input.taxId || null
             ]
         );
 
         // Record Initial Event
         await this.logOrderEvent(id, 'order_created', { initialStatus: 'pending_payment', by: 'customer_or_ai' });
+
+        // Emit Global Event for Funnels (Abandoned Cart, etc)
+        const { eventBus } = await import('../../core/eventBus');
+        eventBus.emit('order_created', {
+            orderId: id,
+            customerId: finalCustomerId,
+            restaurantId: tenantId,
+            totalCents: input.totalCents
+        });
 
         // Update CRM Stats
         try {
@@ -97,7 +112,7 @@ export class OrdersRepo {
             // Non-blocking fallback
         }
 
-        return { id };
+        return { id, customer_id: finalCustomerId };
     }
 
     async createPDVOrder(input: CreateOrderInput & { paymentMethod: string }): Promise<{ id: string }> {
@@ -110,12 +125,12 @@ export class OrdersRepo {
 
         await db.run(
             `INSERT INTO orders 
-            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, restaurant_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, restaurant_id, source, tax_id) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 finalCustomerId,
-                'completed', // PDV orders are immediately completed or handled separately
+                'completed',
                 itemsJson,
                 input.subtotalCents,
                 input.deliveryFeeCents || 0,
@@ -124,7 +139,9 @@ export class OrdersRepo {
                 input.notes || null,
                 'paid',
                 `pdv_${input.paymentMethod}`,
-                tenantId
+                tenantId,
+                'pdv',
+                input.taxId || null
             ]
         );
 
@@ -132,7 +149,8 @@ export class OrdersRepo {
 
         // Register Payment in Finance for DRE
         try {
-            await (await import('./finance.repo')).financeRepo.registerPayment(
+            const { financeRepo } = await import('./finance.repo');
+            await financeRepo.registerPayment(
                 tenantId,
                 id,
                 `pdv_${input.paymentMethod}`,
@@ -220,6 +238,24 @@ export class OrdersRepo {
         if (res.changes && res.changes > 0) {
             await this.logOrderEvent(id, 'status_updated', { newStatus });
 
+            // Emit generic status update for SSE
+            const { eventBus } = await import('../../core/eventBus');
+            eventBus.emit('order_status_updated', {
+                orderId: id,
+                status: newStatus,
+                restaurantId: orderBefore.restaurant_id
+            });
+
+            // Trigger Dispatch if ready
+            if (newStatus === 'ready' || newStatus === 'ready_for_pickup') {
+                try {
+                    const { dispatchService } = await import('../../services/dispatch.service');
+                    await dispatchService.dispatchOrder(orderBefore.restaurant_id, id);
+                } catch (e) {
+                    console.error('[OrdersRepo] Failed to trigger dispatch service', e);
+                }
+            }
+
             // Trigger WhatsApp Notification via EventBus
             try {
                 const { statusToEvent } = await import('../../notifications/notification.service');
@@ -227,6 +263,7 @@ export class OrdersRepo {
                 if (eventName) {
                     const { eventBus } = await import('../../core/eventBus');
                     eventBus.emit(eventName, {
+                        restaurantId: orderBefore.restaurant_id,
                         orderId: id,
                         customerPhone: orderBefore.customer_phone || orderBefore.phone,
                         customerName: orderBefore.customer_name || 'Cliente',
@@ -236,6 +273,16 @@ export class OrdersRepo {
                 }
             } catch (err) {
                 console.error('[OrdersRepo] Failed to emit status update event', err);
+            }
+
+            // Phase 50: Reward Referrer when order is completed/delivered
+            if (newStatus === 'delivered' || newStatus === 'completed') {
+                try {
+                    const { loyaltyRepo } = await import('./loyalty.repo');
+                    await loyaltyRepo.rewardReferral(orderBefore.restaurant_id, orderBefore.customer_id);
+                } catch (e) {
+                    console.error('[OrdersRepo] Failed to process referral reward', e);
+                }
             }
 
             return true;
@@ -259,6 +306,7 @@ export class OrdersRepo {
             try {
                 const { eventBus } = await import('../../core/eventBus');
                 eventBus.emit('order_cancelled', {
+                    restaurantId: order.restaurant_id,
                     orderId: id,
                     customerPhone: order.customer_phone || order.phone,
                     customerName: order.customer_name || 'Cliente',
@@ -281,6 +329,15 @@ export class OrdersRepo {
             `INSERT INTO order_events (id, order_id, type, payload) VALUES (?, ?, ?, ?)`,
             [id, orderId, type, JSON.stringify(payload)]
         );
+    }
+
+    async submitRating(orderId: string, rating: number, feedback?: string): Promise<boolean> {
+        const db = await getDb();
+        const res = await db.run(
+            `UPDATE orders SET rating = ?, feedback = ? WHERE id = ?`,
+            [rating, feedback || null, orderId]
+        );
+        return res.changes ? res.changes > 0 : false;
     }
 }
 

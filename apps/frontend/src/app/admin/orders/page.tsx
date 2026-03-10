@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { Printer } from 'lucide-react';
 
 /* ─── Types ───────────────────────────────────────────────────────────── */
 type OrderItem = { name?: string; menuItemId?: string; qty: number; notes?: string; unitPriceCents?: number; selected_options?: { groupName: string; optionName: string }[]; };
@@ -58,6 +59,60 @@ function fmtCurrency(cents: number) {
     return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 }
 
+const handlePrintOrder = (order: Order) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const itemsHtml = order.items.map(item => `
+        <div style="border-bottom: 1px dashed #ccc; padding: 5px 0;">
+            <div style="display: flex; justify-content: space-between;">
+                <b>${item.qty}x ${item.name || item.menuItemId}</b>
+                <span>${fmtCurrency((item.unitPriceCents || 0) * item.qty)}</span>
+            </div>
+            ${item.selected_options?.map(opt => `<div style="font-size: 10px; margin-left: 10px;">• ${opt.optionName}</div>`).join('') || ''}
+            ${item.notes ? `<div style="font-size: 10px; color: #666;">Obs: ${item.notes}</div>` : ''}
+        </div>
+    `).join('');
+
+    printWindow.document.write(`
+        <html>
+            <head>
+                <title>Comanda #${order.id.split('-')[0].toUpperCase()}</title>
+                <style>
+                    body { font-family: 'Courier New', Courier, monospace; width: 80mm; padding: 10px; margin: 0; }
+                    h2 { text-align: center; margin: 0; text-transform: uppercase; }
+                    .header { text-align: center; font-size: 12px; margin-bottom: 10px; border-bottom: 2px solid #000; padding-bottom: 5px; }
+                    .footer { text-align: center; font-size: 12px; margin-top: 10px; border-top: 2px solid #000; padding-top: 5px; }
+                    .total { font-size: 16px; font-weight: bold; text-align: right; margin-top: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>X-AÇAÍ</h2>
+                    <p>Pedido #${order.id.split('-')[0].toUpperCase()}</p>
+                    <p>${new Date(order.created_at).toLocaleString('pt-BR')}</p>
+                </div>
+                <div>
+                    <b>CLIENTE:</b> ${order.customer_name || 'N/A'}<br>
+                    <b>TEL:</b> ${order.customer_phone || 'N/A'}<br>
+                    <b>ENDEREÇO:</b> ${order.address_text || order.customer_address || 'Retirada'}
+                </div>
+                <div style="margin-top: 10px; border-top: 1px solid #000; padding-top: 5px;">
+                    ${itemsHtml}
+                </div>
+                <div class="total">
+                    TOTAL: ${fmtCurrency(order.total_cents)}
+                </div>
+                <div class="footer">
+                    <p>OBRIGADO PELA PREFERÊNCIA!</p>
+                </div>
+                <script>window.onload = () => { window.print(); window.close(); };</script>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+};
+
 /* ─── Summary Card ────────────────────────────────────────────────────── */
 function SummaryBar({ orders }: { orders: Order[] }) {
     const today = new Date().toDateString();
@@ -92,7 +147,7 @@ function SummaryBar({ orders }: { orders: Order[] }) {
 /* ─── Order Card ──────────────────────────────────────────────────────── */
 function OrderCard({ order, onStatusChange, onAutoDispatch }: { order: Order; onStatusChange: (id: string, s: string) => void; onAutoDispatch: (id: string) => void }) {
 
-    const age = ageminister(order.created_at);
+    const age = ageminutes(order.created_at);
     const overdue = age > 30 && !['completed', 'cancelled'].includes(order.status);
     const info = STATUS_FLOW[order.status];
     const colorClass = STATUS_COLORS[order.status] || 'bg-gray-50 text-gray-700 border-gray-200';
@@ -196,6 +251,13 @@ function OrderCard({ order, onStatusChange, onAutoDispatch }: { order: Order; on
                                 ⚡ Auto
                             </button>
                         )}
+                        <button
+                            onClick={() => handlePrintOrder(order)}
+                            title="Imprimir Comanda"
+                            className="border border-gray-200 text-gray-600 hover:bg-gray-50 text-sm p-1.5 rounded-lg transition"
+                        >
+                            <Printer size={16} />
+                        </button>
                         {!['cancelled', 'completed'].includes(order.status) && (
                             <button
                                 onClick={() => onStatusChange(order.id, 'cancelled')}
