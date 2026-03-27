@@ -24,11 +24,21 @@ export class InventoryAlertService {
     private static async checkAllResturants() {
         try {
             const db = await getDb();
-            const restaurants = await db.all('SELECT id, name FROM restaurants WHERE status = "active"');
+                // combine traditional min-stock alerts with AI predictive alerts
+                let restaurants = [];
+                try {
+                    restaurants = await db.all('SELECT id, name FROM restaurants WHERE status = "active"');
+                } catch (e: any) {
+                    if (e.message.includes('no such table')) {
+                        console.warn('⚠️ Table "restaurants" not ready yet. Retrying in 5s...');
+                        setTimeout(() => this.checkAllResturants(), 5000);
+                        return;
+                    }
+                    throw e;
+                }
 
-            for (const rest of restaurants) {
-                // Combine traditional min-stock alerts with AI predictive alerts
-                const minStockAlerts = await inventoryRepo.getAlerts(rest.id);
+                for (const rest of restaurants) {
+                    const minStockAlerts = await inventoryRepo.getAlerts(rest.id);
                 const aiAlerts = await forecastingService.getSmartStockAlerts(rest.id);
 
                 if (minStockAlerts.length > 0 || aiAlerts.length > 0) {

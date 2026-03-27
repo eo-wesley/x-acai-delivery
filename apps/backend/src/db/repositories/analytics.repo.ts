@@ -122,54 +122,89 @@ export class AnalyticsRepo {
         const db = await getDb();
 
         // 1. Hoje
-        const todayStr = new Date().toISOString().split('T')[0];
-        const today = await db.get(`
-            SELECT COUNT(id) as orders, SUM(total_cents) as revenue 
-            FROM orders 
-            WHERE restaurant_id = ? AND status = 'completed' 
-            AND created_at >= ?
-        `, [tenantId, todayStr]);
+        let todayOrders = 0, todayRevenue = 0;
+        try {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const today = await db.get(`
+                SELECT COUNT(id) as orders, SUM(total_cents) as revenue 
+                FROM orders 
+                WHERE restaurant_id = ? AND status = 'completed' 
+                AND created_at >= ?
+            `, [tenantId, todayStr]);
+            todayOrders = today?.orders || 0;
+            todayRevenue = today?.revenue || 0;
+        } catch (e) {
+            console.warn('[KPI] Falha ao buscar vendas de hoje:', (e as any).message);
+        }
 
         // 2. Caixa
-        const session = await db.get(`
-            SELECT initial_value_cents FROM cash_sessions 
-            WHERE restaurant_id = ? AND status = 'open'
-        `, [tenantId]);
+        let currentCash = 0;
+        try {
+            const session = await db.get(`
+                SELECT initial_value_cents FROM cash_sessions 
+                WHERE restaurant_id = ? AND status = 'open'
+            `, [tenantId]);
 
-        const entriesIn = await db.get(`
-            SELECT SUM(value_cents) as total FROM financial_entries 
-            WHERE restaurant_id = ? AND type = 'in' AND cash_session_id IS NOT NULL
-        `, [tenantId]);
+            const entriesIn = await db.get(`
+                SELECT SUM(value_cents) as total FROM financial_entries 
+                WHERE restaurant_id = ? AND type = 'in' AND cash_session_id IS NOT NULL
+            `, [tenantId]);
 
-        const entriesOut = await db.get(`
-            SELECT SUM(value_cents) as total FROM financial_entries 
-            WHERE restaurant_id = ? AND type = 'out' AND cash_session_id IS NOT NULL
-        `, [tenantId]);
+            const entriesOut = await db.get(`
+                SELECT SUM(value_cents) as total FROM financial_entries 
+                WHERE restaurant_id = ? AND type = 'out' AND cash_session_id IS NOT NULL
+            `, [tenantId]);
 
-        const currentCash = (session?.initial_value_cents || 0) + (entriesIn?.total || 0) - (entriesOut?.total || 0);
+            currentCash = (session?.initial_value_cents || 0) + (entriesIn?.total || 0) - (entriesOut?.total || 0);
+        } catch (e) {
+            console.warn('[KPI] Falha ao buscar caixa:', (e as any).message);
+        }
 
         // 3. Logística
-        const activeDrivers = await db.get(`SELECT COUNT(id) as total FROM drivers WHERE restaurant_id = ? AND status = 'active'`, [tenantId]);
+        let activeDriversCount = 0;
+        try {
+            const activeDrivers = await db.get(`SELECT COUNT(id) as total FROM drivers WHERE restaurant_id = ? AND status = 'active'`, [tenantId]);
+            activeDriversCount = activeDrivers?.total || 0;
+        } catch (e) {
+            console.warn('[KPI] Falha ao buscar drivers:', (e as any).message);
+        }
 
         // 4. Operação
-        const pendingOrders = await db.get(`SELECT COUNT(id) as total FROM orders WHERE restaurant_id = ? AND status IN ('pending', 'accepted', 'preparing')`, [tenantId]);
+        let pendingOrdersCount = 0;
+        try {
+            const pendingOrders = await db.get(`SELECT COUNT(id) as total FROM orders WHERE restaurant_id = ? AND status IN ('pending', 'accepted', 'preparing')`, [tenantId]);
+            pendingOrdersCount = pendingOrders?.total || 0;
+        } catch (e) {
+            console.warn('[KPI] Falha ao buscar pedidos pendentes:', (e as any).message);
+        }
 
         // 5. Saúde dos Clientes (Churn Prediction)
-        const health = await this.getCustomerHealthStats(tenantId);
+        let health = { total: 0, healthy: 0, atRisk: 0, inactive: 0, ranges: { healthy: '0-15 dias', atRisk: '16-30 dias', inactive: '+30 dias' } };
+        try {
+            health = await this.getCustomerHealthStats(tenantId);
+        } catch (e) {
+            console.warn('[KPI] Falha ao buscar saúde dos clientes:', (e as any).message);
+        }
 
         // 6. Yield Management
-        const yieldData = await db.get('SELECT yield_balance_cents FROM restaurants WHERE id = ?', [tenantId]);
+        let yieldCents = 0;
+        try {
+            const yieldData = await db.get('SELECT yield_balance_cents FROM restaurants WHERE id = ?', [tenantId]);
+            yieldCents = yieldData?.yield_balance_cents || 0;
+        } catch (e) {
+            console.warn('[KPI] Falha ao buscar yield:', (e as any).message);
+        }
 
         return {
             today: {
-                orders: today.orders || 0,
-                revenue_cents: today.revenue || 0
+                orders: todayOrders,
+                revenue_cents: todayRevenue
             },
             current_cash_cents: currentCash,
-            active_drivers: activeDrivers.total || 0,
-            pending_orders: pendingOrders.total || 0,
+            active_drivers: activeDriversCount,
+            pending_orders: pendingOrdersCount,
             customer_health: health,
-            yield_cents: yieldData?.yield_balance_cents || 0
+            yield_cents: yieldCents
         };
     }
 

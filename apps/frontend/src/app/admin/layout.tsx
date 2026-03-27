@@ -1,25 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import NotificationToast from '../../components/NotificationToast';
-import { Shield } from 'lucide-react';
+import { Shield, Activity } from 'lucide-react';
 import CopilotChat from '../../components/admin/CopilotChat';
+import { AuthProvider, useAuth } from '../../context/AuthContext';
+import { auth } from '../../lib/firebase';
+import { signOut } from 'firebase/auth';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-    const [token, setToken] = useState<string | null>(null);
-    const [inputToken, setInputToken] = useState('');
+function AdminLayoutContent({ children }: { children: React.ReactNode }) {
+    const { user, token, loading } = useAuth();
     const [slug, setSlug] = useState('default');
     const router = useRouter();
     const pathname = usePathname();
 
     useEffect(() => {
-        const savedToken = localStorage.getItem('admin_token');
-        if (savedToken) setToken(savedToken);
         const savedSlug = localStorage.getItem('admin_slug');
         if (savedSlug) setSlug(savedSlug);
     }, []);
+
+    // Auth Protection
+    useEffect(() => {
+        if (!loading && !user && pathname !== '/admin/login') {
+            router.push('/admin/login');
+        }
+    }, [user, loading, pathname, router]);
 
     // Check Onboarding
     useEffect(() => {
@@ -46,55 +53,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         checkOnboarding();
     }, [token, pathname, router]);
 
-
-    const [loginForm, setLoginForm] = useState({
-        slug: '',
-        username: '',
-        password: ''
-    });
-    const [loading, setLoading] = useState(false);
-    const [errorMsg, setErrorMsg] = useState('');
-
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setErrorMsg('');
-
-        try {
-            const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-            const res = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    username: loginForm.username,
-                    password: loginForm.password,
-                    restaurant_slug: loginForm.slug
-                })
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                localStorage.setItem('admin_token', data.token);
-                localStorage.setItem('admin_slug', loginForm.slug);
-                localStorage.setItem('admin_user', JSON.stringify(data.user));
-                setToken(data.token);
-                setSlug(loginForm.slug);
-            } else {
-                const err = await res.json();
-                setErrorMsg(err.error || 'Credenciais inválidas.');
-            }
-        } catch (err) {
-            setErrorMsg('Erro de conexão com o servidor.');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('admin_token');
+    const handleLogout = async () => {
+        await signOut(auth);
         localStorage.removeItem('admin_slug');
         localStorage.removeItem('admin_user');
-        setToken(null);
+        router.push('/admin/login');
     };
 
     const [pingOrders, setPingOrders] = useState(0);
@@ -120,68 +83,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return () => clearInterval(iv);
     }, [token, slug, pingOrders]);
 
-    if (!token) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-                <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-md w-full border border-gray-100">
-                    <div className="flex flex-col items-center mb-8">
-                        <div className="bg-purple-600 p-4 rounded-2xl shadow-lg mb-4 text-white">
-                            <Shield size={32} />
-                        </div>
-                        <h1 className="text-3xl font-black text-gray-800 text-center leading-tight">Painel Operacional</h1>
-                        <p className="text-gray-500 font-medium">X-Açaí Delivery SaaS</p>
-                    </div>
+    if (loading) {
+        return <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">Carregando painel...</div>;
+    }
 
-                    <form onSubmit={handleLogin} className="flex flex-col gap-4">
-                        {errorMsg && <div className="bg-red-50 text-red-600 p-3 rounded-xl font-bold text-center text-sm border border-red-100">{errorMsg}</div>}
+    if (!user && pathname === '/admin/login') {
+        // If unauthenticated and on login page, layout shouldn't render sidebar
+        return <>{children}</>;
+    }
 
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-1 block">IDENTIFICADOR DA LOJA (SLUG)</label>
-                            <input
-                                type="text"
-                                placeholder="ex: minha-loja"
-                                value={loginForm.slug}
-                                onChange={(e) => setLoginForm({ ...loginForm, slug: e.target.value.toLowerCase() })}
-                                className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-semibold text-gray-700 bg-gray-50/50"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-1 block">USUÁRIO</label>
-                            <input
-                                type="text"
-                                placeholder="Seu nome de usuário"
-                                value={loginForm.username}
-                                onChange={(e) => setLoginForm({ ...loginForm, username: e.target.value })}
-                                className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-semibold text-gray-700 bg-gray-50/50"
-                                required
-                            />
-                        </div>
-
-                        <div>
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mb-1 block">SENHA</label>
-                            <input
-                                type="password"
-                                placeholder="••••••••"
-                                value={loginForm.password}
-                                onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })}
-                                className="w-full border p-3 rounded-xl focus:ring-2 focus:ring-purple-500 outline-none font-semibold text-gray-700 bg-gray-50/50"
-                                required
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="bg-purple-600 text-white font-black py-4 mt-2 rounded-2xl hover:bg-purple-700 transition-all shadow-xl shadow-purple-200 disabled:opacity-50 ring-offset-2 active:scale-95"
-                        >
-                            {loading ? 'VALIDANDO ACESSO...' : 'ENTRAR NO PAINEL'}
-                        </button>
-                    </form>
-                </div>
-            </div>
-        );
+    if (!user) {
+        return null; // Will redirect in useEffect
     }
 
     if (pathname === '/admin/onboarding') {
@@ -189,7 +101,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     return (
-
         <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
             {/* Sidebar */}
             <aside className="w-full md:w-64 bg-white shadow-md flex flex-col">
@@ -276,13 +187,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     <Link href="/admin/analytics" className={`p-3 rounded-lg font-bold flex-1 md:flex-none text-center md:text-left transition-all ${pathname === '/admin/analytics' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' : 'text-gray-600 hover:bg-gray-50'}`}>
                         💎 Analytics Pro (Enterprise)
                     </Link>
-                    <div className="border-t my-2"></div>
-                    <Link href="/admin/team" className={`p-3 rounded-lg font-semibold flex-1 md:flex-none text-center md:text-left ${pathname === '/admin/team' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        🛡️ Gestão de Equipe
-                    </Link>
-                    <Link href="/admin/settings" className={`p-3 rounded-lg font-semibold flex-1 md:flex-none text-center md:text-left ${pathname === '/admin/settings' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        ⚙️ Configurações
-                    </Link>
                 </nav>
                 <div className="p-4 border-t hidden md:block">
                     <button onClick={handleLogout} className="w-full text-left text-red-500 font-bold p-2 hover:bg-red-50 rounded-lg">Sair do Painel</button>
@@ -290,7 +194,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 p-4 md:p-8 overflow-y-auto">
+            <main className="flex-1 p-4 md:p-8 overflow-y-auto relative">
                 {children}
             </main>
             {/* Notification Sound */}
@@ -298,5 +202,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <NotificationToast />
             <CopilotChat />
         </div>
+    );
+}
+
+export default function AdminLayoutWrapper({ children }: { children: React.ReactNode }) {
+    return (
+        <AuthProvider>
+            <AdminLayoutContent>{children}</AdminLayoutContent>
+        </AuthProvider>
     );
 }

@@ -1,0 +1,46 @@
+name: X-Açaí CI/CD Readiness
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  validate-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install
+        working-directory: ./apps/backend
+
+      - name: TypeScript Build
+        run: npm run build
+        working-directory: ./apps/backend
+
+  validate-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install Dependencies
+        run: npm install
+        working-directory: ./apps/frontend
+
+      - name: Next.js Build
+        run: npm run build
+        working-directory: ./apps/frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://api-test.xacai.delivery

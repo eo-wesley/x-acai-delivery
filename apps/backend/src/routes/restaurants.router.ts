@@ -7,6 +7,19 @@ import { randomUUID } from 'crypto';
 export const restaurantsRouter = Router();
 
 // ======================== TENANT CONFIG ENDPOINTS ========================
+// Public: Get restaurant details by slug (PWA)
+restaurantsRouter.get('/:slug/store', tenantMiddleware, async (req: any, res: any) => {
+    try {
+        const tenantId = req.tenantId;
+        const db = await getDb();
+        const restaurant = await db.get(`SELECT * FROM restaurants WHERE id = ?`, [tenantId]);
+        if (!restaurant) return res.status(404).json({ error: 'Store not found' });
+        res.json(restaurant);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Get current restaurant details
 restaurantsRouter.get('/admin/restaurant/config', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {

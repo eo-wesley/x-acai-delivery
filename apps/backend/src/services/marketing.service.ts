@@ -240,7 +240,7 @@ export class MarketingService {
                     AVG(julianday(order_at) - julianday(prev_order_at)) as avg_interval_days,
                     MAX(order_at) as last_order_at
                 FROM CustomerIntervals
-                WHERE prev_order_at IS NOT EXISTS -- filter first order
+                WHERE prev_order_at IS NOT NULL -- filter first order
                 GROUP BY customer_id
                 HAVING COUNT(*) >= 2 -- Need at least 3 orders to calculate interval trend
             )

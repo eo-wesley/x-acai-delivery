@@ -1,69 +1,31 @@
-version: "3.9"
+version: '3.8'
 
 services:
   backend:
-    image: ${DOCKERHUB_USERNAME:-username}/xacai-backend:latest
-    container_name: xacai-backend
-    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
     ports:
       - "3000:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DATABASE_URL=/data/database.sqlite
-      - JWT_SECRET=${JWT_SECRET}
-      - ADMIN_SECRET=${ADMIN_SECRET}
-      - CORS_ORIGIN=${CORS_ORIGIN}
-      - MERCADOPAGO_TOKEN=${MERCADOPAGO_TOKEN:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - LLM_PROVIDER=${LLM_PROVIDER:-mock}
-      - BASE_DOMAIN=${BASE_DOMAIN}
-    volumes:
-      - db_data:/data
-    healthcheck:
-      test: [ "CMD", "wget", "-qO-", "http://localhost:3000/health" ]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-    networks:
-      - xacai-network
+    restart: always
 
   frontend:
-    image: ${DOCKERHUB_USERNAME:-username}/xacai-frontend:latest
-    container_name: xacai-frontend
-    restart: unless-stopped
-    ports:
-      - "3001:3001"
+    build:
+      context: .
+      dockerfile: apps/frontend/Dockerfile
     environment:
-      - NODE_ENV=production
-      - PORT=3001
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-    depends_on:
-      backend:
-        condition: service_healthy
-    networks:
-      - xacai-network
-
-  nginx:
-    image: nginx:alpine
-    container_name: xacai-nginx
-    restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-    depends_on:
-      - backend
-      - frontend
-    networks:
-      - xacai-network
+      - "80:3000"
+    restart: always
 
-volumes:
-  db_data:
-    driver: local
-
-networks:
-  xacai-network:
-    driver: bridge
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    restart: always

@@ -16,7 +16,14 @@ export function middleware(request: NextRequest) {
     // Read slug from Nginx header (production) or query param (dev)
     const slugFromHeader = request.headers.get('x-tenant-slug');
     const slugFromQuery = request.nextUrl.searchParams.get('slug');
-    const slug = slugFromHeader || slugFromQuery;
+    const isDemoPath = request.nextUrl.pathname.startsWith('/demo');
+
+    let slug = slugFromHeader || slugFromQuery;
+
+    // Auto-force demo slug if accessing demo route
+    if (isDemoPath) {
+        slug = 'demo';
+    }
 
     if (slug) {
         // Set cookie so client can read it without additional API call

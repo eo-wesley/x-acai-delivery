@@ -4,47 +4,6 @@ import { useState, useEffect, use, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, buildCartKey, SelectedOption } from '../../../components/CartContext';
 import { useTenant, getApiBase } from '../../../hooks/useTenant';
-import { Metadata } from 'next';
-
-// ─── Metadata ────────────────────────────────────────────────────────────────
-// This runs on the server to generate SEO tags for WhatsApp/Social sharing
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-    const { id } = await params;
-    const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-
-    // In server-side, we can't easily use useTenant hook. 
-    // We'd typically read the Host header, but for now we'll fetch with a placeholder slug
-    // or assume 'default' if no other info. A more robust way would be reading headers.
-    const slug = 'default';
-
-    try {
-        const res = await fetch(`${API}/api/${slug}/menu/item/${id}`, { next: { revalidate: 3600 } });
-        const product = await res.json();
-
-        if (!product || !product.id) return { title: 'Produto não encontrado' };
-
-        const price = (product.price_cents / 100).toFixed(2).replace('.', ',');
-
-        return {
-            title: `${product.name} | R$ ${price} | X-Açaí`,
-            description: product.description || `Peça já o seu ${product.name}! Personalize do seu jeito.`,
-            openGraph: {
-                title: `${product.name} - O Melhor Açaí`,
-                description: `Apenas R$ ${price}. Clique para montar o seu do seu jeito! 🥣✨`,
-                images: product.image_url ? [{ url: product.image_url }] : [],
-                type: 'website',
-            },
-            twitter: {
-                card: 'summary_large_image',
-                title: product.name,
-                description: `Apenas R$ ${price}. Peça agora!`,
-                images: product.image_url ? [product.image_url] : [],
-            }
-        };
-    } catch {
-        return { title: 'X-Açaí Delivery' };
-    }
-}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface OptionItem {
@@ -239,9 +198,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     };
 
     const nextStep = () => {
+        console.log('nextStep clicked', currentStep, totalSteps);
         if (isStepValid(currentStep) && currentStep < totalSteps - 1) {
             setCurrentStep(currentStep + 1);
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(e) {}
         }
     };
 

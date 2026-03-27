@@ -8,23 +8,28 @@ Este documento descreve como levar o sistema para produção real seguindo as me
 - Chave SSH configurada
 - Domínio configurado no DNS (A record apontando para o IP)
 
-## 🏗️ Opção 1: Deploy com Docker (Recomendado)
-A forma mais rápida de subir o sistema completo (Backend, Frontend e PostgreSQL).
+## 🏗️ Opção 1: Cloud-First (Recomendado para SaaS)
+Esta é a forma mais moderna e escalável de hospedar a plataforma.
 
-1. Clone o repositório:
+### Frontend (Next.js) - [Vercel](https://vercel.com)
+1. Conecte seu repositório GitHub ao Vercel.
+2. Defina as variáveis de ambiente (veja `PRODUCTION_ENVIRONMENT.md`).
+3. O Vercel detectará automaticamente as configurações de build.
+
+### Backend (Node.js) - [Railway](https://railway.app)
+1. Conecte o repositório ao Railway.
+2. O Railway usará o arquivo `railway.json` na raiz para configurar o serviço.
+3. Configure `DATABASE_URL` e `REDIS_URL` no painel.
+
+## 🐳 Opção 2: Servidor Próprio (Docker)
+Ideal para controle total e redução de custos fixos.
+
+1. Configure o arquivo `.env` (baseado no `.env.example`).
+2. Suba os containers de produção:
 ```bash
-git clone https://github.com/usuario/x-acai-delivery.git
-cd x-acai-delivery
+npm run docker:prod
 ```
-
-2. Configure o arquivo `.env` (veja `ENVIRONMENT.md` para detalhes).
-
-3. Suba os containers:
-```bash
-docker-compose up -d --build
-```
-
-O sistema estará disponível na porta definida em `PORT` (Padrão 3000).
+3. O sistema usará o `docker-compose.prod.yml` para orquestrar os serviços.
 
 ## 🗄️ Gerenciamento de Banco de Dados
 O sistema suporta PostgreSQL nativamente se a variável `DATABASE_URL` estiver presente.

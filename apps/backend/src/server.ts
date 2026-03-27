@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import './config/env';
+import './store/firestore.client';
 import { randomUUID } from 'crypto';
 import { setupDatabase } from './db/db.client';
 import { InventoryAlertService } from './services/inventory_alert.service';
@@ -60,11 +62,10 @@ import { growthService } from './services/growth.service';
 import { monitoringService } from './services/monitoring.service';
 
 // Growth service is initialized here to start event listeners
-const _growth = growthService;
-
-dotenv.config();
 
 const app = express();
+
+app.get('/test', (req, res) => res.send('ok_from_server'));
 
 // Enable Enterprise Monitoring (Prometheus & Sentry)
 monitoringService.setupMetrics(app);
