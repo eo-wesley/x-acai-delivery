@@ -16,6 +16,10 @@ Data: 2026-03-27
 
 Foco executado: UX da tela de pagamento Pix no frontend.
 
+Commit publicado desta etapa:
+
+- `adc1d8f892a0fefb26f5a4fae39dcb76b5a8aaa7`
+
 Concluido nesta entrega:
 
 - polling do Pix estabilizado para rodar a cada 3s sem sobreposicao de requisicoes
