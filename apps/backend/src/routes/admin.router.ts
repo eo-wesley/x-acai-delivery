@@ -44,18 +44,38 @@ adminRouter.get('/admin/orders', adminAuthMiddleware, tenantMiddleware, async (r
         const params: any[] = [tenantId, limit, offset];
 
         if (dateFrom && dateTo) {
-            dateFilter = ` AND created_at >= ? AND created_at <= ? `;
+            dateFilter = ` AND o.created_at >= ? AND o.created_at <= ? `;
             params.splice(1, 0, dateFrom, dateTo + ' 23:59:59');
         }
 
         const db = await getDb();
-        const query = `SELECT * FROM orders WHERE restaurant_id = ? ${dateFilter} ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+        const query = `SELECT o.*,
+            COALESCE(c.name, o.customer_name) as resolved_customer_name,
+            COALESCE(c.phone, o.customer_phone) as resolved_customer_phone
+            FROM orders o
+            LEFT JOIN customers c ON o.customer_id = c.id
+            WHERE o.restaurant_id = ? ${dateFilter} ORDER BY o.created_at DESC LIMIT ? OFFSET ?`;
         const orders = await db.all(query, params);
 
-        const parsedOrders = orders.map((o: any) => ({
-            ...o,
-            items: typeof o.items === 'string' ? JSON.parse(o.items) : o.items
-        }));
+        // Pre-fetch all menu item names for this tenant to avoid N+1 queries
+        const menuItems = await db.all('SELECT id, name FROM menu_items WHERE restaurant_id = ?', [tenantId]);
+        const menuNameMap: Record<string, string> = {};
+        for (const mi of menuItems) { menuNameMap[mi.id] = mi.name; }
+
+        const parsedOrders = orders.map((o: any) => {
+            const items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items;
+            // Enrich each item with its human-readable name
+            const enrichedItems = (items || []).map((item: any) => ({
+                ...item,
+                name: item.name || menuNameMap[item.menuItemId] || 'Item removido',
+            }));
+            return {
+                ...o,
+                customer_name: o.resolved_customer_name || o.customer_name || null,
+                customer_phone: o.resolved_customer_phone || o.customer_phone || null,
+                items: enrichedItems,
+            };
+        });
 
         res.json(parsedOrders);
     } catch (e: any) {
