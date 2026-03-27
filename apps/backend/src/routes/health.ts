@@ -1,11 +1,11 @@
 import { Router } from 'express';
+import { getDb } from '../db/db.client';
 
-const healthRouter = Router();
+export const healthRouter = Router();
 
 healthRouter.get('/health', async (req, res) => {
   let dbStatus = 'ok';
   try {
-    const { getDb } = await import('../db/db.client');
     const db = await getDb();
     await db.get('SELECT 1');
   } catch (e) {
@@ -20,10 +20,9 @@ healthRouter.get('/health', async (req, res) => {
     database: dbStatus,
     uptime: `${Math.floor(uptime / 60)}m ${Math.floor(uptime % 60)}s`,
     timestamp: new Date().toISOString(),
-    version: '1.1.0',
+    version: '1.2.0',
     process: {
       memory: `${Math.round(memoryUsage.rss / 1024 / 1024)}MB`,
-      node: process.version
     }
   });
 });

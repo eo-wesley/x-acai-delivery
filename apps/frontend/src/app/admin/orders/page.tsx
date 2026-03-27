@@ -225,8 +225,15 @@ function OrderCard({ order, onStatusChange, onAutoDispatch }: { order: Order; on
                     <div>
                         <span className="font-black text-purple-700 text-base">{fmtCurrency(order.total_cents)}</span>
                         {order.payment_method && (
-                            <span className="ml-2 text-xs text-gray-400">
-                                {order.payment_method === 'pix' ? '💸 PIX' : order.payment_method === 'card' ? '💳 Cartão' : '💵 Dinheiro'}
+                            <span className="ml-2 text-xs flex items-center gap-1 inline-flex">
+                                <span className="text-gray-400">
+                                    {order.payment_method === 'pix' ? '💸 PIX' : order.payment_method === 'card' ? '💳 Cartão' : '💵 Dinheiro'}
+                                </span>
+                                {order.status !== 'cancelled' && (
+                                    order.payment_status === 'paid' 
+                                      ? <span className="bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded text-[10px] font-bold">Pago</span> 
+                                      : <span className="bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded text-[10px] font-bold">Pendente</span>
+                                )}
                             </span>
                         )}
                     </div>

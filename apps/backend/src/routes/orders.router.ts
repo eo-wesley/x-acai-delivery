@@ -196,7 +196,23 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             );
             (order as any).status = 'confirmed'; // Auto confirm wallet payments
             await db.run(`UPDATE orders SET status = 'confirmed' WHERE id = ?`, [order.id]);
-        } else if (paymentMethod === 'pix' || paymentMethod === 'card') {
+        } else if (paymentMethod === 'pix') {
+            const pixInfo = await pixPaymentService.createPixPayment({
+                orderId: order.id,
+                totalCents: data.totalCents,
+                customerName: data.customerName || 'Cliente X-Açaí'
+            });
+
+            await db.run(
+                `UPDATE orders SET payment_provider = 'mercadopago_pix', payment_reference = ?, payment_qr_code = ?, payment_qr_base64 = ? WHERE id = ?`,
+                [pixInfo.paymentId, pixInfo.qrCode, pixInfo.qrCodeBase64, order.id]
+            );
+
+            (order as any).pix_qr_code = pixInfo.qrCode;
+            (order as any).pix_qr_base64 = pixInfo.qrCodeBase64;
+            (order as any).payment_reference = pixInfo.paymentId;
+            (order as any).pix_expires_at = pixInfo.expiresAt;
+        } else if (paymentMethod === 'card') {
             const checkoutUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
             (order as any).payment_url = checkoutUrl;
         }
