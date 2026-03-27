@@ -1,349 +1,527 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { PaymentPollingResponse, usePaymentPolling } from '../../../hooks/usePaymentPolling';
+import { readTenantSlugFromBrowser } from '../../../hooks/useTenant';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const REDIRECT_DELAY_MS = 2200;
 
-function fmtCents(c: number) {
-    return 'R$ ' + (c / 100).toFixed(2).replace('.', ',');
+interface PixSessionData {
+    orderId: string;
+    qrCode: string;
+    qrBase64: string;
+    expiresAt?: string;
+    totalCents?: number;
+    items?: Array<{ name: string; qty: number }>;
+    slug?: string;
+}
+
+function fmtCents(cents: number) {
+    return `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
+}
+
+function getWaitingLabel(status: string) {
+    if (status === 'waiting_pix') return 'Pagamento Pix iniciado. Estamos aguardando a confirmacao do banco.';
+    if (status === 'pending') return 'Pedido criado. Falta apenas a confirmacao do pagamento para seguir.';
+    return 'Aguardando a confirmacao automatica do pagamento.';
 }
 
 function PixQRBlock({
     qrCode,
     qrBase64,
     expiresAt,
-    onExpired,
-    onRegenerate,
+    refreshing,
+    onRefresh,
 }: {
     qrCode: string;
     qrBase64: string;
     expiresAt?: string;
-    onExpired?: () => void;
-    onRegenerate?: () => void;
+    refreshing: boolean;
+    onRefresh: () => void;
 }) {
     const [copied, setCopied] = useState(false);
     const [expired, setExpired] = useState(false);
-    const [remaining, setRemaining] = useState<string>('');
+    const [remaining, setRemaining] = useState('');
 
     useEffect(() => {
+        setExpired(false);
+        setRemaining('');
+
         if (!expiresAt) return;
-        const interval = setInterval(() => {
+
+        const tick = () => {
             const diff = new Date(expiresAt).getTime() - Date.now();
+
             if (diff <= 0) {
                 setExpired(true);
-                clearInterval(interval);
-                onExpired?.();
-            } else {
-                const min = Math.floor(diff / 60000);
-                const sec = Math.floor((diff % 60000) / 1000);
-                setRemaining(`${min}:${sec.toString().padStart(2, '0')}`);
+                setRemaining('00:00');
+                return false;
+            }
+
+            const minutes = Math.floor(diff / 60000);
+            const seconds = Math.floor((diff % 60000) / 1000);
+            setRemaining(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+            return true;
+        };
+
+        tick();
+        const intervalId = setInterval(() => {
+            const shouldContinue = tick();
+            if (!shouldContinue) {
+                clearInterval(intervalId);
             }
         }, 1000);
-        return () => clearInterval(interval);
-    }, [expiresAt, onExpired]);
+
+        return () => clearInterval(intervalId);
+    }, [expiresAt]);
 
     const copyQr = async () => {
         try {
             await navigator.clipboard.writeText(qrCode);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2500);
         } catch {
-            const el = document.createElement('textarea');
-            el.value = qrCode;
-            document.body.appendChild(el);
-            el.select();
+            const textarea = document.createElement('textarea');
+            textarea.value = qrCode;
+            document.body.appendChild(textarea);
+            textarea.select();
             document.execCommand('copy');
-            document.body.removeChild(el);
+            document.body.removeChild(textarea);
             setCopied(true);
-            setTimeout(() => setCopied(false), 2500);
         }
+
+        setTimeout(() => setCopied(false), 2500);
     };
 
-    if (expired) {
-        return (
-            <div className="flex flex-col items-center gap-3 py-6">
-                <div className="text-5xl">⏰</div>
-                <p className="font-black text-red-700 text-base">QR Code expirado</p>
-                <p className="text-sm text-gray-500 text-center">O tempo para pagar expirou (30 min).</p>
-                {onRegenerate && (
-                    <button
-                        onClick={onRegenerate}
-                        className="mt-2 bg-purple-600 hover:bg-purple-700 text-white font-black py-3 px-6 rounded-xl transition active:scale-95"
-                    >
-                        🔄 Gerar novo PIX
-                    </button>
-                )}
-            </div>
-        );
-    }
-
     return (
-        <div className="flex flex-col items-center gap-4">
-            {/* QR Image */}
-            <div className="bg-white border-4 border-purple-200 rounded-2xl p-3 shadow-lg">
-                {qrBase64 ? (
-                    <img
-                        src={`data:image/png;base64,${qrBase64}`}
-                        alt="QR Code PIX"
-                        className="w-52 h-52 object-contain"
-                        loading="eager"
-                    />
-                ) : (
-                    <div className="w-52 h-52 flex flex-col items-center justify-center text-center gap-2 bg-gray-50 rounded-xl">
-                        <span className="text-4xl">💸</span>
-                        <p className="text-xs text-gray-500 px-2">QR Code gerado — use o código abaixo para copiar</p>
-                    </div>
-                )}
+        <div className="space-y-5">
+            <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 shadow-inner">
+                <div className="mx-auto flex w-full max-w-[320px] flex-col items-center rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+                    {qrBase64 ? (
+                        <img
+                            src={`data:image/png;base64,${qrBase64}`}
+                            alt="QR Code Pix"
+                            className="h-[min(78vw,320px)] w-[min(78vw,320px)] max-h-80 max-w-80 rounded-2xl object-contain"
+                            loading="eager"
+                        />
+                    ) : (
+                        <div className="flex h-[min(78vw,320px)] w-[min(78vw,320px)] max-h-80 max-w-80 flex-col items-center justify-center rounded-2xl bg-slate-100 px-5 text-center">
+                            <span className="text-5xl">PIX</span>
+                            <p className="mt-3 text-sm font-medium text-slate-500">
+                                O banco pode usar o codigo abaixo caso o QR nao apareca.
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
 
-            {/* Timer */}
-            {remaining && (
-                <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2">
-                    <span className="text-amber-600 text-lg">⏱</span>
-                    <span className="text-amber-800 font-bold text-sm">Expira em {remaining}</span>
-                </div>
-            )}
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                <p className="font-black uppercase tracking-wide">Validade do codigo</p>
+                <p className="mt-1 font-medium">
+                    {remaining ? `Expira em ${remaining}.` : 'A validade do Pix esta sendo atualizada.'}
+                </p>
+            </div>
 
-            {/* Copy button */}
             <button
+                type="button"
                 onClick={copyQr}
-                className={`w-full py-3 rounded-xl font-black text-base transition active:scale-95 flex items-center justify-center gap-2 shadow-sm
-                    ${copied
-                        ? 'bg-green-500 text-white'
-                        : 'bg-purple-600 hover:bg-purple-700 text-white'}`}
+                className={`flex w-full items-center justify-center rounded-2xl px-4 py-4 text-base font-black transition active:scale-[0.99] ${
+                    copied ? 'bg-emerald-500 text-white' : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}
             >
-                {copied ? '✅ Código copiado!' : '📋 Copiar código PIX'}
+                {copied ? 'Codigo Pix copiado' : 'Copiar codigo Pix'}
             </button>
 
-            {/* Full code (scrollable) */}
-            <div className="w-full bg-gray-100 rounded-xl p-3">
-                <p className="text-xs text-gray-400 mb-1 font-semibold uppercase tracking-wide">Copia e Cola</p>
-                <p className="text-xs text-gray-600 break-all font-mono leading-relaxed select-all">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                <p className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-400">Pix copia e cola</p>
+                <p className="mt-3 break-all font-mono text-xs leading-6 text-slate-700 select-all">
                     {qrCode}
                 </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                    type="button"
+                    onClick={onRefresh}
+                    disabled={refreshing}
+                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                    {refreshing ? 'Atualizando...' : expired ? 'Atualizar pagamento' : 'Atualizar QR e status'}
+                </button>
+                <Link
+                    href="/"
+                    className="flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                >
+                    Voltar ao cardapio
+                </Link>
             </div>
         </div>
     );
 }
 
-/* ─── Main PIX Page ─────────────────────────────────────── */
+async function fetchPixOrder(orderId: string, tenantSlug: string) {
+    const tenantResponse = await fetch(`${API}/api/${tenantSlug}/orders/${orderId}`, { cache: 'no-store' });
+    if (tenantResponse.ok) {
+        return tenantResponse.json();
+    }
+
+    const fallbackResponse = await fetch(`${API}/api/orders/${orderId}`, { cache: 'no-store' });
+    if (!fallbackResponse.ok) {
+        throw new Error('QR Pix nao encontrado para este pedido.');
+    }
+
+    return fallbackResponse.json();
+}
+
 export default function PixPaymentPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
 
-    const [pixData, setPixData] = useState<{
-        qrCode: string;
-        qrBase64: string;
-        expiresAt?: string;
-        orderId: string;
-        totalCents?: number;
-        items?: any[];
-    } | null>(null);
-
-    const [paymentStatus, setPaymentStatus] = useState<string>('pending_payment');
-    const [loadingPix, setLoadingPix] = useState(true);
+    const [pixData, setPixData] = useState<PixSessionData | null>(null);
+    const [phase, setPhase] = useState<'loading' | 'ready' | 'success' | 'error'>('loading');
+    const [paymentStatus, setPaymentStatus] = useState('pending_payment');
     const [error, setError] = useState('');
-    const [regenerating, setRegenerating] = useState(false);
+    const [tenantSlug, setTenantSlug] = useState('default');
+    const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
+    const [reloadNonce, setReloadNonce] = useState(0);
 
-    // Load PIX data from sessionStorage (set by checkout) or fetch from API
     useEffect(() => {
-        const stored = sessionStorage.getItem(`pix_${id}`);
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                setPixData(parsed);
-                setLoadingPix(false);
-                return;
-            } catch { /* ignore */ }
-        }
-        // Fallback: fetch order and extract pix data
-        fetch(`${API}/api/orders/${id}`, { cache: 'no-store' })
-            .then(r => r.json())
-            .then(order => {
-                if (order.payment_qr_code || order.pix_qr_code) {
-                    setPixData({
-                        orderId: id,
-                        qrCode: order.payment_qr_code || order.pix_qr_code || '',
-                        qrBase64: order.payment_qr_base64 || order.pix_qr_base64 || '',
-                        totalCents: order.total_cents,
-                    });
-                } else {
-                    setError('QR PIX não encontrado para este pedido.');
-                }
-                setLoadingPix(false);
-            })
-            .catch(() => {
-                setError('Falha ao carregar dados do pagamento.');
-                setLoadingPix(false);
-            });
-    }, [id]);
+        let cancelled = false;
 
-    // Poll payment status every 3s
-    useEffect(() => {
-        const slug = localStorage.getItem('tenant_slug') || 'default';
-        const poll = async () => {
+        const loadPixData = async () => {
+            setPhase('loading');
+            setError('');
+
             try {
-                const res = await fetch(`${API}/api/${slug}/orders/${id}/payment-status`, { cache: 'no-store' });
-                if (res.ok) {
-                    const data = await res.json();
-                    const status = data.payment_status || data.status;
-                    setPaymentStatus(status);
-                    if (status === 'paid' || data.order_status === 'confirmed') {
-                        sessionStorage.removeItem(`pix_${id}`);
-                        router.replace(`/order/${id}?paid=1`);
+                const stored = sessionStorage.getItem(`pix_${id}`);
+                let resolvedSlug = readTenantSlugFromBrowser();
+
+                if (stored) {
+                    const parsed = JSON.parse(stored) as PixSessionData;
+                    resolvedSlug = readTenantSlugFromBrowser({ preferredSlug: parsed.slug || resolvedSlug });
+
+                    if (!cancelled) {
+                        const nextPixData = { ...parsed, slug: resolvedSlug };
+                        setPixData(nextPixData);
+                        setTenantSlug(resolvedSlug);
+                        setPhase('ready');
                     }
-                }
-            } catch { /* silent */ }
-        };
-        poll();
-        const iv = setInterval(poll, 3000);
-        return () => clearInterval(iv);
-    }, [id, router]);
 
-    const handleRegenerate = async () => {
-        setRegenerating(true);
-        try {
-            const res = await fetch(`${API}/api/webhooks/mercadopago/simulate/${id}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'regenerate' }),
-            });
-            // For now, just reload and fetch new data
-            const orderRes = await fetch(`${API}/api/orders/${id}`, { cache: 'no-store' });
-            const order = await orderRes.json();
-            if (order.payment_qr_code || order.pix_qr_code) {
-                setPixData({
+                    try {
+                        localStorage.setItem('tenant_slug', resolvedSlug);
+                        sessionStorage.setItem(`pix_${id}`, JSON.stringify({ ...parsed, slug: resolvedSlug }));
+                    } catch {
+                        // Ignore storage limitations.
+                    }
+
+                    return;
+                }
+
+                const order = await fetchPixOrder(id, resolvedSlug);
+
+                if (!(order.payment_qr_code || order.pix_qr_code)) {
+                    throw new Error('QR Pix nao encontrado para este pedido.');
+                }
+
+                const nextPixData: PixSessionData = {
                     orderId: id,
                     qrCode: order.payment_qr_code || order.pix_qr_code || '',
                     qrBase64: order.payment_qr_base64 || order.pix_qr_base64 || '',
+                    expiresAt: order.pix_expires_at || undefined,
                     totalCents: order.total_cents,
-                });
+                    items: Array.isArray(order.items)
+                        ? order.items.map((item: any) => ({
+                              name: item.name || item.menuItemId || 'Item',
+                              qty: item.qty || 1,
+                          }))
+                        : undefined,
+                    slug: resolvedSlug,
+                };
+
+                if (!cancelled) {
+                    setPixData(nextPixData);
+                    setTenantSlug(resolvedSlug);
+                    setPhase('ready');
+                }
+
+                try {
+                    localStorage.setItem('tenant_slug', resolvedSlug);
+                    sessionStorage.setItem(`pix_${id}`, JSON.stringify(nextPixData));
+                } catch {
+                    // Ignore storage limitations.
+                }
+            } catch (loadError: any) {
+                if (!cancelled) {
+                    setError(loadError?.message || 'Falha ao carregar os dados do pagamento.');
+                    setPhase('error');
+                }
             }
-        } catch { /* silent */ }
-        setRegenerating(false);
+        };
+
+        void loadPixData();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [id, reloadNonce]);
+
+    usePaymentPolling({
+        orderId: id,
+        enabled: phase === 'ready',
+        interval: 3000,
+        slug: tenantSlug,
+        onStatusChange: (data: PaymentPollingResponse) => {
+            setLastCheckedAt(new Date());
+            setPaymentStatus(data.payment_status || data.order_status || 'pending_payment');
+
+            if (!data.pix_qr_code && !data.pix_qr_base64) return;
+
+            setPixData(current => {
+                if (!current) return current;
+
+                return {
+                    ...current,
+                    qrCode: data.pix_qr_code || current.qrCode,
+                    qrBase64: data.pix_qr_base64 || current.qrBase64,
+                };
+            });
+        },
+        onPaid: (data: PaymentPollingResponse) => {
+            setLastCheckedAt(new Date());
+            setPaymentStatus(data.payment_status || 'paid');
+            setPhase('success');
+
+            try {
+                sessionStorage.removeItem(`pix_${id}`);
+            } catch {
+                // Ignore storage limitations.
+            }
+        },
+        onCancelled: (data: PaymentPollingResponse) => {
+            setPaymentStatus(data.payment_status || data.order_status || 'cancelled');
+            setError('O pagamento foi cancelado ou nao pode ser confirmado. Tente novamente.');
+            setPhase('error');
+        },
+    });
+
+    useEffect(() => {
+        if (phase !== 'success') return;
+
+        const redirectTimer = setTimeout(() => {
+            router.replace(`/order/${id}?paid=1`);
+        }, REDIRECT_DELAY_MS);
+
+        return () => clearTimeout(redirectTimer);
+    }, [id, phase, router]);
+
+    const handleRefresh = () => {
+        setReloadNonce(current => current + 1);
     };
 
-    if (loadingPix) {
+    if (phase === 'loading') {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 p-6">
-                <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
-                <p className="text-gray-500 font-medium">Gerando QR Code PIX...</p>
+            <div className="min-h-screen bg-[#f5f7fb] px-4 py-8">
+                <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center rounded-[32px] bg-white px-6 text-center shadow-sm">
+                    <div className="h-14 w-14 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+                    <h1 className="mt-6 text-xl font-black text-slate-900">Preparando seu Pix</h1>
+                    <p className="mt-2 text-sm text-slate-500">
+                        Estamos carregando o QR Code e o status mais recente do pagamento.
+                    </p>
+                </div>
             </div>
         );
     }
 
-    if (error) {
+    if (phase === 'success') {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center gap-4 bg-gray-50 p-6 text-center">
-                <div className="text-5xl">😕</div>
-                <h2 className="font-black text-gray-800 text-xl">Ops!</h2>
-                <p className="text-gray-500 text-sm">{error}</p>
-                <Link href={`/order/${id}`}>
-                    <button className="mt-4 bg-purple-600 text-white font-bold py-3 px-6 rounded-xl">
-                        Ver meu pedido
-                    </button>
-                </Link>
+            <div className="min-h-screen bg-[radial-gradient(circle_at_top,#dcfce7,white_55%)] px-4 py-8">
+                <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center rounded-[32px] bg-white px-6 py-10 text-center shadow-sm">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-full bg-emerald-100 text-3xl font-black text-emerald-600">OK</div>
+                    <h1 className="mt-6 text-3xl font-black tracking-tight text-slate-900">
+                        Pagamento confirmado
+                    </h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-600">
+                        Seu Pix foi aprovado e o pedido ja pode seguir para a loja.
+                    </p>
+                    {pixData?.totalCents ? (
+                        <div className="mt-6 rounded-2xl bg-emerald-50 px-5 py-4 text-emerald-900">
+                            <p className="text-xs font-black uppercase tracking-[0.18em]">Valor aprovado</p>
+                            <p className="mt-2 text-2xl font-black">{fmtCents(pixData.totalCents)}</p>
+                        </div>
+                    ) : null}
+                    <p className="mt-6 text-sm font-medium text-slate-500">
+                        Redirecionando para o acompanhamento do pedido...
+                    </p>
+                    <Link
+                        href={`/order/${id}?paid=1`}
+                        className="mt-5 w-full rounded-2xl bg-emerald-600 px-4 py-4 text-base font-black text-white transition hover:bg-emerald-700"
+                    >
+                        Ver pedido agora
+                    </Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (phase === 'error' || !pixData) {
+        return (
+            <div className="min-h-screen bg-[#f5f7fb] px-4 py-8">
+                <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center rounded-[32px] bg-white px-6 text-center shadow-sm">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-100 text-4xl text-rose-500">
+                        !
+                    </div>
+                    <h1 className="mt-6 text-2xl font-black text-slate-900">Nao foi possivel abrir o Pix</h1>
+                    <p className="mt-3 text-sm leading-6 text-slate-500">
+                        {error || 'Tivemos um problema ao carregar os dados do pagamento.'}
+                    </p>
+                    <div className="mt-6 flex w-full flex-col gap-3">
+                        <button
+                            type="button"
+                            onClick={handleRefresh}
+                            className="w-full rounded-2xl bg-slate-900 px-4 py-4 text-base font-black text-white transition hover:bg-slate-800"
+                        >
+                            Tentar novamente
+                        </button>
+                        <Link
+                            href={`/order/${id}`}
+                            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-base font-bold text-slate-700 transition hover:bg-slate-50"
+                        >
+                            Ir para o pedido
+                        </Link>
+                    </div>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-purple-50 to-gray-50">
-            <div className="max-w-md mx-auto bg-white shadow-sm min-h-screen p-4 pb-32 relative">
-                {/* Header */}
-                <div className="flex items-center gap-3 pt-2">
-                    <Link href={`/order/${id}`} className="text-purple-600 font-bold text-sm">← Meu Pedido</Link>
-                    <h1 className="text-lg font-black text-gray-800">Pagar com PIX</h1>
-                </div>
+        <div className="min-h-screen bg-[#f5f7fb] px-4 py-5">
+            <div className="mx-auto max-w-md pb-10">
+                <div className="overflow-hidden rounded-[32px] bg-white shadow-sm">
+                    <div className="bg-[linear-gradient(135deg,#0f172a,#14532d)] px-5 pb-8 pt-6 text-white">
+                        <div className="flex items-center justify-between gap-3">
+                            <Link href={`/order/${id}`} className="text-sm font-bold text-emerald-100">
+                                Voltar ao pedido
+                            </Link>
+                            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-100">
+                                Pix
+                            </span>
+                        </div>
 
-                {/* Status banner */}
-                <div className={`rounded-2xl px-4 py-3 text-center font-bold text-sm mt-5 transition-all ${paymentStatus === 'paid'
-                    ? 'bg-green-100 text-green-800 border border-green-300'
-                    : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
-                    }`}>
-                    {paymentStatus === 'paid'
-                        ? '✅ Pagamento confirmado! Redirecionando...'
-                        : '⏳ Aguardando confirmação do pagamento...'}
-                    <div className="flex justify-center mt-2 gap-1">
-                        {[0, 1, 2].map(i => (
-                            <div
-                                key={i}
-                                className={`w-1.5 h-1.5 rounded-full bg-yellow-400 animate-bounce`}
-                                style={{ animationDelay: `${i * 0.15}s` }}
-                            />
-                        ))}
+                        <h1 className="mt-5 text-[32px] font-black leading-none tracking-tight">
+                            Pague seu pedido com Pix
+                        </h1>
+                        <p className="mt-3 max-w-sm text-sm leading-6 text-emerald-50/85">
+                            Escaneie o QR Code ou copie o codigo. A confirmacao acontece automaticamente a cada 3 segundos.
+                        </p>
+
+                        {pixData.totalCents ? (
+                            <div className="mt-6 inline-flex rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+                                <div>
+                                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-100/80">
+                                        Total desta compra
+                                    </p>
+                                    <p className="mt-1 text-3xl font-black">{fmtCents(pixData.totalCents)}</p>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
-                </div>
 
-                {/* QR Block */}
-                <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 mt-5">
-                    <h2 className="font-black text-gray-800 text-sm uppercase tracking-wide mb-4 text-center">
-                        📲 Escaneie com qualquer app de banco
-                    </h2>
-                    {pixData && (
+                    <div className="space-y-5 px-5 py-6">
+                        <div className="rounded-[28px] border border-emerald-100 bg-emerald-50 p-4 text-emerald-950">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                                        Status do pagamento
+                                    </p>
+                                    <p className="mt-2 text-base font-black">
+                                        {paymentStatus === 'paid' ? 'Pagamento confirmado' : 'Aguardando confirmacao'}
+                                    </p>
+                                    <p className="mt-1 text-sm leading-6 text-emerald-900/80">
+                                        {getWaitingLabel(paymentStatus)}
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-1 pt-1">
+                                    {[0, 1, 2].map(index => (
+                                        <span
+                                            key={index}
+                                            className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-bounce"
+                                            style={{ animationDelay: `${index * 0.18}s` }}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+                            <p className="mt-3 text-xs font-medium text-emerald-800/80">
+                                {lastCheckedAt
+                                    ? `Ultima checagem automatica: ${lastCheckedAt.toLocaleTimeString('pt-BR', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                          second: '2-digit',
+                                      })}`
+                                    : 'Primeira verificacao em andamento...'}
+                            </p>
+                        </div>
+
                         <PixQRBlock
                             qrCode={pixData.qrCode}
                             qrBase64={pixData.qrBase64}
                             expiresAt={pixData.expiresAt}
-                            onRegenerate={handleRegenerate}
+                            refreshing={phase === 'loading'}
+                            onRefresh={handleRefresh}
                         />
-                    )}
-                </div>
 
-                {/* Total */}
-                {pixData?.totalCents && (
-                    <div className="bg-purple-600 text-white rounded-2xl px-5 py-4 flex justify-between items-center shadow-md mt-5">
-                        <span className="font-bold text-sm opacity-80">Total a pagar</span>
-                        <span className="font-black text-2xl">{fmtCents(pixData.totalCents)}</span>
+                        <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+                            <h2 className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                                Como pagar
+                            </h2>
+                            <ol className="mt-4 space-y-3 text-sm text-slate-700">
+                                <li className="flex items-start gap-3">
+                                    <span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-slate-700 shadow-sm">
+                                        1
+                                    </span>
+                                    Abra o app do seu banco e entre na area Pix.
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-slate-700 shadow-sm">
+                                        2
+                                    </span>
+                                    Escaneie o QR Code maior acima ou use o botao de copiar codigo.
+                                </li>
+                                <li className="flex items-start gap-3">
+                                    <span className="mt-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-slate-700 shadow-sm">
+                                        3
+                                    </span>
+                                    Depois de pagar, aguarde nesta tela. A confirmacao acontece sem precisar atualizar a pagina.
+                                </li>
+                            </ol>
+                        </div>
+
+                        <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+                            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">
+                                Informacoes do pedido
+                            </p>
+                            <div className="mt-4 flex items-center justify-between text-sm text-slate-600">
+                                <span>Numero do pedido</span>
+                                <span className="font-black text-slate-900">#{id.slice(0, 8).toUpperCase()}</span>
+                            </div>
+                            {pixData.items?.length ? (
+                                <div className="mt-4 space-y-2 border-t border-slate-100 pt-4 text-sm text-slate-600">
+                                    {pixData.items.map((item, index) => (
+                                        <div key={`${item.name}-${index}`} className="flex items-center justify-between gap-3">
+                                            <span className="truncate">
+                                                {item.qty}x {item.name}
+                                            </span>
+                                            <span className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                                                Item
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </div>
                     </div>
-                )}
-
-                {/* Instructions */}
-                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mt-5">
-                    <h3 className="font-black text-gray-800 text-xs uppercase tracking-wide mb-3">💡 Como pagar</h3>
-                    <ol className="space-y-2 text-sm text-gray-600">
-                        {[
-                            'Abra o app do seu banco',
-                            'Acesse a área PIX',
-                            'Escolha "Pagar com QR Code" ou "Copia e cola"',
-                            'Escaneie o QR ou cole o código',
-                            'Confirme o valor e finalize',
-                        ].map((step, i) => (
-                            <li key={i} className="flex items-start gap-3">
-                                <span className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 text-xs font-black flex items-center justify-center flex-shrink-0 mt-0.5">
-                                    {i + 1}
-                                </span>
-                                {step}
-                            </li>
-                        ))}
-                    </ol>
-                </div>
-
-                {/* Tips */}
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 mt-5">
-                    <p className="font-black text-xs uppercase tracking-wide mb-2">⚠️ Atenção</p>
-                    <ul className="space-y-1 text-xs">
-                        <li>• O QR Code expira em 30 minutos</li>
-                        <li>• Após pagar, seu pedido será confirmado automaticamente</li>
-                        <li>• Não feche esta página até o pagamento ser confirmado</li>
-                        <li>• Em caso de dúvidas, entre em contacto via WhatsApp</li>
-                    </ul>
-                </div>
-
-                {/* Navigation */}
-                <div className="flex gap-3 mt-5">
-                    <Link href={`/order/${id}`} className="flex-1">
-                        <button className="w-full border-2 border-purple-600 text-purple-700 font-black py-3 rounded-xl transition hover:bg-purple-50">
-                            Ver Pedido
-                        </button>
-                    </Link>
-                    <Link href="/" className="flex-1">
-                        <button className="w-full border-2 border-gray-200 text-gray-600 font-black py-3 rounded-xl transition hover:bg-gray-50">
-                            Cardápio
-                        </button>
-                    </Link>
                 </div>
             </div>
         </div>

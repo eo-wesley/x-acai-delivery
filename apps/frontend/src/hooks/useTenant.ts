@@ -2,13 +2,66 @@
 
 import { useEffect, useState } from 'react';
 
+function isValidSlug(value: string | null | undefined): value is string {
+    return Boolean(value && value !== 'undefined' && value !== 'null');
+}
+
+function readCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+
+    const cookies = document.cookie.split(';').map(cookie => cookie.trim());
+    const match = cookies.find(cookie => cookie.startsWith(`${name}=`));
+    return match ? decodeURIComponent(match.split('=').slice(1).join('=')) : null;
+}
+
+interface ReadTenantSlugOptions {
+    includeAdminFallback?: boolean;
+    preferredSlug?: string | null;
+}
+
+export function readTenantSlugFromBrowser(options: ReadTenantSlugOptions = {}): string {
+    const { includeAdminFallback = false, preferredSlug } = options;
+
+    if (isValidSlug(preferredSlug)) {
+        return preferredSlug;
+    }
+
+    const cookieSlug = readCookie('tenant_slug');
+    if (isValidSlug(cookieSlug)) {
+        return cookieSlug;
+    }
+
+    if (typeof window === 'undefined') {
+        return 'default';
+    }
+
+    const urlSlug = new URLSearchParams(window.location.search).get('slug');
+    if (isValidSlug(urlSlug)) {
+        return urlSlug;
+    }
+
+    const storedTenantSlug = window.localStorage.getItem('tenant_slug');
+    if (isValidSlug(storedTenantSlug)) {
+        return storedTenantSlug;
+    }
+
+    if (includeAdminFallback) {
+        const adminSlug = window.localStorage.getItem('admin_slug');
+        if (isValidSlug(adminSlug)) {
+            return adminSlug;
+        }
+    }
+
+    return 'default';
+}
+
 /**
  * useTenant — resolves the current restaurant slug
  *
  * Priority order:
  * 1. Cookie set by Next.js middleware (from Nginx X-Tenant-Slug header, in production)
- * 2. localStorage (saved when user switches tenant in admin or from URL param)
- * 3. URL query param ?slug=xxx (dev/testing fallback)
+ * 2. URL query param ?slug=xxx (dev/testing fallback)
+ * 3. localStorage `tenant_slug` (persisted customer storefront context)
  * 4. 'default' (fallback for local dev)
  */
 export function useTenant() {
@@ -16,38 +69,18 @@ export function useTenant() {
     const [ready, setReady] = useState(false);
 
     useEffect(() => {
-        // 1. Try cookie (set by middleware.ts from Nginx X-Tenant-Slug)
-        const cookies = document.cookie.split(';').map(c => c.trim());
-        const slugCookie = cookies.find(c => c.startsWith('tenant_slug='));
-        if (slugCookie) {
-            const val = slugCookie.split('=')[1];
-            if (val && val !== 'undefined') {
-                setSlug(val);
-                setReady(true);
-                return;
-            }
-        }
+        const resolvedSlug = readTenantSlugFromBrowser();
 
-        // 2. Try localStorage (admin panel tenant switch)
-        const savedSlug = localStorage.getItem('admin_slug');
-        if (savedSlug && savedSlug !== 'undefined') {
-            setSlug(savedSlug);
-            setReady(true);
-            return;
-        }
-
-        // 3. Try URL query param ?slug=xxx
-        const params = new URLSearchParams(window.location.search);
-        const urlSlug = params.get('slug');
-        if (urlSlug) {
-            setSlug(urlSlug);
-            setReady(true);
-            return;
-        }
-
-        // 4. Fallback to 'default'
-        setSlug('default');
+        setSlug(resolvedSlug);
         setReady(true);
+
+        try {
+            if (resolvedSlug !== 'default') {
+                localStorage.setItem('tenant_slug', resolvedSlug);
+            }
+        } catch {
+            // Ignore storage errors in private browsing or restricted contexts.
+        }
     }, []);
 
     return { slug, ready };

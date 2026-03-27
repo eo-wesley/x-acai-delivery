@@ -169,11 +169,17 @@ export default function CheckoutPage() {
                         orderId: data.id,
                         qrCode: data.pix_qr_code || '',
                         qrBase64: data.pix_qr_base64 || '',
+                        slug,
                         totalCents,
                         expiresAt: data.pix_expires_at || new Date(Date.now() + 30 * 60 * 1000).toISOString(),
                         items: items.map(i => ({ name: i.name, qty: i.qty })),
                     };
-                    try { sessionStorage.setItem(`pix_${data.id}`, JSON.stringify(pixSession)); } catch { /* quota */ }
+                    try {
+                        localStorage.setItem('tenant_slug', slug);
+                        sessionStorage.setItem(`pix_${data.id}`, JSON.stringify(pixSession));
+                    } catch {
+                        /* ignore storage quota errors */
+                    }
                     router.push(`/pix/${data.id}`);
                 } else {
                     // Cash/card: go directly to order tracking

@@ -37,6 +37,53 @@ const createOrderSchema = z.object({
     restaurantId: z.string().optional(),
 });
 
+async function getPublicPaymentStatus(orderId: string) {
+    const db = await (await import('../db/db.client')).getDb();
+    const order = await db.get(
+        `SELECT id, payment_status, payment_reference, payment_qr_code, payment_qr_base64, paid_at, status
+         FROM orders WHERE id=? OR id LIKE ?`,
+        [orderId, `${orderId}%`]
+    );
+
+    if (!order) {
+        return null;
+    }
+
+    if (order.payment_status === 'paid') {
+        return {
+            payment_status: 'paid',
+            order_status: order.status,
+            paid_at: order.paid_at,
+            pix_qr_code: order.payment_qr_code,
+            pix_qr_base64: order.payment_qr_base64,
+        };
+    }
+
+    if (order.payment_reference && !order.payment_reference.startsWith('mock_')) {
+        const liveStatus = await pixPaymentService.getPaymentStatus(order.payment_reference);
+
+        if (liveStatus.status !== order.payment_status) {
+            await db.run(`UPDATE orders SET payment_status=? WHERE id=?`, [liveStatus.status, order.id]);
+        }
+
+        return {
+            payment_status: liveStatus.status,
+            order_status: order.status,
+            paid_at: liveStatus.paidAt || order.paid_at,
+            pix_qr_code: order.payment_qr_code,
+            pix_qr_base64: order.payment_qr_base64,
+        };
+    }
+
+    return {
+        payment_status: order.payment_status,
+        order_status: order.status,
+        paid_at: order.paid_at,
+        pix_qr_code: order.payment_qr_code,
+        pix_qr_base64: order.payment_qr_base64,
+    };
+}
+
 ordersRouter.get('/orders/:id', async (req, res) => {
     try {
         const order = await ordersRepo.getOrderById(req.params.id);
@@ -258,39 +305,26 @@ ordersRouter.post('/orders/:id/cancel', async (req, res) => {
     }
 });
 
+ordersRouter.get('/:slug/orders/:id/payment-status', async (req, res) => {
+    try {
+        const paymentStatus = await getPublicPaymentStatus(req.params.id);
+        if (!paymentStatus) return res.status(404).json({ error: 'Order not found' });
+
+        res.json(paymentStatus);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 ordersRouter.get('/orders/:id/payment-status', async (req, res) => {
     try {
-        const db = await (await import('../db/db.client')).getDb();
-        const order = await db.get(
-            `SELECT id, payment_status, payment_reference, payment_qr_code, payment_qr_base64, paid_at, status
-             FROM orders WHERE id=? OR id LIKE ?`,
-            [req.params.id, `${req.params.id}%`]
-        );
-        if (!order) return res.status(404).json({ error: 'Order not found' });
+        const paymentStatus = await getPublicPaymentStatus(req.params.id);
+        if (!paymentStatus) return res.status(404).json({ error: 'Order not found' });
 
-        if (order.payment_status === 'paid') {
-            return res.json({ payment_status: 'paid', order_status: order.status, paid_at: order.paid_at });
-        }
-
-        if (order.payment_reference && !order.payment_reference.startsWith('mock_')) {
-            const liveStatus = await pixPaymentService.getPaymentStatus(order.payment_reference);
-            if (liveStatus.status !== order.payment_status) {
-                await db.run(`UPDATE orders SET payment_status=? WHERE id=?`, [liveStatus.status, order.id]);
-            }
-            return res.json({
-                payment_status: liveStatus.status,
-                order_status: order.status,
-                pix_qr_code: order.payment_qr_code,
-            });
-        }
-
-        res.json({
-            payment_status: order.payment_status,
-            order_status: order.status,
-            pix_qr_code: order.payment_qr_code,
-            pix_qr_base64: order.payment_qr_base64,
-        });
-    } catch (e: any) { res.status(500).json({ error: e.message }); }
+        res.json(paymentStatus);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 // Rastreamento público de pedido

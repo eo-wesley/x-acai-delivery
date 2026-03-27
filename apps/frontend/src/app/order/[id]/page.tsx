@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -176,6 +177,7 @@ function GPSSimulator({ status }: { status: string }) {
 /* ─── Main Page ───────────────────────────────────────── */
 export default function OrderStatusPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
+    const searchParams = useSearchParams();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -233,9 +235,9 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
     const badge = STATUS_BADGE[order.status] || { bg: 'bg-gray-100 text-gray-700', text: order.status };
     const currentTimeline = STATUS_TIMELINE[currentStep];
 
-    const pixPending = typeof window !== 'undefined'
-        ? new URLSearchParams(window.location.search).get('method') === 'pix' && order.status === 'pending_payment'
-        : false;
+    const paymentApproved = searchParams.get('paid') === '1';
+    const pixPending = (order.payment_method === 'pix' || String(order.payment_provider || '').includes('pix'))
+        && order.status === 'pending_payment';
 
     const supportLink = order.restaurant_phone
         ? `https://wa.me/${order.restaurant_phone.replace(/\D/g, '')}?text=Olá! Preciso de ajuda com meu pedido #${id.slice(0, 8).toUpperCase()}`
@@ -274,6 +276,16 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
                 </div>
 
                 <div className="px-6 -mt-8 space-y-6 relative z-20">
+                    {paymentApproved && (
+                        <div className="bg-gradient-to-r from-emerald-500 to-green-500 rounded-3xl p-5 text-white shadow-xl shadow-emerald-200">
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Pagamento aprovado</p>
+                            <h2 className="mt-2 text-2xl font-black tracking-tight">Pix confirmado com sucesso</h2>
+                            <p className="mt-2 text-sm text-emerald-50">
+                                Seu pagamento foi reconhecido e o pedido ja esta pronto para seguir no fluxo da loja.
+                            </p>
+                        </div>
+                    )}
+
                     {/* Live Tracker GPS Simulator */}
                     <GPSSimulator status={order.status} />
 
@@ -342,15 +354,15 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
                     )}
 
                     {/* PIX Payment CTA */}
-                    {pixPending && order.payment_url && (
+                    {pixPending && (
                         <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-3xl p-6 text-white shadow-xl shadow-yellow-500/20 animate-pulse">
                             <p className="font-black text-lg mb-1 drop-shadow-sm">📲 Pagamento Pendente</p>
-                            <p className="text-xs opacity-90 mb-4 font-medium">Finalize seu pagamento para que a loja comece a preparar seu pedido imediatamente.</p>
-                            <a href={order.payment_url} target="_blank" rel="noreferrer">
+                            <p className="text-xs opacity-90 mb-4 font-medium">Finalize seu Pix para que a loja comece a preparar seu pedido imediatamente.</p>
+                            <Link href={`/pix/${id}`}>
                                 <button className="bg-white text-yellow-600 font-black py-4 px-8 rounded-2xl shadow-xl transition active:scale-95 w-full uppercase tracking-tighter text-sm">
-                                    💸 Ir para o PIX
+                                    💸 Abrir tela do Pix
                                 </button>
-                            </a>
+                            </Link>
                         </div>
                     )}
 
