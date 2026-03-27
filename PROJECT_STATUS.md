@@ -31,6 +31,43 @@ Concluido nesta entrega:
 - redirecionamento automatico para a tela do pedido com feedback de pagamento aprovado
 - CTA no pedido para reabrir a tela Pix quando o pagamento ainda estiver pendente
 
+## Etapa publicada depois da UX Pix
+
+Foco executado: camada operacional de notificacoes via WhatsApp no backend.
+
+Commit publicado desta etapa:
+
+- `2267a8993ec4f4695f8f384af81d229f8c473457`
+
+Concluido nesta entrega:
+
+- schema de `notification_logs` alinhado com observabilidade operacional por evento, destinatario, papel, status e motivo
+- `whatsapp_configs` garantida no bootstrap do banco para compatibilidade com configuracao por restaurante
+- trilha unica de disparo via `eventBus` + camada de notificacao existente
+- compatibilidade preservada entre `customerPhone` e `recipientPhone` durante a transicao
+- mensagens operacionais automaticas para:
+  pedido recebido
+  pagamento aprovado
+  pedido saiu para entrega
+- envio para cliente nos 3 eventos e para a loja no evento de pedido recebido
+- idempotencia pratica com `idempotency_key` e trava em memoria para evitar duplicidade concorrente
+- webhook do Mercado Pago e app do entregador sem envio direto paralelo
+- falha no WhatsApp mantida como non-blocking para nao derrubar o fluxo principal do pedido
+
+## Validacao adicional desta etapa
+
+Validado em mock com SQLite temporario:
+
+- `order_created` gerou 1 log `sent` para cliente e 1 log `sent` para loja
+- repeticao concorrente do mesmo evento nao gerou duplicidade de envio/log `sent`
+- `order_accepted` gerou 1 log `sent` para cliente
+- `order_delivering` gerou 1 log `sent` para cliente
+- cenario sem telefone gerou logs `skipped` com `customer_phone_missing` e `store_phone_missing`
+
+Observacao de ambiente:
+
+- durante a validacao apareceu um warning nao bloqueante de BOM/inventario por ausencia da tabela `recipes` no banco temporario de teste; isso nao afetou a camada de notificacao e nao foi alterado nesta etapa
+
 ## Arquivos alterados nesta etapa
 
 - apps/frontend/src/hooks/useTenant.ts
