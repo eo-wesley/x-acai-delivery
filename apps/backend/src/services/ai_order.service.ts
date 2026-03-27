@@ -1,5 +1,6 @@
 import { getDb } from '../db/db.client';
 import { ordersRepo, CreateOrderInput } from '../db/repositories/orders.repo';
+import { eventBus } from '../core/eventBus';
 
 export class AIOrderService {
     async processNaturalOrder(text: string, restaurantId: string, customerId: string): Promise<any> {
@@ -34,7 +35,16 @@ export class AIOrderService {
         };
 
         // 4. Create Order
-        return ordersRepo.createOrder(orderInput);
+        const order = await ordersRepo.createOrder(orderInput);
+
+        eventBus.emit('order_created', {
+            orderId: order.id,
+            customerId: order.customer_id,
+            restaurantId,
+            totalCents: orderInput.totalCents,
+        });
+
+        return order;
     }
 
     private parseEntities(text: string) {

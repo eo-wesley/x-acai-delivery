@@ -349,7 +349,25 @@ export async function setupDatabase() {
             channel TEXT,
             status TEXT,
             payload TEXT,
+            phone TEXT,
+            event TEXT,
+            message TEXT,
+            provider TEXT,
+            error_message TEXT,
+            reason TEXT,
+            recipient_role TEXT,
+            idempotency_key TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`,
+        `CREATE TABLE IF NOT EXISTS whatsapp_configs (
+            restaurant_id TEXT PRIMARY KEY,
+            base_url TEXT,
+            instance TEXT,
+            apikey TEXT,
+            active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(restaurant_id)
         )`,
         `CREATE TABLE IF NOT EXISTS order_ratings (
             id TEXT PRIMARY KEY,
@@ -459,6 +477,22 @@ export async function setupDatabase() {
         `ALTER TABLE customers ADD COLUMN notes TEXT`,
         `ALTER TABLE customers ADD COLUMN referral_code TEXT`,
         `ALTER TABLE customers ADD COLUMN otp_expires_at DATETIME`,
+        // notification_logs - observabilidade operacional
+        `ALTER TABLE notification_logs ADD COLUMN phone TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN event TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN message TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN provider TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN error_message TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN reason TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN recipient_role TEXT`,
+        `ALTER TABLE notification_logs ADD COLUMN idempotency_key TEXT`,
+        // whatsapp_configs - compatibilidade com configuracao por restaurante
+        `ALTER TABLE whatsapp_configs ADD COLUMN base_url TEXT`,
+        `ALTER TABLE whatsapp_configs ADD COLUMN instance TEXT`,
+        `ALTER TABLE whatsapp_configs ADD COLUMN apikey TEXT`,
+        `ALTER TABLE whatsapp_configs ADD COLUMN active INTEGER DEFAULT 1`,
+        `ALTER TABLE whatsapp_configs ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
+        `ALTER TABLE whatsapp_configs ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP`,
     ];
 
     for (const alter of alterations) {

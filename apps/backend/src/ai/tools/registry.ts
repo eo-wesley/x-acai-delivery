@@ -1,6 +1,7 @@
 import { menuRepo } from '../../db/repositories/menu.repo';
 import { customersRepo } from '../../db/repositories/customers.repo';
 import { ordersRepo } from '../../db/repositories/orders.repo';
+import { eventBus } from '../../core/eventBus';
 
 export type AITool = (args: any) => Promise<any>;
 
@@ -82,6 +83,19 @@ export const createOrder: AITool = async (args) => {
             totalCents,
             addressText: args.addressText,
             notes: args.notes
+        });
+
+        eventBus.emit('order_created', {
+            orderId: order.id,
+            customerId: order.customer_id,
+            restaurantId: 'default_tenant',
+            customerPhone: args.customer.phone,
+            customerName: args.customer.name,
+            totalCents,
+            extra: {
+                addressText: args.addressText,
+                items: processedItems,
+            }
         });
 
         return {

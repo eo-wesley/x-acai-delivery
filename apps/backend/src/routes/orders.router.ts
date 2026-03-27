@@ -37,6 +37,32 @@ const createOrderSchema = z.object({
     restaurantId: z.string().optional(),
 });
 
+function emitOrderCreatedEvent(payload: {
+    orderId: string;
+    restaurantId: string;
+    customerId?: string;
+    customerPhone?: string;
+    customerName?: string;
+    totalCents: number;
+    paymentMethod?: string;
+    addressText?: string;
+    items?: unknown[];
+}) {
+    eventBus.emit('order_created', {
+        orderId: payload.orderId,
+        restaurantId: payload.restaurantId,
+        customerId: payload.customerId,
+        customerPhone: payload.customerPhone,
+        customerName: payload.customerName,
+        totalCents: payload.totalCents,
+        extra: {
+            paymentMethod: payload.paymentMethod,
+            addressText: payload.addressText,
+            items: payload.items,
+        }
+    });
+}
+
 async function getPublicPaymentStatus(orderId: string) {
     const db = await (await import('../db/db.client')).getDb();
     const order = await db.get(
@@ -108,7 +134,12 @@ ordersRouter.post('/orders', async (req, res) => {
     try {
         const data = createOrderSchema.parse(req.body);
         const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
-        const order = await ordersRepo.createOrder({ ...data, items: processedItems, restaurantId: 'default_tenant' });
+        const order = await ordersRepo.createOrder({
+            ...data,
+            items: processedItems,
+            restaurantId: 'default_tenant',
+            paymentMethod: data.paymentMethod,
+        });
 
         let pixQrCode = '';
         let pixQrBase64 = '';
@@ -140,17 +171,16 @@ ordersRouter.post('/orders', async (req, res) => {
             paymentUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
         }
 
-        eventBus.emit('order_created', {
+        emitOrderCreatedEvent({
             restaurantId: 'default_tenant',
             orderId: order.id,
+            customerId: order.customer_id,
             customerPhone: data.customerPhone,
             customerName: data.customerName,
             totalCents: data.totalCents,
-            extra: {
-                paymentMethod: data.paymentMethod,
-                addressText: data.addressText,
-                items: processedItems
-            }
+            paymentMethod: data.paymentMethod,
+            addressText: data.addressText,
+            items: processedItems,
         });
 
         res.status(201).json({
@@ -203,7 +233,8 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             deliveryFeeCents: finalDeliveryFee,
             subtotalCents: finalSubtotal,
             totalCents: finalTotal,
-            restaurantId: tenantId
+            restaurantId: tenantId,
+            paymentMethod,
         });
 
         const db = await (await import('../db/db.client')).getDb();
@@ -243,6 +274,20 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             );
             (order as any).status = 'confirmed'; // Auto confirm wallet payments
             await db.run(`UPDATE orders SET status = 'confirmed' WHERE id = ?`, [order.id]);
+
+            eventBus.emit('order_accepted', {
+                restaurantId: tenantId,
+                orderId: order.id,
+                customerId: order.customer_id,
+                customerPhone: data.customerPhone,
+                customerName: data.customerName,
+                totalCents: finalTotal,
+                extra: {
+                    paymentMethod,
+                    addressText: data.addressText,
+                    items: processedItems,
+                }
+            });
         } else if (paymentMethod === 'pix') {
             const pixInfo = await pixPaymentService.createPixPayment({
                 orderId: order.id,
@@ -264,17 +309,16 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             (order as any).payment_url = checkoutUrl;
         }
 
-        eventBus.emit('order_created', {
+        emitOrderCreatedEvent({
             restaurantId: tenantId,
             orderId: order.id,
+            customerId: order.customer_id,
             customerPhone: data.customerPhone,
             customerName: data.customerName,
-            totalCents: data.totalCents,
-            extra: {
-                paymentMethod: paymentMethod,
-                addressText: data.addressText,
-                items: processedItems
-            }
+            totalCents: finalTotal,
+            paymentMethod,
+            addressText: data.addressText,
+            items: processedItems,
         });
 
         res.status(201).json({

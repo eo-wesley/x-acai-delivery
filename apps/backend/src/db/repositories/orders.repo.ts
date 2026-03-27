@@ -15,12 +15,15 @@ export interface OrderItemInput {
 export interface CreateOrderInput {
     customerId: string;
     restaurantId?: string;
+    customerName?: string;
+    customerPhone?: string;
     items: OrderItemInput[];
     subtotalCents: number;
     deliveryFeeCents: number;
     totalCents: number;
     addressText: string;
     notes?: string;
+    paymentMethod?: string;
     source?: string;
     externalId?: string;
     taxId?: string;
@@ -28,7 +31,7 @@ export interface CreateOrderInput {
 
 export class OrdersRepo {
 
-    async createOrder(input: CreateOrderInput & { customerName?: string, customerPhone?: string }): Promise<{ id: string, customer_id: string, payment_url?: string }> {
+    async createOrder(input: CreateOrderInput): Promise<{ id: string, customer_id: string, payment_url?: string }> {
         const db = await getDb();
         const id = randomUUID();
         const tenantId = input.restaurantId || 'default_tenant';
@@ -46,8 +49,8 @@ export class OrdersRepo {
 
         await db.run(
             `INSERT INTO orders 
-            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, restaurant_id, source, external_id, tax_id) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, payment_method, customer_name, customer_phone, restaurant_id, source, external_id, tax_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 finalCustomerId,
@@ -60,6 +63,9 @@ export class OrdersRepo {
                 input.notes || null,
                 'pending_payment',
                 'mercadopago_mock',
+                input.paymentMethod || 'pix',
+                input.customerName || null,
+                input.customerPhone || null,
                 tenantId,
                 input.source || 'internal',
                 input.externalId || null,
@@ -69,15 +75,6 @@ export class OrdersRepo {
 
         // Record Initial Event
         await this.logOrderEvent(id, 'order_created', { initialStatus: 'pending_payment', by: 'customer_or_ai' });
-
-        // Emit Global Event for Funnels (Abandoned Cart, etc)
-        const { eventBus } = await import('../../core/eventBus');
-        eventBus.emit('order_created', {
-            orderId: id,
-            customerId: finalCustomerId,
-            restaurantId: tenantId,
-            totalCents: input.totalCents
-        });
 
         // Update CRM Stats
         try {
@@ -225,13 +222,14 @@ export class OrdersRepo {
             ORDER BY o.created_at DESC
         `, [phone]);
 
-        return orders.map(o => ({ ...o, items: JSON.parse(o.items) }));
+        return orders.map((o: any) => ({ ...o, items: JSON.parse(o.items) }));
     }
 
     async updateOrderStatus(id: string, newStatus: string): Promise<boolean> {
         const db = await getDb();
         const orderBefore = await this.getOrderById(id);
         if (!orderBefore) return false;
+        if (orderBefore.status === newStatus) return true;
 
         const res = await db.run(`UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [newStatus, id]);
 
@@ -268,7 +266,11 @@ export class OrdersRepo {
                         customerPhone: orderBefore.customer_phone || orderBefore.phone,
                         customerName: orderBefore.customer_name || 'Cliente',
                         totalCents: orderBefore.total_cents,
-                        extra: { status: newStatus }
+                        extra: {
+                            status: newStatus,
+                            paymentMethod: orderBefore.payment_method,
+                            addressText: orderBefore.address_text,
+                        }
                     });
                 }
             } catch (err) {

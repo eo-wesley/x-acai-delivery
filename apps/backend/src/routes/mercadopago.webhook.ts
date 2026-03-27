@@ -1,22 +1,63 @@
 /**
- * Mercado Pago Webhook Handler — X-Açaí Delivery
+ * Mercado Pago Webhook Handler - X-Acai Delivery
  *
- * Endpoint: POST /api/webhooks/mercadopago
+ * Endpoint: POST /api/payments/mercadopago/webhook/mercadopago
  *
  * Handles payment status updates from Mercado Pago.
- * When payment is "approved", auto-confirms order and sends WhatsApp notification.
+ * When payment is approved, auto-confirms the order and emits the operational event.
  */
 
 import { Router, Request, Response } from 'express';
 import { pixPaymentService, logPayment } from '../payments/pix.service';
-import { sendNotification } from '../notifications/notification.service';
 import { getDb } from '../db/db.client';
+import { eventBus } from '../core/eventBus';
 
 const mpWebhookRouter = Router();
 
-// ─── Mercado Pago Webhook ─────────────────────────────────────────────────────
+async function loadOrderForPaymentEvent(orderId: string) {
+    const db = await getDb();
+    return db.get(
+        `SELECT
+            o.id,
+            o.restaurant_id,
+            o.status,
+            o.payment_status,
+            o.total_cents,
+            o.customer_phone,
+            o.customer_name,
+            c.phone AS fallback_customer_phone,
+            c.name AS fallback_customer_name
+         FROM orders o
+         LEFT JOIN customers c ON c.id = o.customer_id
+         WHERE o.id = ?`,
+        [orderId]
+    );
+}
+
+async function emitApprovedPaymentEvent(orderId: string, order: any) {
+    if (!order || order.payment_status === 'paid') return;
+
+    const db = await getDb();
+
+    if (order.status === 'pending_payment' || order.status === 'pending') {
+        await db.run(
+            `UPDATE orders SET status = 'confirmed', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+            [orderId]
+        );
+        console.log(`[MP Webhook] Order ${orderId.slice(0, 8)} auto-confirmed`);
+    }
+
+    eventBus.emit('order_accepted', {
+        restaurantId: order.restaurant_id,
+        orderId,
+        customerPhone: order.customer_phone || order.fallback_customer_phone,
+        customerName: order.customer_name || order.fallback_customer_name,
+        totalCents: order.total_cents,
+        extra: { paymentMethod: 'pix' },
+    });
+}
+
 mpWebhookRouter.post('/mercadopago', async (req: Request, res: Response) => {
-    // Always respond 200 immediately — MP retries if we don't
     res.status(200).json({ received: true });
 
     try {
@@ -26,37 +67,31 @@ mpWebhookRouter.post('/mercadopago', async (req: Request, res: Response) => {
 
         console.log(`[MP Webhook] action=${action} dataId=${dataId}`);
 
-        // We handle payment.updated and payment.created events
         if (!action.startsWith('payment') || !dataId) {
-            return; // Not a payment event
+            return;
         }
 
         const db = await getDb();
 
-        // Query MP for the actual payment status
         let mpStatus = '';
         let orderId = body?.data?.external_reference || '';
 
-        // If we have an MP payment ID, query their API for full details
         if (String(dataId).startsWith('mock_')) {
-            // Local simulation: orderId is the dataId suffix
             orderId = String(dataId).replace('mock_', '');
             mpStatus = 'approved';
         } else {
             const paymentInfo = await pixPaymentService.getPaymentStatus(String(dataId));
             mpStatus = paymentInfo.status;
 
-            // If no external_reference in body, try to find by payment_reference in DB
             if (!orderId) {
                 const found = await db.get(
-                    `SELECT id FROM orders WHERE payment_reference=? OR transaction_id=?`,
+                    `SELECT id FROM orders WHERE payment_reference = ? OR transaction_id = ?`,
                     [String(dataId), String(dataId)]
                 );
                 orderId = found?.id || '';
             }
         }
 
-        // Log the webhook event regardless
         await logPayment({
             orderId: orderId || 'unknown',
             provider: 'mercadopago',
@@ -70,105 +105,71 @@ mpWebhookRouter.post('/mercadopago', async (req: Request, res: Response) => {
             return;
         }
 
-        // Map MP status to internal payment_status
+        const currentOrder = await loadOrderForPaymentEvent(orderId);
+        if (!currentOrder) {
+            console.warn('[MP Webhook] Order not found while applying payment update', orderId);
+            return;
+        }
+
         let internalStatus = 'pending';
         if (mpStatus === 'approved') internalStatus = 'paid';
         else if (mpStatus === 'rejected' || mpStatus === 'cancelled') internalStatus = 'failed';
         else if (mpStatus === 'pending' || mpStatus === 'in_process') internalStatus = 'waiting_pix';
 
-        // Update order payment_status
         await db.run(
-            `UPDATE orders SET payment_status=?, transaction_id=?,
-             paid_at=CASE WHEN ? = 'paid' THEN CURRENT_TIMESTAMP ELSE paid_at END,
-             updated_at=CURRENT_TIMESTAMP
-             WHERE id=?`,
+            `UPDATE orders SET payment_status = ?, transaction_id = ?,
+             paid_at = CASE WHEN ? = 'paid' THEN CURRENT_TIMESTAMP ELSE paid_at END,
+             updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
             [internalStatus, String(dataId), internalStatus, orderId]
         );
 
-        console.log(`[MP Webhook] Order ${orderId.slice(0, 8)} payment_status → ${internalStatus}`);
+        console.log(`[MP Webhook] Order ${orderId.slice(0, 8)} payment_status -> ${internalStatus}`);
 
-        // If approved → auto-confirm order + notify
         if (internalStatus === 'paid') {
-            const order = await db.get(
-                `SELECT o.status, o.total_cents, o.customer_phone, o.customer_name, c.phone as c_phone, c.name as c_name
-                 FROM orders o LEFT JOIN customers c ON c.id=o.customer_id WHERE o.id=?`,
-                [orderId]
-            );
-
-            if (order && (order.status === 'pending_payment' || order.status === 'pending')) {
-                await db.run(
-                    `UPDATE orders SET status='confirmed', updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-                    [orderId]
-                );
-                console.log(`[MP Webhook] Order ${orderId.slice(0, 8)} auto-confirmed ✅`);
-            }
-
-            // Send WhatsApp notification: PIX confirmed
-            const phone = order?.customer_phone || order?.c_phone;
-            const name = order?.customer_name || order?.c_name;
-            if (phone || name) {
-                sendNotification({
-                    orderId,
-                    event: 'order_accepted',
-                    customerPhone: phone,
-                    customerName: name,
-                    totalCents: order?.total_cents,
-                    extra: { paymentMethod: 'pix' },
-                });
-                console.log(`[MP Webhook] WhatsApp notificado: pagamento PIX confirmado para ${orderId.slice(0, 8)}`);
-            }
+            await emitApprovedPaymentEvent(orderId, currentOrder);
         }
     } catch (e: any) {
         console.error('[MP Webhook] Error processing webhook:', e.message);
     }
 });
 
-// ─── Simulate Webhook Locally ─────────────────────────────────────────────────
-// POST /api/webhooks/mercadopago/simulate/:orderId
 mpWebhookRouter.post('/mercadopago/simulate/:orderId', async (req: Request, res: Response) => {
     try {
         const { orderId } = req.params;
         const status = (req.body?.status as string) || 'approved';
 
         const db = await getDb();
-        const order = await db.get(`SELECT id FROM orders WHERE id=? OR id LIKE ?`, [orderId, `${orderId}%`]);
+        const order = await db.get(`SELECT id FROM orders WHERE id = ? OR id LIKE ?`, [orderId, `${orderId}%`]);
         if (!order) return res.status(404).json({ error: 'Order not found' });
 
+        const currentOrder = await loadOrderForPaymentEvent(order.id);
+        if (!currentOrder) {
+            return res.status(404).json({ error: 'Order not found' });
+        }
+
         const internalStatus = status === 'approved' ? 'paid' : 'failed';
+        const paymentReference = `sim_${Date.now()}`;
+
         await db.run(
-            `UPDATE orders SET payment_status=?, transaction_id=?,
-             paid_at=CASE WHEN ? = 'paid' THEN CURRENT_TIMESTAMP ELSE paid_at END,
-             status=CASE WHEN ? = 'paid' AND status IN ('pending_payment','pending') THEN 'confirmed' ELSE status END,
-             updated_at=CURRENT_TIMESTAMP WHERE id=?`,
-            [internalStatus, `sim_${Date.now()}`, internalStatus, internalStatus, order.id]
+            `UPDATE orders SET payment_status = ?, transaction_id = ?,
+             paid_at = CASE WHEN ? = 'paid' THEN CURRENT_TIMESTAMP ELSE paid_at END,
+             status = CASE WHEN ? = 'paid' AND status IN ('pending_payment', 'pending') THEN 'confirmed' ELSE status END,
+             updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?`,
+            [internalStatus, paymentReference, internalStatus, internalStatus, order.id]
         );
 
         await logPayment({
             orderId: order.id,
             provider: 'mercadopago_simulation',
-            paymentReference: `sim_${Date.now()}`,
+            paymentReference,
             status: internalStatus,
             payload: JSON.stringify({ simulated: true, requestedStatus: status }),
         });
 
         if (internalStatus === 'paid') {
-            const orderFull = await db.get(
-                `SELECT o.total_cents, o.customer_phone, o.customer_name, c.phone as c_phone, c.name as c_name
-                 FROM orders o LEFT JOIN customers c ON c.id=o.customer_id WHERE o.id=?`,
-                [order.id]
-            );
-            const phone = orderFull?.customer_phone || orderFull?.c_phone;
-            const name = orderFull?.customer_name || orderFull?.c_name;
-            if (phone || name) {
-                sendNotification({
-                    orderId: order.id,
-                    event: 'order_accepted',
-                    customerPhone: phone,
-                    customerName: name,
-                    totalCents: orderFull?.total_cents,
-                    extra: { paymentMethod: 'pix' },
-                });
-            }
+            await emitApprovedPaymentEvent(order.id, currentOrder);
         }
 
         res.json({

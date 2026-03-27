@@ -17,6 +17,7 @@ export type {
     NotificationEvent,
     NotificationPayload,
     NotificationProvider,
+    NotificationRecipientRole,
 } from './providers/notification.provider';
 
 import type { NotificationPayload, NotificationEvent } from './providers/notification.provider';
@@ -65,6 +66,7 @@ export function statusToEvent(status: string): NotificationEvent | null {
     const map: Record<string, NotificationEvent> = {
         pending: 'order_created',
         pending_payment: 'order_created',
+        confirmed: 'order_accepted',
         accepted: 'order_accepted',
         preparing: 'order_preparing',
         out_for_delivery: 'order_delivering',
