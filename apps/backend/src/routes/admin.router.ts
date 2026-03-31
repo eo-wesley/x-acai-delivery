@@ -6,28 +6,19 @@ import { getDb } from '../db/db.client';
 import { aiMetrics } from '../ai/metrics/ai.metrics';
 import { eventBus } from '../core/eventBus';
 import { marketingService } from '../services/marketing.service';
-import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
 import { menuCacheService } from '../services/cache/menu.cache';
-import { v4 as uuidv4 } from 'uuid';
 import { auditService } from '../services/audit.service';
 
 export const adminRouter = Router();
 let sseClients: any[] = [];
 
-adminRouter.post('/admin/login', async (req, res) => {
-    try {
-        const { username, password } = req.body;
-        const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-        const ADMIN_PASS = process.env.ADMIN_PASS || 'admin123';
-
-        if (username === ADMIN_USER && password === ADMIN_PASS) {
-            const token = jwt.sign({ role: 'admin', tenant: 'default_tenant' }, process.env.JWT_SECRET || 'fallback_jwt_secret_123', { expiresIn: '7d' });
-            return res.json({ token, success: true });
-        }
-        res.status(401).json({ error: 'Credenciais inválidas' });
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
+adminRouter.post('/admin/login', async (_req, res) => {
+    res.status(410).json({
+        error: 'Deprecated endpoint',
+        authMode: 'firebase',
+        message: 'O painel admin usa Firebase Auth. Faça login no frontend admin e envie o Firebase ID token em Authorization: Bearer <token>.'
+    });
 });
 
 adminRouter.get('/admin/orders', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
@@ -131,10 +122,6 @@ adminRouter.get('/admin/notification-logs', adminAuthMiddleware, tenantMiddlewar
         const logs = await db.all(`SELECT nl.* FROM notification_logs nl JOIN orders o ON nl.order_id = o.id WHERE o.restaurant_id = ? ORDER BY nl.created_at DESC LIMIT 10`, [tenantId]);
         res.json(logs);
     } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
-
-adminRouter.get('/admin/whatsapp/status', adminAuthMiddleware, async (req, res) => {
-    res.json({ status: 'connected', provider: process.env.WHATSAPP_PROVIDER || 'mock' });
 });
 
 adminRouter.get('/admin/metrics', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
@@ -342,7 +329,7 @@ adminRouter.post('/admin/menu/:id/options/groups', adminAuthMiddleware, tenantMi
     try {
         const db = await getDb();
         const { name, min_select, max_select, sort_order, required } = req.body;
-        const id = uuidv4();
+        const id = randomUUID();
         await db.run(`INSERT INTO option_groups (id, restaurant_id, menu_item_id, name, min_select, max_select, sort_order, required) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [id, req.tenantId, req.params.id, name, min_select || 0, max_select || 1, sort_order || 0, required ? 1 : 0]);
         menuCacheService.invalidate(req.tenantId);
@@ -374,7 +361,7 @@ adminRouter.post('/admin/menu/options/groups/:groupId/items', adminAuthMiddlewar
     try {
         const db = await getDb();
         const { name, price_cents, sort_order, available } = req.body;
-        const id = uuidv4();
+        const id = randomUUID();
         await db.run(`INSERT INTO option_items (id, restaurant_id, option_group_id, name, price_cents, sort_order, available) VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [id, req.tenantId, req.params.groupId, name, price_cents || 0, sort_order || 0, available === false ? 0 : 1]);
         menuCacheService.invalidate(req.tenantId);
@@ -423,8 +410,13 @@ adminRouter.post('/admin/restaurants', adminAuthMiddleware, async (req, res) => 
             image_url: null
         });
 
-        const token = jwt.sign({ role: 'admin', tenant: slug }, process.env.JWT_SECRET || 'fallback_jwt_secret_123', { expiresIn: '7d' });
-        res.status(201).json({ success: true, id, slug, token });
+        res.status(201).json({
+            success: true,
+            id,
+            slug,
+            authMode: 'firebase',
+            message: 'Use um Firebase ID token para acessar as rotas admin deste restaurante.'
+        });
     } catch (e: any) { res.status(500).json({ error: e.message }); }
 });
 
@@ -489,22 +481,28 @@ adminRouter.post('/admin/pdv/orders', adminAuthMiddleware, tenantMiddleware, asy
 
         const tenantId = req.tenantId || 'default_tenant';
         const db = await getDb();
-        const orderId = uuidv4();
+        const orderId = randomUUID();
         const finalCustomerId = customerId || 'pdv_guest';
 
         // 1. Ensure customer exists (FK constraint)
-        await db.run(
-            `INSERT OR IGNORE INTO customers (id, restaurant_id, name, phone) 
-             VALUES (?, ?, ?, ?)`,
-            [finalCustomerId, tenantId, customerName || 'Cliente PDV', customerPhone || '00000000000']
+        const existingCustomer = await db.get(
+            `SELECT id FROM customers WHERE id = ? AND restaurant_id = ?`,
+            [finalCustomerId, tenantId]
         );
+        if (!existingCustomer) {
+            await db.run(
+                `INSERT INTO customers (id, restaurant_id, name, phone) 
+                 VALUES (?, ?, ?, ?)`,
+                [finalCustomerId, tenantId, customerName || 'Cliente PDV', customerPhone || '00000000000']
+            );
+        }
 
         // 2. Create order
         await db.run(
             `INSERT INTO orders (
                 id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents,
-                restaurant_id, address_text, payment_method, payment_status, customer_name, customer_phone, created_at
-            ) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, datetime('now'))`,
+                restaurant_id, address_text, payment_method, payment_status, customer_name, customer_phone
+            ) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?)`,
             [
                 orderId,
                 finalCustomerId,
