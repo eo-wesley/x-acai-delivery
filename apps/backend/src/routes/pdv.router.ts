@@ -32,18 +32,24 @@ pdvRouter.post('/admin/pdv/orders', adminAuthMiddleware, tenantMiddleware, async
         const finalCustomerId = customerId || 'pdv_guest';
 
         // 1. Ensure customer exists
-        await db.run(
-            `INSERT OR IGNORE INTO customers (id, restaurant_id, name, phone) 
-             VALUES (?, ?, ?, ?)`,
-            [finalCustomerId, tenantId, customerName || 'Cliente PDV', customerPhone || '11900000000']
+        const existingCustomer = await db.get(
+            `SELECT id FROM customers WHERE id = ? AND restaurant_id = ?`,
+            [finalCustomerId, tenantId]
         );
+        if (!existingCustomer) {
+            await db.run(
+                `INSERT INTO customers (id, restaurant_id, name, phone) 
+                 VALUES (?, ?, ?, ?)`,
+                [finalCustomerId, tenantId, customerName || 'Cliente PDV', customerPhone || '11900000000']
+            );
+        }
 
         // 2. Create order
         await db.run(
             `INSERT INTO orders (
                 id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents,
-                restaurant_id, address_text, payment_method, payment_status, customer_name, customer_phone, created_at
-            ) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?, datetime('now'))`,
+                restaurant_id, address_text, payment_method, payment_status, customer_name, customer_phone
+            ) VALUES (?, ?, 'completed', ?, ?, ?, ?, ?, ?, ?, 'paid', ?, ?)`,
             [
                 orderId,
                 finalCustomerId,

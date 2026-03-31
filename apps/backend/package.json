@@ -7,6 +7,8 @@
     "dev": "tsx watch src/server.ts",
     "seed:demo": "tsx src/seeds/seed-demo-v2.ts",
     "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed:minimal": "tsx src/db/seed-minimal.ts",
+    "db:bootstrap:staging": "npm run db:migrate && npm run db:seed:minimal",
     "db:seed": "tsx src/seeds/seed-demo-v2.ts",
     "build": "tsc",
     "start": "node dist/server.js",

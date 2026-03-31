@@ -1,6 +1,6 @@
 import { Router } from 'express';
+import { randomUUID } from 'crypto';
 import { getDb } from '../db/db.client';
-import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 
@@ -88,15 +88,25 @@ router.get('/ai-insights', async (req, res) => {
 
         // Insight 2: Peak Hours Bottleneck
         // (Simulated logic: if more than 10 orders in the same hour)
-        const peakHour = await db.get(`
-            SELECT strftime('%H', created_at) as hour, COUNT(*) as count
-            FROM orders
-            WHERE restaurant_id = ? AND status = 'completed'
-            GROUP BY hour
-            HAVING count > 10
-            ORDER BY count DESC
-            LIMIT 1
-        `, [restaurant_id]);
+        const completedOrders = await db.all(
+            `SELECT created_at
+             FROM orders
+             WHERE restaurant_id = ? AND status = 'completed'`,
+            [restaurant_id]
+        );
+        const hourBuckets = new Map<string, number>();
+
+        for (const order of completedOrders) {
+            const createdAt = order?.created_at ? new Date(order.created_at) : null;
+            if (!createdAt || Number.isNaN(createdAt.getTime())) continue;
+            const hour = String(createdAt.getHours()).padStart(2, '0');
+            hourBuckets.set(hour, (hourBuckets.get(hour) || 0) + 1);
+        }
+
+        const peakHour = [...hourBuckets.entries()]
+            .map(([hour, count]) => ({ hour, count }))
+            .filter(entry => entry.count > 10)
+            .sort((a, b) => b.count - a.count)[0];
 
         if (peakHour) {
             insights.push({
@@ -140,7 +150,7 @@ router.post('/clone-menu', async (req, res) => {
         const sourceItems = await db.all('SELECT * FROM menu_items WHERE restaurant_id = ?', [source_id]);
 
         for (const item of sourceItems) {
-            const newItemId = uuidv4();
+            const newItemId = randomUUID();
             await db.run(`
                 INSERT INTO menu_items (id, restaurant_id, name, description, price_cents, category, tags, available, image_url)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -149,7 +159,7 @@ router.post('/clone-menu', async (req, res) => {
             // 2. Clone Option Groups for each item
             const groups = await db.all('SELECT * FROM option_groups WHERE menu_item_id = ?', [item.id]);
             for (const group of groups) {
-                const newGroupId = uuidv4();
+                const newGroupId = randomUUID();
                 await db.run(`
                     INSERT INTO option_groups (id, restaurant_id, menu_item_id, name, required, min_select, max_select, sort_order)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -161,7 +171,7 @@ router.post('/clone-menu', async (req, res) => {
                     await db.run(`
                         INSERT INTO option_items (id, restaurant_id, option_group_id, name, price_cents, sort_order, available)
                         VALUES (?, ?, ?, ?, ?, ?, ?)
-                    `, [uuidv4(), target_id, newGroupId, opt.name, opt.price_cents, opt.sort_order, opt.available]);
+                    `, [randomUUID(), target_id, newGroupId, opt.name, opt.price_cents, opt.sort_order, opt.available]);
                 }
             }
         }
@@ -182,6 +192,11 @@ router.get('/abc-curve', async (req, res) => {
         const db = await getDb();
 
         // Calculate revenue per product in the last 30 days
+        const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .replace('T', ' ')
+            .slice(0, 19);
+
         const sales = await db.all(`
             SELECT 
                 item_name as name,
@@ -190,10 +205,10 @@ router.get('/abc-curve', async (req, res) => {
             FROM order_items
             JOIN orders ON orders.id = order_items.order_id
             WHERE orders.restaurant_id = ? AND orders.status = 'completed'
-            AND orders.created_at >= date('now', '-30 days')
+            AND orders.created_at >= ?
             GROUP BY item_name
             ORDER BY revenue DESC
-        `, [restaurant_id]);
+        `, [restaurant_id, cutoffDate]);
 
         if (sales.length === 0) return res.json({ category_a: [], category_b: [], category_c: [] });
 

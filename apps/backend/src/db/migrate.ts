@@ -1,10 +1,9 @@
-import { setupDatabase } from './db.client';
-import { logger } from '../core/logger';
+import { getDatabaseDialect, migrateDatabase } from './db.client';
 
 async function runMigration() {
-    console.log('🚀 Starting production migration...');
+    console.log(`🚀 Starting database migration (${getDatabaseDialect()})...`);
     try {
-        await setupDatabase();
+        await migrateDatabase();
         console.log('✅ Migration completed successfully.');
         process.exit(0);
     } catch (error) {

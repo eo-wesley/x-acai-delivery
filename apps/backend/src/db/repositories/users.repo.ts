@@ -1,6 +1,6 @@
-import { getDb } from '../db.client';
-import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
+import { randomUUID } from 'crypto';
+import { getDb } from '../db.client';
 
 export interface User {
     id: string;
@@ -17,7 +17,7 @@ export interface User {
 export const usersRepo = {
     async createUser(data: Partial<User>) {
         const db = await getDb();
-        const id = uuidv4();
+        const id = randomUUID();
         const salt = await bcrypt.genSalt(10);
         const hash = await bcrypt.hash(data.password_hash!, salt);
 
@@ -48,7 +48,7 @@ export const usersRepo = {
 
     async updateLastLogin(id: string) {
         const db = await getDb();
-        await db.run(`UPDATE users SET last_login = datetime('now') WHERE id = ?`, [id]);
+        await db.run(`UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
     },
 
     async deleteUser(id: string, restaurantId: string) {

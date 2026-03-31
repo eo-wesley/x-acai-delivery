@@ -88,18 +88,34 @@ export class DriversRepo {
                 COUNT(*) as total_deliveries,
                 SUM(CASE WHEN status = 'delivered' THEN 1 ELSE 0 END) as completed_deliveries,
                 SUM(CASE WHEN settled = 0 AND status = 'delivered' THEN delivery_fee_cents ELSE 0 END) as pending_settlement_cents,
-                SUM(CASE WHEN settled = 1 THEN delivery_fee_cents ELSE 0 END) as total_paid_cents,
-                AVG(CASE WHEN status = 'delivered' AND completed_at IS NOT NULL THEN 
-                    (strftime('%s', completed_at) - strftime('%s', assigned_at)) / 60.0 
-                ELSE NULL END) as avg_delivery_time_mins
+                SUM(CASE WHEN settled = 1 THEN delivery_fee_cents ELSE 0 END) as total_paid_cents
             FROM driver_orders 
             WHERE restaurant_id = ? AND driver_id = ?
         `, [tenantId, driverId]);
+        const completedOrders = await db.all(`
+            SELECT assigned_at, completed_at
+            FROM driver_orders
+            WHERE restaurant_id = ? AND driver_id = ? AND status = 'delivered' AND completed_at IS NOT NULL
+        `, [tenantId, driverId]);
 
         const driverInfo = await db.get(`SELECT rating FROM drivers WHERE id = ?`, [driverId]);
+        let avgDeliveryTimeMins = null;
+
+        if (completedOrders.length > 0) {
+            const totalMinutes = completedOrders.reduce((sum, order) => {
+                const assignedAt = order?.assigned_at ? new Date(order.assigned_at) : null;
+                const completedAt = order?.completed_at ? new Date(order.completed_at) : null;
+                if (!assignedAt || !completedAt || Number.isNaN(assignedAt.getTime()) || Number.isNaN(completedAt.getTime())) {
+                    return sum;
+                }
+                return sum + Math.max(0, (completedAt.getTime() - assignedAt.getTime()) / 60000);
+            }, 0);
+            avgDeliveryTimeMins = totalMinutes / completedOrders.length;
+        }
 
         return {
             ...stats,
+            avg_delivery_time_mins: avgDeliveryTimeMins,
             rating: driverInfo?.rating || 5.0
         };
     }

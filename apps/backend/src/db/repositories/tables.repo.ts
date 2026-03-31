@@ -1,5 +1,5 @@
+import { randomUUID } from 'crypto';
 import { getDb } from '../db.client';
-import { v4 as uuidv4 } from 'uuid';
 
 export class TablesRepo {
     async getTables(tenantId: string) {
@@ -15,8 +15,8 @@ export class TablesRepo {
 
     async createTable(tenantId: string, data: { number: string; capacity: number; location?: string }) {
         const db = await getDb();
-        const id = uuidv4();
-        const qr_code_token = uuidv4();
+        const id = randomUUID();
+        const qr_code_token = randomUUID();
         await db.run(
             `INSERT INTO restaurant_tables (id, restaurant_id, number, capacity, location, qr_code_token) 
              VALUES (?, ?, ?, ?, ?, ?)`,
@@ -51,7 +51,7 @@ export class TablesRepo {
     async linkOrderToTable(tableId: string, orderId: string) {
         const db = await getDb();
         await db.run('INSERT INTO table_orders (table_id, order_id) VALUES (?, ?)', [tableId, orderId]);
-        await db.run('UPDATE restaurant_tables SET status = "occupied" WHERE id = ?', [tableId]);
+        await db.run(`UPDATE restaurant_tables SET status = 'occupied' WHERE id = ?`, [tableId]);
     }
 }
 

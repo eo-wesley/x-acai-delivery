@@ -110,17 +110,26 @@ reportsRouter.get('/annual-summary', adminAuthMiddleware, tenantMiddleware, asyn
     try {
         const db = await getDb();
         const year = req.query.year || new Date().getFullYear().toString();
-
-        const monthlyData = await db.all(`
-            SELECT 
-                strftime('%m', created_at) as month,
-                COUNT(*) as orders_count,
-                SUM(total_cents) as revenue_cents
+        const yearStart = `${year}-01-01 00:00:00`;
+        const nextYearStart = `${Number(year) + 1}-01-01 00:00:00`;
+        const orders = await db.all(`
+            SELECT created_at, total_cents
             FROM orders
-            WHERE restaurant_id = ? AND strftime('%Y', created_at) = ? AND status IN ('delivered', 'completed')
-            GROUP BY month
-            ORDER BY month ASC
-        `, [req.tenantId, year]);
+            WHERE restaurant_id = ? AND status IN ('delivered', 'completed') AND created_at >= ? AND created_at < ?
+        `, [req.tenantId, yearStart, nextYearStart]);
+
+        const monthlyMap = new Map<string, { month: string; orders_count: number; revenue_cents: number }>();
+        for (const order of orders) {
+            const createdAt = order?.created_at ? new Date(order.created_at) : null;
+            if (!createdAt || Number.isNaN(createdAt.getTime())) continue;
+            const month = String(createdAt.getMonth() + 1).padStart(2, '0');
+            const current = monthlyMap.get(month) || { month, orders_count: 0, revenue_cents: 0 };
+            current.orders_count += 1;
+            current.revenue_cents += Number(order.total_cents || 0);
+            monthlyMap.set(month, current);
+        }
+
+        const monthlyData = [...monthlyMap.values()].sort((a, b) => a.month.localeCompare(b.month));
 
         res.json({ year, monthlyData });
     } catch (err: any) {

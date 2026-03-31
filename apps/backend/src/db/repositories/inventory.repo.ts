@@ -19,12 +19,12 @@ export class InventoryRepo {
         const id = randomUUID();
         await db.run(
             `INSERT INTO inventory_items 
-             (id, restaurant_id, name, sku, unit, current_qty, min_qty, cost_cents, supplier, active) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, restaurant_id, name, sku, unit, current_qty, min_qty, min_stock, cost_cents, supplier, active) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id, restaurantId, payload.name, payload.sku || null, payload.unit,
-                payload.current_qty || 0, payload.min_stock || 0, payload.acquisition_cost_cents || 0,
-                payload.supplier || null, payload.active !== false ? 1 : 0
+                payload.current_qty || 0, payload.min_stock || 0, payload.min_stock || 0,
+                payload.acquisition_cost_cents || 0, payload.supplier || null, payload.active !== false ? 1 : 0
             ]
         );
         return id;

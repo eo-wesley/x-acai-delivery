@@ -54,23 +54,29 @@ export class AnalyticsRepo {
 
         // Daily Revenue Chart Data (Last N days)
         const dailyRevenue = await db.all(
-            `SELECT date(created_at) as day, SUM(total_cents) as revenue, COUNT(id) as orders_count
+            `SELECT DATE(created_at) as day, SUM(total_cents) as revenue, COUNT(id) as orders_count
              FROM orders
              WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
-             GROUP BY day
-             ORDER BY day ASC`,
+             GROUP BY DATE(created_at)
+             ORDER BY DATE(created_at) ASC`,
             [tenantId, dateStr]
         );
 
-        // Hourly Heatmap (Pedidos por Hora)
-        const hourlyHeatmap = await db.all(
-            `SELECT strftime('%H', created_at) as hour, COUNT(id) as count
+        // Hourly Heatmap (dialect-safe aggregation in JS)
+        const completedOrders = await db.all<{ created_at: string }>(
+            `SELECT created_at
              FROM orders
-             WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
-             GROUP BY hour
-             ORDER BY hour ASC`,
+             WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?`,
             [tenantId, dateStr]
         );
+        const hourlyMap = new Map<string, number>();
+        for (const order of completedOrders) {
+            const hour = new Date(order.created_at).getHours().toString().padStart(2, '0');
+            hourlyMap.set(hour, (hourlyMap.get(hour) || 0) + 1);
+        }
+        const hourlyHeatmap = Array.from(hourlyMap.entries())
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([hour, count]) => ({ hour, count }));
 
         // Revenue by Payment Method
         const paymentMethods = await db.all(
@@ -243,14 +249,7 @@ export class AnalyticsRepo {
         const db = await getDb();
         const dateStr = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 
-        // 1. Average Prep Time (approximate using created_at and updated_at for completed orders)
-        const prepTime = await db.get(`
-            SELECT AVG(julianday(updated_at) - julianday(created_at)) * 1440 as avg_minutes
-            FROM orders
-            WHERE restaurant_id = ? AND status = 'completed' AND created_at >= ?
-        `, [tenantId, dateStr]);
-
-        // 2. Orders per Staff (Audit logs)
+        // Orders per Staff (Audit logs)
         const staffActivity = await db.all(`
             SELECT u.name, COUNT(a.id) as actions_count
             FROM audit_logs a

@@ -19,6 +19,7 @@ export class MarketingService {
         const cutoffDate = new Date();
         cutoffDate.setDate(cutoffDate.getDate() - days);
         const isoCutoff = cutoffDate.toISOString();
+        const recentCampaignCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
         const inactiveCustomers = await db.all(
             `SELECT * FROM customers 
@@ -27,9 +28,9 @@ export class MarketingService {
              AND id NOT IN (
                  SELECT customer_id FROM customer_campaigns 
                  WHERE restaurant_id = ? AND type = 'winback' 
-                 AND created_at > datetime('now', '-30 days')
+                 AND created_at > ?
              )`,
-            [restaurantId, isoCutoff, restaurantId]
+            [restaurantId, isoCutoff, restaurantId, recentCampaignCutoff]
         );
 
         console.log(`[Marketing] Found ${inactiveCustomers.length} inactive customers for ${restaurantId}`);
@@ -53,17 +54,22 @@ export class MarketingService {
 
         const todayMD = new Date().toISOString().slice(5, 10); // "MM-DD"
 
-        const birthdayCustomers = await db.all(
-            `SELECT * FROM customers 
-             WHERE restaurant_id = ? 
-             AND strftime('%m-%d', birthday) = ?
-             AND id NOT IN (
-                 SELECT customer_id FROM customer_campaigns 
-                 WHERE restaurant_id = ? AND type = 'birthday' 
-                 AND created_at > date('now', 'start of year')
-             )`,
-            [restaurantId, todayMD, restaurantId]
+        const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString();
+        const alreadyTargeted = await db.all<{ customer_id: string }>(
+            `SELECT customer_id
+             FROM customer_campaigns 
+             WHERE restaurant_id = ? AND type = 'birthday' AND created_at > ?`,
+            [restaurantId, yearStart]
         );
+        const targetedIds = new Set(alreadyTargeted.map((entry) => entry.customer_id));
+        const customers = await db.all<any>(
+            `SELECT * FROM customers WHERE restaurant_id = ? AND birthday IS NOT NULL`,
+            [restaurantId]
+        );
+        const birthdayCustomers = customers.filter((customer) => {
+            const birthday = String(customer.birthday || '').slice(5, 10);
+            return birthday === todayMD && !targetedIds.has(customer.id);
+        });
 
         console.log(`[Marketing] Found ${birthdayCustomers.length} birthday customers for ${restaurantId}`);
 
@@ -223,36 +229,58 @@ export class MarketingService {
      */
     async getChurnRiskCustomers(restaurantId: string) {
         const db = await getDb();
+        const customers = await db.all<any>(
+            `SELECT id, name, phone FROM customers WHERE restaurant_id = ?`,
+            [restaurantId]
+        );
+        const orders = await db.all<any>(
+            `SELECT customer_id, created_at
+             FROM orders
+             WHERE restaurant_id = ? AND status != 'cancelled'
+             ORDER BY customer_id ASC, created_at ASC`,
+            [restaurantId]
+        );
 
-        // IA Logic: Clientes cujo tempo desde o último pedido é > 1.5x a média de intervalo deles
-        const risks = await db.all(`
-            WITH CustomerIntervals AS (
-                SELECT 
-                    customer_id,
-                    created_at as order_at,
-                    LAG(created_at) OVER (PARTITION BY customer_id ORDER BY created_at) as prev_order_at
-                FROM orders
-                WHERE restaurant_id = ? AND status != 'cancelled'
-            ),
-            Stats AS (
-                SELECT 
-                    customer_id,
-                    AVG(julianday(order_at) - julianday(prev_order_at)) as avg_interval_days,
-                    MAX(order_at) as last_order_at
-                FROM CustomerIntervals
-                WHERE prev_order_at IS NOT NULL -- filter first order
-                GROUP BY customer_id
-                HAVING COUNT(*) >= 2 -- Need at least 3 orders to calculate interval trend
-            )
-            SELECT 
-                c.id, c.name, c.phone, s.avg_interval_days, s.last_order_at,
-                (julianday('now') - julianday(s.last_order_at)) as days_since_last
-            FROM customers c
-            JOIN Stats s ON c.id = s.customer_id
-            WHERE c.restaurant_id = ?
-            AND days_since_last > (s.avg_interval_days * 1.5)
-            AND days_since_last < 90 -- If more than 90 days, it's already "lost", not just "risk"
-        `, [restaurantId, restaurantId]);
+        const customerMap = new Map(customers.map((customer) => [customer.id, customer]));
+        const byCustomer = new Map<string, Date[]>();
+        for (const order of orders) {
+            if (!byCustomer.has(order.customer_id)) {
+                byCustomer.set(order.customer_id, []);
+            }
+            byCustomer.get(order.customer_id)!.push(new Date(order.created_at));
+        }
+
+        const now = Date.now();
+        const risks: any[] = [];
+
+        for (const [customerId, customerOrders] of byCustomer.entries()) {
+            if (customerOrders.length < 3) {
+                continue;
+            }
+
+            let totalIntervalDays = 0;
+            for (let index = 1; index < customerOrders.length; index++) {
+                totalIntervalDays += (customerOrders[index].getTime() - customerOrders[index - 1].getTime()) / 86400000;
+            }
+
+            const avgIntervalDays = totalIntervalDays / (customerOrders.length - 1);
+            const lastOrderAt = customerOrders[customerOrders.length - 1];
+            const daysSinceLast = (now - lastOrderAt.getTime()) / 86400000;
+
+            if (daysSinceLast > (avgIntervalDays * 1.5) && daysSinceLast < 90) {
+                const customer = customerMap.get(customerId);
+                if (customer) {
+                    risks.push({
+                        id: customer.id,
+                        name: customer.name,
+                        phone: customer.phone,
+                        avg_interval_days: avgIntervalDays,
+                        last_order_at: lastOrderAt.toISOString(),
+                        days_since_last: daysSinceLast,
+                    });
+                }
+            }
+        }
 
         return risks;
     }
@@ -268,13 +296,14 @@ export class MarketingService {
 
         if (!trigger) return;
 
+        const recentRiskCutoff = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
         for (const customer of risks) {
             // Check if already sent a risk campaign recently
             const sent = await db.get(
                 `SELECT id FROM customer_campaigns 
                  WHERE customer_id = ? AND type = 'churn_risk' 
-                 AND created_at > datetime('now', '-15 days')`,
-                [customer.id]
+                 AND created_at > ?`,
+                [customer.id, recentRiskCutoff]
             );
 
             if (!sent) {

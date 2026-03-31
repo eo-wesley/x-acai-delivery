@@ -12,8 +12,7 @@ export class OperationsRepo {
                 o.total_cents, 
                 o.created_at,
                 o.address_text,
-                c.name as customer_name,
-                (strftime('%s', 'now') - strftime('%s', o.created_at)) / 60 as minutes_elapsed
+                c.name as customer_name
             FROM orders o
             JOIN customers c ON o.customer_id = c.id
             WHERE o.restaurant_id = ? 
@@ -27,11 +26,17 @@ export class OperationsRepo {
         `, [tenantId]);
         const threshold = settings?.prep_time_minutes || 30;
 
-        const processedOrders = activeOrders.map(o => ({
-            ...o,
-            is_delayed: o.minutes_elapsed > threshold,
-            priority: o.minutes_elapsed > threshold ? 'high' : (o.minutes_elapsed > (threshold * 0.7) ? 'medium' : 'low')
-        }));
+        const now = Date.now();
+        const processedOrders = activeOrders.map((o: any) => {
+            const createdAt = new Date(o.created_at).getTime();
+            const minutesElapsed = Math.max(0, Math.round((now - createdAt) / 60000));
+            return {
+                ...o,
+                minutes_elapsed: minutesElapsed,
+                is_delayed: minutesElapsed > threshold,
+                priority: minutesElapsed > threshold ? 'high' : (minutesElapsed > (threshold * 0.7) ? 'medium' : 'low')
+            };
+        });
 
         // Summary Stats
         const stats = {
@@ -50,16 +55,17 @@ export class OperationsRepo {
 
     async getDemandHeatmap(tenantId: string) {
         const db = await getDb();
+        const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         // Simplified heatmap by neighborhood (extracting from address_text if possible or just counts)
         // In this implementation, we'll aggregate by a substring of address or just return recent clusters
         const recentOrders = await db.all(`
             SELECT address_text, count(*) as count
             FROM orders
-            WHERE restaurant_id = ? AND created_at > datetime('now', '-24 hours')
+            WHERE restaurant_id = ? AND created_at > ?
             GROUP BY address_text
             ORDER BY count DESC
             LIMIT 10
-        `, [tenantId]);
+        `, [tenantId, cutoff]);
 
         return recentOrders;
     }
