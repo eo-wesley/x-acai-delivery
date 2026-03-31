@@ -1,3 +1,5 @@
+import { randomUUID } from 'crypto';
+
 /**
  * Mercado Pago PIX Payment Service — X-Açaí Delivery
  *
@@ -29,9 +31,11 @@ export class PixPaymentService {
 
     constructor() {
         this.token = process.env.MP_ACCESS_TOKEN || process.env.PAYMENT_API_KEY || '';
-        this.webhookUrl = process.env.MP_WEBHOOK_URL || process.env.NEXT_PUBLIC_API_URL
-            ? `${process.env.NEXT_PUBLIC_API_URL}/api/webhooks/mercadopago`
-            : 'http://localhost:3000/api/webhooks/mercadopago';
+        const configuredWebhookUrl = process.env.MP_WEBHOOK_URL?.trim();
+        const publicApiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
+
+        this.webhookUrl = configuredWebhookUrl
+            || (publicApiBase ? `${publicApiBase}/api/webhooks/mercadopago` : 'http://localhost:3000/api/webhooks/mercadopago');
     }
 
     isMockMode(): boolean {
@@ -178,12 +182,11 @@ export async function logPayment(entry: PaymentLogEntry): Promise<void> {
     try {
         const { getDb } = await import('../db/db.client');
         const db = await getDb();
-        const { v4: uuidv4 } = await import('uuid');
         await db.run(
             `INSERT INTO payment_logs (id, order_id, provider, payment_reference, status, payload, error_message)
              VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
-                uuidv4(),
+                randomUUID(),
                 entry.orderId,
                 entry.provider,
                 entry.paymentReference,
