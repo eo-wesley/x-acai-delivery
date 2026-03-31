@@ -183,8 +183,8 @@ export async function logPayment(entry: PaymentLogEntry): Promise<void> {
         const { getDb } = await import('../db/db.client');
         const db = await getDb();
         await db.run(
-            `INSERT INTO payment_logs (id, order_id, provider, payment_reference, status, payload, error_message)
-             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO payment_logs (id, order_id, provider, payment_reference, status, payload)
+             VALUES (?, ?, ?, ?, ?, ?)`,
             [
                 randomUUID(),
                 entry.orderId,
@@ -192,7 +192,6 @@ export async function logPayment(entry: PaymentLogEntry): Promise<void> {
                 entry.paymentReference,
                 entry.status,
                 entry.payload ? entry.payload.substring(0, 1000) : null,
-                entry.errorMessage || null,
             ]
         );
     } catch (e: any) {
