@@ -93,7 +93,7 @@ export class PixPaymentService {
             if (!res.ok) {
                 const errBody = await res.text();
                 console.error(`[PIX] MP API error ${res.status}:`, errBody);
-                throw new Error(`Mercado Pago API Error (${res.status}): ${errBody}`);
+                throw new Error(`Mercado Pago API Error (${res.status}): ${errBody} | PAYLOAD: ${JSON.stringify(payload)}`);
             }
 
             const data = (await res.json()) as any;
