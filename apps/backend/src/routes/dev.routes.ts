@@ -8,17 +8,39 @@ const router = Router();
 // [DIAGNOSTIC] Temporarily allow this in staging regardless of NODE_ENV
 router.get('/env-diagnostic', async (req, res) => {
     let mp_status = 'N/A';
-    let mp_extra = {};
+    let mp_error_details = null;
     
     if (env.MP_ACCESS_TOKEN) {
         try {
-            const mpRes = await fetch('https://api.mercadopago.com/v1/checkout/preferences', {
+            // Attempt a search instead of preferences to check token
+            const mpRes = await fetch('https://api.mercadopago.com/v1/payments/search?limit=1', {
                 method: 'GET',
                 headers: { 'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}` }
             });
-            mp_status = `${mpRes.status} ${mpRes.statusText}`;
-            if (mpRes.status === 401) {
-                mp_extra = { hint: 'TOKEN_INVALIDO_OU_EXPIRADO' };
+            mp_status = `Search: ${mpRes.status} ${mpRes.statusText}`;
+            
+            // IF search OK, let's try a TINTY PIX check
+            if (mpRes.ok) {
+                 const pixCheckRes = await fetch('https://api.mercadopago.com/v1/payments', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}`,
+                        'Content-Type': 'application/json',
+                        'X-Idempotency-Key': `diag-${Date.now()}`
+                    },
+                    body: JSON.stringify({
+                        transaction_amount: 5.00,
+                        payment_method_id: 'pix',
+                        description: 'Diagnostic Check',
+                        payer: { email: 'test_user_123@test.com' }
+                    })
+                 });
+                 mp_status += ` | Pix: ${pixCheckRes.status}`;
+                 if (!pixCheckRes.ok) {
+                     mp_error_details = await pixCheckRes.json();
+                 }
+            } else {
+                mp_error_details = await mpRes.json();
             }
         } catch (e: any) {
             mp_status = `ERROR: ${e.message}`;
@@ -28,11 +50,9 @@ router.get('/env-diagnostic', async (req, res) => {
     res.json({
         node_env: process.env.NODE_ENV,
         has_mp_access_token: !!env.MP_ACCESS_TOKEN,
-        mp_access_token_len: env.MP_ACCESS_TOKEN?.length || 0,
         mp_access_token_prefix: env.MP_ACCESS_TOKEN?.substring(0, 8),
-        mp_webhook_url: env.MP_WEBHOOK_URL,
         mp_api_connectivity: mp_status,
-        mp_hint: mp_extra,
+        mp_error_details,
         present_keys: Object.keys(process.env).filter(key => 
             key.includes('MP') || key.includes('PAYMENT') || key.includes('API') || key.includes('TOKEN')
         )
