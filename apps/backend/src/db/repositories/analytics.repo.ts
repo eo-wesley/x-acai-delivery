@@ -178,7 +178,10 @@ export class AnalyticsRepo {
         // 4. Operação
         let pendingOrdersCount = 0;
         try {
-            const pendingOrders = await db.get(`SELECT COUNT(id) as total FROM orders WHERE restaurant_id = ? AND status IN ('pending', 'accepted', 'preparing')`, [tenantId]);
+            const pendingOrders = await db.get(
+                `SELECT COUNT(id) as total FROM orders WHERE restaurant_id = ? AND status IN ('pending_payment', 'pending', 'accepted', 'confirmed', 'preparing')`,
+                [tenantId]
+            );
             pendingOrdersCount = pendingOrders?.total || 0;
         } catch (e) {
             console.warn('[KPI] Falha ao buscar pedidos pendentes:', (e as any).message);
