@@ -6,17 +6,33 @@ import { env } from '../config/env';
 const router = Router();
 
 // [DIAGNOSTIC] Temporarily allow this in staging regardless of NODE_ENV
-router.get('/env-diagnostic', (req, res) => {
+router.get('/env-diagnostic', async (req, res) => {
+    let mp_status = 'N/A';
+    let mp_extra = {};
+    
+    if (env.MP_ACCESS_TOKEN) {
+        try {
+            const mpRes = await fetch('https://api.mercadopago.com/v1/checkout/preferences', {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${env.MP_ACCESS_TOKEN}` }
+            });
+            mp_status = `${mpRes.status} ${mpRes.statusText}`;
+            if (mpRes.status === 401) {
+                mp_extra = { hint: 'TOKEN_INVALIDO_OU_EXPIRADO' };
+            }
+        } catch (e: any) {
+            mp_status = `ERROR: ${e.message}`;
+        }
+    }
+
     res.json({
         node_env: process.env.NODE_ENV,
         has_mp_access_token: !!env.MP_ACCESS_TOKEN,
         mp_access_token_len: env.MP_ACCESS_TOKEN?.length || 0,
         mp_access_token_prefix: env.MP_ACCESS_TOKEN?.substring(0, 8),
-        has_payment_api_key: !!env.PAYMENT_API_KEY,
-        payment_api_key_len: env.PAYMENT_API_KEY?.length || 0,
         mp_webhook_url: env.MP_WEBHOOK_URL,
-        public_api_url: env.NEXT_PUBLIC_API_URL,
-        // List ALL keys present in process.env (but not their values)
+        mp_api_connectivity: mp_status,
+        mp_hint: mp_extra,
         present_keys: Object.keys(process.env).filter(key => 
             key.includes('MP') || key.includes('PAYMENT') || key.includes('API') || key.includes('TOKEN')
         )
