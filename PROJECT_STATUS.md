@@ -9,6 +9,7 @@ Data: 2026-04-01
 - Menu admin e menu publico validados em staging
 - Smoke test visual do frontend/admin concluido
 - WhatsApp real local validado com Evolution
+- Staging mantido com `WHATSAPP_PROVIDER=mock` por decisao tecnica correta
 - Pix sandbox real em staging validado sem fallback mock
 - Webhook do Mercado Pago atualizando pedidos para `paid` / `confirmed`
 
@@ -31,6 +32,13 @@ Esses commits consolidaram o staging real, fecharam a entrada do Mercado Pago sa
 - WhatsApp real local validado com Evolution API na instancia `acai-delivery`
 - Pix real em staging validado com `payment_reference` real e webhook na rota:
   `https://x-acai-staging-backend.onrender.com/api/payments/mercadopago/webhook/mercadopago`
+
+## Decisao tecnica registrada nesta continuidade
+
+- O staging continua em `WHATSAPP_PROVIDER=mock`.
+- Nao existe Evolution publica confirmada para staging neste momento.
+- O provider `evolution` ja esta pronto no backend, mas nao foi ativado no Render para evitar acoplar staging a um endpoint inexistente ou local.
+- O WhatsApp real permanece validado no ambiente local com Evolution, sem quebrar o staging.
 
 ## Entrega atual
 
@@ -76,8 +84,5 @@ Concluido nesta entrega:
 
 ## Proximo passo mais coerente apos esta entrega
 
-1. Fechar a observabilidade operacional da jornada Pix no admin, se ainda faltar visualizacao de logs/pagamento.
-2. Escolher o proximo bloco de endurecimento entre:
-   - deploy publico do frontend de staging
-   - endurecimento operacional do WhatsApp em cloud
-   - limpeza dos fluxos/admin ainda presos em `/api/...` relativo
+1. Fechar o deploy remoto do frontend corrigindo as paginas ainda presas em `/api/...` relativo.
+2. Consolidar checklist e documentacao de producao com defaults finais de backend, frontend, banco, Firebase, Mercado Pago, dominio e WhatsApp.
