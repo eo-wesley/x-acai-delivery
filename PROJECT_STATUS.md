@@ -89,10 +89,28 @@ Limitacoes do ambiente atual:
 - apps/frontend esta sem dependencias instaladas localmente, entao `npm run lint` e `npm run build` nao puderam rodar
 - o backend possui dependencias faltando e erros de tipagem pre-existentes fora do escopo desta etapa, entao `npm run build` nao representa apenas esta entrega
 
+## Etapa publicada em 2026-03-31
+
+Foco executado: ativação e validação do WhatsApp real via Evolution API (Local).
+
+Commit publicado desta etapa:
+
+- `880bc811` (Correção Pix)
+- Atualização atual (WhatsApp Real Local)
+
+Concluido nesta entrega:
+
+- Limpeza completa do `.env` do backend, eliminando duplicidade de configurações de WhatsApp.
+- Configuração local apontando para Evolution API em `localhost:8080`.
+- Validação de conectividade com a API Evolution: **OK (HTTP 200)**.
+- Validação do estado da instância `acai-delivery`: **OK (Status: open)**.
+- Teste de envio real bem-sucedido para o número `5511987470862`: **OK (HTTP 201 - PENDING)**.
+- Confirmado que o `EvolutionWhatsAppProvider` está pronto para produção, dependendo apenas do chaveamento de variáveis de ambiente.
+
 ## Proximas missoes recomendadas
 
-1. Instalar dependencias do frontend e validar a jornada Pix no browser real.
-2. Revisar o ambiente do backend para restaurar um build limpo.
-3. Avancar para infraestrutura de producao (Postgres, staging e secrets).
-4. Ativar mensageria real no WhatsApp.
-5. Validar webhook Pix em HTTPS real antes do deploy comercial.
+1. **PRIORITARIO:** Validar webhook Pix ponta a ponta em HTTPS real (staging Render) antes do primeiro cliente pagante.
+2. Instalar dependencias do frontend localmente e validar build em dev server.
+3. Configurar variaveis de ambiente de producao no Render/Railway (Postgres, secrets Firebase, Evolution API pública).
+4. Considerar PWA offline e experiencia de erro de conexao para cliente mobile.
+5. Implementar dashboard administrativo para gestão de instâncias de WhatsApp por restaurante (Multi-tenant).
