@@ -4,28 +4,35 @@ Data: 2026-04-01
 
 ## Objetivo
 
-Fechar a lacuna operacional deixada pelo Pix aprovado em staging, alinhando backend e frontend para o status `confirmed`.
+Fechar a preparacao do projeto para producao, consolidando o que foi validado em staging e transformando isso em um plano final de rollout.
 
-## Plano executado
+## Plano executado nesta continuidade
 
-1. Revisar o estado real salvo no GitHub e os documentos de continuidade.
-2. Revisar os pontos que lidam com status de pedido no admin e no backend.
-3. Tratar `confirmed` como estado operacional valido entre pagamento aprovado e preparo.
-4. Atualizar os contadores operacionais para nao subcontarem pedidos pagos.
-5. Registrar o ponto real do projeto em documentos simples e versionados.
-6. Validar o diff, commitar e subir para `main`.
+1. Registrar formalmente a decisao de manter `WHATSAPP_PROVIDER=mock` no staging.
+2. Corrigir o frontend para deploy remoto separado do backend.
+3. Atualizar variaveis publicas do frontend e a documentacao do webhook/ambiente.
+4. Remover bloqueios reais de build do frontend encontrados no checkout limpo.
+5. Consolidar um checklist final de producao com provedores, variaveis e smoke test.
+6. Atualizar os documentos de continuidade e subir tudo para `main`.
 
 ## Escopo tecnico
 
-- Frontend admin:
-  - `apps/frontend/src/app/admin/orders/page.tsx`
-  - `apps/frontend/src/app/admin/kitchen/page.tsx`
-  - `apps/frontend/src/app/admin/live/page.tsx`
-- Backend:
-  - `apps/backend/src/db/repositories/analytics.repo.ts`
-  - `apps/backend/src/db/repositories/operations.repo.ts`
-  - `apps/backend/src/routes/admin.router.ts`
-- Documentacao:
+- Frontend:
+  - `apps/frontend/src/app/admin/finance/page.tsx`
+  - `apps/frontend/src/app/admin/logistics/page.tsx`
+  - `apps/frontend/src/app/admin/reports/page.tsx`
+  - `apps/frontend/src/app/criar-delivery/page.tsx`
+  - `apps/frontend/src/app/login/page.tsx`
+  - `apps/frontend/src/app/onboarding/welcome/page.tsx`
+  - `apps/frontend/src/app/order/[id]/page.tsx`
+  - `apps/frontend/src/app/pix/[id]/page.tsx`
+  - `apps/frontend/vercel.json`
+- Ambientes e docs:
+  - `.env.example`
+  - `.env.production.example`
+  - `docs/PRODUCTION_ENVIRONMENT.md`
+  - `docs/PRODUCTION_CHECKLIST.md`
+- Continuidade:
   - `PROJECT_STATUS.md`
   - `task.md`
   - `implementation_plan.md`
@@ -33,6 +40,6 @@ Fechar a lacuna operacional deixada pelo Pix aprovado em staging, alinhando back
 
 ## Fora de escopo
 
-- novas mudancas em Pix alem da consistencia de status
-- alterar Firebase, Neon, Render, WhatsApp ou SQLite local
-- limpar alteracoes locais preexistentes fora desta etapa
+- ativar Evolution real em staging sem endpoint publico confirmado
+- publicar producao final sem as credenciais reais
+- refatorar warnings legados de metadata do Next 16 que nao bloqueiam build

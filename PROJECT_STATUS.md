@@ -13,6 +13,7 @@ Data: 2026-04-01
 - Pix sandbox real em staging validado sem fallback mock
 - Webhook do Mercado Pago atualizando pedidos para `paid` / `confirmed`
 - Frontend preparado para deploy remoto separado do backend
+- Checklist final de producao consolidada no repo
 
 ## Ultimo ponto confirmado no GitHub antes desta entrega
 
@@ -43,16 +44,19 @@ Esses commits consolidaram o staging real, fecharam a entrada do Mercado Pago sa
 
 ## Entrega atual
 
-Foco executado: normalizacao operacional do status `confirmed` apos aprovacao Pix.
+Foco executado nesta continuidade sequencial:
 
-Concluido nesta entrega:
+- registrar a decisao correta de manter WhatsApp mock no staging
+- preparar o frontend para deploy remoto separado do backend
+- consolidar a checklist final de producao no repo
 
-- tela de pedidos do admin ajustada para tratar `pending_payment`, `accepted` e `confirmed`
-- fluxo do pedido pago segue no admin para `preparing` sem ficar preso em status cru
-- KDS/cozinha passa a exibir pedidos `confirmed`
-- Live Hub e contadores operacionais passam a considerar `confirmed`
-- analytics e dashboard deixam de subcontar pedidos pagos que aguardam preparo
-- documentos de continuidade recriados e atualizados com o ponto real do produto
+Concluido nesta continuidade:
+
+- consistencia operacional do status `confirmed` preservada na `main`
+- staging mantido estavel com `WHATSAPP_PROVIDER=mock`
+- frontend alinhado com backend remoto em `finance` e `logistics`
+- build do frontend validada para deploy remoto com env publico preenchido
+- documentacao de producao e continuidade atualizada no GitHub
 
 ## Atualizacao desta continuidade - ETAPA 2
 
@@ -66,19 +70,37 @@ Concluido nesta entrega:
   - `login`
   - `admin/reports`
 
+## Atualizacao desta continuidade - ETAPA 3
+
+- checklist final de producao criada em `docs/PRODUCTION_CHECKLIST.md`
+- defaults finais consolidados:
+  - backend: Render
+  - frontend: Vercel
+  - banco: Neon
+  - auth admin: Firebase
+  - pagamentos: Mercado Pago
+  - dominio/DNS: Cloudflare
+  - WhatsApp: Evolution publica separada do local/staging
+- ficou explicitado o que ja esta pronto para producao e o que ainda depende de provisionamento real
+
 ## Validacao adicional desta continuidade
 
 - `npm run build` do frontend passou com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*` preenchidos
 - o warning residual atual e nao bloqueante fica restrito a metadata/viewport legadas e ao aviso de `middleware` deprecated do Next 16
 
-## Arquivos principais desta entrega
+## Arquivos principais desta continuidade
 
-- `apps/frontend/src/app/admin/orders/page.tsx`
-- `apps/frontend/src/app/admin/kitchen/page.tsx`
-- `apps/frontend/src/app/admin/live/page.tsx`
-- `apps/backend/src/db/repositories/analytics.repo.ts`
-- `apps/backend/src/db/repositories/operations.repo.ts`
-- `apps/backend/src/routes/admin.router.ts`
+- `apps/frontend/src/app/admin/finance/page.tsx`
+- `apps/frontend/src/app/admin/logistics/page.tsx`
+- `apps/frontend/src/app/admin/reports/page.tsx`
+- `apps/frontend/src/app/criar-delivery/page.tsx`
+- `apps/frontend/src/app/login/page.tsx`
+- `apps/frontend/src/app/onboarding/welcome/page.tsx`
+- `apps/frontend/src/app/order/[id]/page.tsx`
+- `apps/frontend/src/app/pix/[id]/page.tsx`
+- `apps/frontend/vercel.json`
+- `docs/PRODUCTION_ENVIRONMENT.md`
+- `docs/PRODUCTION_CHECKLIST.md`
 - `PROJECT_STATUS.md`
 - `task.md`
 - `implementation_plan.md`
@@ -100,8 +122,11 @@ Concluido nesta entrega:
 
 - Ainda existem arquivos legados e alteracoes locais fora deste escopo no worktree principal; eles nao entram nesta integracao.
 - O backlog historico do repositorio continua mais desatualizado que este status consolidado.
+- Permanecem warnings nao bloqueantes do Next 16 sobre metadata/viewport legados e `middleware` deprecated.
 
-## Proximo passo mais coerente apos esta entrega
+## Proximo passo operacional
 
-1. Consolidar checklist e documentacao de producao com defaults finais de backend, frontend, banco, Firebase, Mercado Pago, dominio e WhatsApp.
-2. Preparar a transicao final de staging para producao sem quebrar os ambientes ja validados.
+1. Provisionar Neon, Render, Vercel e Evolution publica de producao.
+2. Colar as credenciais reais nos provedores.
+3. Publicar backend e frontend em dominio HTTPS final.
+4. Rodar o smoke test final ponta a ponta.

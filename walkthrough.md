@@ -5,36 +5,39 @@ Data: 2026-04-01
 ## O que foi revisado para reconstruir o estado
 
 - `PROJECT_STATUS.md`
-- `BACKLOG.md`
 - commits recentes de `origin/main`
-- rotas e middlewares de admin/Firebase
-- camada de Pix/webhook
-- telas operacionais do admin
+- fluxo de notificacoes WhatsApp
+- telas de frontend presas em `/api/...` relativo
+- docs de ambiente e deploy
+- build real do frontend em checkout limpo
 
 ## Evidencias encontradas
 
-- `PROJECT_STATUS.md` estava parado em 2026-03-27
-- `task.md`, `implementation_plan.md` e `walkthrough.md` nao existiam
-- os commits mais recentes em `main` ja confirmavam:
-  - PostgreSQL de staging
-  - Firebase Admin unificado
-  - webhook do Mercado Pago corrigido
-  - payment logs ajustados ao schema atual
-- o backend usava `confirmed` apos pagamento aprovado
-- a interface admin ainda nao tratava `confirmed` como estado operacional completo
+- staging segue correto com `WHATSAPP_PROVIDER=mock`
+- nao existe Evolution publica confirmada para staging
+- `finance` e `logistics` ainda estavam presos em fetch relativo e sem `Authorization`/`slug`
+- a documentacao ainda apontava para webhook antigo e nao documentava todo o contrato `NEXT_PUBLIC_FIREBASE_*`
+- a build do frontend ainda tinha bloqueios reais em:
+  - `criar-delivery`
+  - `pix/[id]`
+  - `onboarding/welcome`
+  - `login`
+  - `admin/reports`
 
 ## Mudanca aplicada nesta entrega
 
-1. Tela de pedidos:
-   - remove transicao manual indevida de `pending_payment`
-   - adiciona suporte a `accepted` e `confirmed`
-   - permite continuar o fluxo para `preparing`
-2. Cozinha/KDS:
-   - passa a carregar pedidos `confirmed`
-3. Live Hub e KPIs:
-   - passam a contar pedidos `confirmed`
-4. Documentacao:
-   - registra o ponto real do projeto e a missao atual
+1. Staging WhatsApp:
+   - decisao formalizada de manter mock ate existir Evolution publica valida
+2. Frontend remoto:
+   - `finance` e `logistics` ajustados para backend remoto com token e slug
+   - `vercel.json` alinhado com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*`
+3. Build blockers:
+   - import quebrado em `criar-delivery` corrigido
+   - comparacao de fase na tela Pix corrigida
+   - leituras de query string tornadas compatíveis com build sem `useSearchParams`
+4. Producao:
+   - envs e webhook atualizados
+   - checklist final de producao criada em `docs/PRODUCTION_CHECKLIST.md`
 
 ## Como ler o estado do projeto daqui para frente
 
@@ -42,3 +45,5 @@ Data: 2026-04-01
 - `task.md` = missao ativa
 - `implementation_plan.md` = plano aplicado nesta fase
 - `walkthrough.md` = trilha de leitura e evidencias
+- `docs/PRODUCTION_ENVIRONMENT.md` = contrato de variaveis
+- `docs/PRODUCTION_CHECKLIST.md` = sequencia final de rollout
