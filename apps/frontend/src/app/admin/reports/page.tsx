@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 
 export default function ReportsPage() {
-    const searchParams = useSearchParams();
-    const slug = searchParams.get('slug');
+    const [slug, setSlug] = useState<string | null>(null);
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
     const [annualData, setAnnualData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [exportDates, setExportDates] = useState({ start: '', end: '' });
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        setSlug(params.get('slug'));
+    }, []);
 
     useEffect(() => {
         const fetchReports = async () => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getApiBase, readTenantSlugFromBrowser } from '@/hooks/useTenant';
 import {
     DollarSign,
     ArrowUpCircle,
@@ -18,6 +19,37 @@ import {
     RefreshCw
 } from 'lucide-react';
 
+const API_BASE = getApiBase();
+
+function getAdminToken() {
+    return localStorage.getItem('admin_token') || '';
+}
+
+function getAdminSlug() {
+    return readTenantSlugFromBrowser({ includeAdminFallback: true });
+}
+
+function buildAdminUrl(path: string, params: Record<string, string> = {}) {
+    const url = new URL(path, API_BASE);
+    url.searchParams.set('slug', getAdminSlug());
+    Object.entries(params).forEach(([key, value]) => {
+        url.searchParams.set(key, value);
+    });
+    return url.toString();
+}
+
+function getAdminHeaders(withJson = false): HeadersInit {
+    const headers: HeadersInit = {
+        Authorization: `Bearer ${getAdminToken()}`,
+    };
+
+    if (withJson) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    return headers;
+}
+
 export default function FinanceHubPage() {
     const [stats, setStats] = useState({ revenue_cents: 0, expenses_cents: 0, net_profit_cents: 0 });
     const [currentSession, setCurrentSession] = useState<any>(null);
@@ -33,10 +65,14 @@ export default function FinanceHubPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
+            const today = new Date().toISOString().split('T')[0];
             const [sessionRes, entriesRes, dreRes] = await Promise.all([
-                fetch('/api/admin/finance/cash/current'),
-                fetch('/api/admin/finance/entries'),
-                fetch(`/api/admin/finance/reports/dre?start=${new Date().toISOString().split('T')[0]}&end=${new Date().toISOString().split('T')[0]}T23:59:59`)
+                fetch(buildAdminUrl('/api/admin/finance/cash/current'), { headers: getAdminHeaders() }),
+                fetch(buildAdminUrl('/api/admin/finance/entries'), { headers: getAdminHeaders() }),
+                fetch(buildAdminUrl('/api/admin/finance/reports/dre', {
+                    start: today,
+                    end: `${today}T23:59:59`,
+                }), { headers: getAdminHeaders() })
             ]);
 
             const session = await sessionRes.json();
@@ -54,9 +90,9 @@ export default function FinanceHubPage() {
     };
 
     const handleOpenCash = async () => {
-        const res = await fetch('/api/admin/finance/cash/open', {
+        const res = await fetch(buildAdminUrl('/api/admin/finance/cash/open'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAdminHeaders(true),
             body: JSON.stringify({ initialValueCents: Number(formData.value) * 100 })
         });
         if (res.ok) {
@@ -66,9 +102,9 @@ export default function FinanceHubPage() {
     };
 
     const handleCloseCash = async () => {
-        const res = await fetch('/api/admin/finance/cash/close', {
+        const res = await fetch(buildAdminUrl('/api/admin/finance/cash/close'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAdminHeaders(true),
             body: JSON.stringify({ sessionId: currentSession.id, finalValueCents: Number(formData.value) * 100 })
         });
         if (res.ok) {
@@ -80,9 +116,9 @@ export default function FinanceHubPage() {
     };
 
     const handleAddEntry = async () => {
-        const res = await fetch('/api/admin/finance/entries', {
+        const res = await fetch(buildAdminUrl('/api/admin/finance/entries'), {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAdminHeaders(true),
             body: JSON.stringify({
                 sessionId: currentSession?.id,
                 type: formData.type,

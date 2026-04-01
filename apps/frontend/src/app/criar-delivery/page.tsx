@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getApiBase } from '../hooks/useTenant';
+import { getApiBase } from '@/hooks/useTenant';
 
 export default function CreateDeliveryPage() {
     const [name, setName] = useState('');

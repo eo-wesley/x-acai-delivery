@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
@@ -177,11 +176,11 @@ function GPSSimulator({ status }: { status: string }) {
 /* ─── Main Page ───────────────────────────────────────── */
 export default function OrderStatusPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
-    const searchParams = useSearchParams();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
     const [justChanged, setJustChanged] = useState(false);
+    const [paymentApproved, setPaymentApproved] = useState(false);
 
     useEffect(() => {
         let prevStatus = '';
@@ -206,6 +205,10 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
         const iv = setInterval(fetchOrder, 5000);
         return () => clearInterval(iv);
     }, [id]);
+
+    useEffect(() => {
+        setPaymentApproved(new URLSearchParams(window.location.search).get('paid') === '1');
+    }, []);
 
     if (loading) {
         return (
@@ -235,7 +238,6 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
     const badge = STATUS_BADGE[order.status] || { bg: 'bg-gray-100 text-gray-700', text: order.status };
     const currentTimeline = STATUS_TIMELINE[currentStep];
 
-    const paymentApproved = searchParams.get('paid') === '1';
     const pixPending = (order.payment_method === 'pix' || String(order.payment_provider || '').includes('pix'))
         && order.status === 'pending_payment';
 

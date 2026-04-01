@@ -464,7 +464,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                             qrCode={pixData.qrCode}
                             qrBase64={pixData.qrBase64}
                             expiresAt={pixData.expiresAt}
-                            refreshing={phase === 'loading'}
+                            refreshing={false}
                             onRefresh={handleRefresh}
                         />
 

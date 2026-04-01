@@ -1,30 +1,64 @@
-# Guia de Variáveis de Ambiente em Produção — X-Açaí
+# Guia de Variaveis de Ambiente em Producao - X-Acai
 
-Este documento descreve todas as variáveis necessárias para rodar a plataforma X-Açaí em produção.
+Este documento reflete o contrato atual da aplicacao para deploy separado de frontend e backend.
 
-## Variáveis Obrigatórias (Backend)
+## Defaults finais recomendados
 
-| Variável | Descrição | Exemplo |
+1. Frontend: Vercel
+2. Backend: Render
+3. Banco PostgreSQL: Neon
+4. Auth admin: Firebase
+5. Pagamentos Pix: Mercado Pago
+6. WhatsApp: Evolution publica separada de staging/local
+7. DNS e proxy: Cloudflare
+
+## Backend obrigatorio
+
+| Variavel | Descricao | Exemplo |
 |----------|-----------|---------|
-| `DATABASE_URL` | String de conexão PostgreSQL (Supabase/Neon). | `postgres://user:pass@host:5432/db` |
-| `REDIS_URL` | String de conexão Redis (Upstash/Railway). | `redis://:pass@host:port` |
-| `JWT_SECRET` | Chave para assinatura de tokens de autenticação. | `use-uma-chave-longa-e-aleatoria` |
-| `ENCRYPTION_KEY` | Chave de 32 caracteres para dados sensíveis. | `12345678901234567890123456789012` |
-| `MP_ACCESS_TOKEN` | Token de produção do Mercado Pago. | `APP_USR-...` |
-| `MP_NOTIFICATION_URL` | URL pública para receber webhooks de pagamento. | `https://api.seuaçaí.com/api/payments/mercadopago/webhook` |
-| `EVOLUTION_API_URL` | URL da sua instância da Evolution API (WhatsApp). | `https://wa.seuaçaí.com` |
-| `EVOLUTION_API_KEY` | Chave mestre da Evolution API. | `SUA_API_KEY_AQUI` |
+| `DATABASE_URL` | String de conexao PostgreSQL do Neon/provedor escolhido. | `postgresql://user:pass@host/db?sslmode=require` |
+| `JWT_SECRET` | Segredo interno do backend. | `use-uma-chave-longa-e-aleatoria` |
+| `ENCRYPTION_KEY` | Chave de 32 caracteres para dados sensiveis. | `12345678901234567890123456789012` |
+| `MP_ACCESS_TOKEN` | Access token de producao do Mercado Pago. | `APP_USR-...` |
+| `MP_WEBHOOK_URL` | URL HTTPS publica do webhook real do backend. | `https://api.seudominio.com/api/payments/mercadopago/webhook/mercadopago` |
+| `WHATSAPP_PROVIDER` | Provider de notificacao. Em producao final, `evolution`. | `evolution` |
+| `WHATSAPP_BASE_URL` | Base publica da Evolution. | `https://wa.seudominio.com` |
+| `WHATSAPP_INSTANCE` | Nome da instancia conectada ao WhatsApp. | `xacai-prod` |
+| `WHATSAPP_API_KEY` | Chave da Evolution. | `SUA_API_KEY` |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | JSON completo da service account do Firebase Admin. | `{\"type\":\"service_account\",...}` |
 
-## Variáveis Obrigatórias (Frontend)
+## Backend recomendado
 
-| Variável | Descrição | Exemplo |
+| Variavel | Descricao |
+|----------|-----------|
+| `REDIS_URL` | Redis para filas, cache e workers em producao. |
+| `DB_SEED_MINIMAL` | Deve permanecer `false` apos o bootstrap inicial. |
+| `BASE_DOMAIN` | Dominio base do produto, se o SaaS por slug/subdominio for usado. |
+| `CORS_ORIGIN` | Origem do frontend publicado. |
+
+## Frontend obrigatorio
+
+| Variavel | Descricao | Exemplo |
 |----------|-----------|---------|
-| `NEXT_PUBLIC_API_URL` | URL pública do seu backend. | `https://api.seuaçaí.com` |
+| `NEXT_PUBLIC_API_URL` | URL publica do backend remoto. | `https://api.seudominio.com` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Chave web publica do Firebase. | `AIza...` |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Dominio de auth do projeto Firebase. | `xacai.firebaseapp.com` |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Project ID do Firebase. | `xacai-prod` |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Bucket do Firebase. | `xacai-prod.firebasestorage.app` |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Sender ID do Firebase. | `1234567890` |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | App ID web do Firebase. | `1:1234567890:web:abcdef123456` |
 
-## Serviços Recomendados para Lançamento de Baixo Custo
+## Sequencia curta de producao
 
-1. **Frontend**: Vercel (Hobby) - Grátis
-2. **Backend**: Railway ou Render - ~$5/mês
-3. **Banco de Dados**: Neon.tech ou Supabase - Grátis (camada free)
-4. **Redis**: Upstash - Grátis (camada free)
-5. **WhatsApp**: Evolution API em uma VPS barata (Hetzner/DigitalOcean) - ~$4/mês
+1. Provisionar PostgreSQL no Neon e guardar `DATABASE_URL`.
+2. Publicar backend no Render com `FIREBASE_SERVICE_ACCOUNT_JSON`, Mercado Pago, webhook HTTPS e WhatsApp.
+3. Rodar migracoes/seed minimo no backend publicado.
+4. Publicar frontend no Vercel com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*`.
+5. Apontar DNS/dominio no Cloudflare.
+6. Validar smoke final:
+   - `/health`
+   - login admin
+   - cardapio publico
+   - criacao de pedido
+   - Pix + webhook
+   - notificacao WhatsApp

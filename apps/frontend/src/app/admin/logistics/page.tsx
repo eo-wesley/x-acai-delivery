@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { getApiBase, readTenantSlugFromBrowser } from '@/hooks/useTenant';
 import {
     Truck,
     MapPin,
@@ -16,6 +17,34 @@ import {
     ChevronRight,
     LayoutDashboard
 } from 'lucide-react';
+
+const API_BASE = getApiBase();
+
+function getAdminToken() {
+    return localStorage.getItem('admin_token') || '';
+}
+
+function getAdminSlug() {
+    return readTenantSlugFromBrowser({ includeAdminFallback: true });
+}
+
+function buildAdminUrl(path: string) {
+    const url = new URL(path, API_BASE);
+    url.searchParams.set('slug', getAdminSlug());
+    return url.toString();
+}
+
+function getAdminHeaders(withJson = false): HeadersInit {
+    const headers: HeadersInit = {
+        Authorization: `Bearer ${getAdminToken()}`,
+    };
+
+    if (withJson) {
+        headers['Content-Type'] = 'application/json';
+    }
+
+    return headers;
+}
 
 /* 
   Simulação de dados de mapa para o "Logistics Hub"
@@ -44,7 +73,7 @@ export default function LogisticsHubPage() {
         fetchOverview();
 
         // SSE Real-time Updates for Admin
-        const sseUrl = `${process.env.NEXT_PUBLIC_API_URL || ''}/api/logistics/track/admin/stream`;
+        const sseUrl = `${API_BASE}/api/logistics/track/admin/stream`;
         const eventSource = new EventSource(sseUrl);
 
         eventSource.onmessage = (event) => {
@@ -80,7 +109,9 @@ export default function LogisticsHubPage() {
 
     const fetchOverview = async () => {
         try {
-            const res = await fetch('/api/admin/logistics/overview');
+            const res = await fetch(buildAdminUrl('/api/admin/logistics/overview'), {
+                headers: getAdminHeaders(),
+            });
             const data = await res.json();
             if (data.stats) {
                 setStats(data.stats);
@@ -98,9 +129,9 @@ export default function LogisticsHubPage() {
         if (selectedOrders.length === 0) return;
 
         try {
-            const res = await fetch('/api/admin/logistics/batch-assign', {
+            const res = await fetch(buildAdminUrl('/api/admin/logistics/batch-assign'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAdminHeaders(true),
                 body: JSON.stringify({ driverId, orderIds: selectedOrders })
             });
             if (res.ok) {

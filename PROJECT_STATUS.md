@@ -12,6 +12,7 @@ Data: 2026-04-01
 - Staging mantido com `WHATSAPP_PROVIDER=mock` por decisao tecnica correta
 - Pix sandbox real em staging validado sem fallback mock
 - Webhook do Mercado Pago atualizando pedidos para `paid` / `confirmed`
+- Frontend preparado para deploy remoto separado do backend
 
 ## Ultimo ponto confirmado no GitHub antes desta entrega
 
@@ -53,6 +54,23 @@ Concluido nesta entrega:
 - analytics e dashboard deixam de subcontar pedidos pagos que aguardam preparo
 - documentos de continuidade recriados e atualizados com o ponto real do produto
 
+## Atualizacao desta continuidade - ETAPA 2
+
+- `finance` e `logistics` do admin deixaram de usar `/api/...` relativo e passaram a usar backend remoto com `NEXT_PUBLIC_API_URL`, `Authorization` e `slug`
+- o deploy do frontend no Vercel passou a declarar tambem as variaveis publicas do Firebase
+- a documentacao de ambiente foi alinhada com o webhook real do Mercado Pago em `/api/payments/mercadopago/webhook/mercadopago`
+- a build do frontend passou no checkout limpo depois de corrigir bloqueios reais de publicacao em:
+  - `criar-delivery`
+  - `pix/[id]`
+  - `onboarding/welcome`
+  - `login`
+  - `admin/reports`
+
+## Validacao adicional desta continuidade
+
+- `npm run build` do frontend passou com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*` preenchidos
+- o warning residual atual e nao bloqueante fica restrito a metadata/viewport legadas e ao aviso de `middleware` deprecated do Next 16
+
 ## Arquivos principais desta entrega
 
 - `apps/frontend/src/app/admin/orders/page.tsx`
@@ -76,6 +94,7 @@ Concluido nesta entrega:
 - `GET /api/default/orders/:id/payment-status` consistente com o estado do pedido
 - webhook do Mercado Pago atualizando pedido para `paid` / `confirmed`
 - WhatsApp local validado com conectividade real na Evolution
+- build do frontend validada para deploy remoto com env publico preenchido
 
 ## Risco residual atual
 
@@ -84,5 +103,5 @@ Concluido nesta entrega:
 
 ## Proximo passo mais coerente apos esta entrega
 
-1. Fechar o deploy remoto do frontend corrigindo as paginas ainda presas em `/api/...` relativo.
-2. Consolidar checklist e documentacao de producao com defaults finais de backend, frontend, banco, Firebase, Mercado Pago, dominio e WhatsApp.
+1. Consolidar checklist e documentacao de producao com defaults finais de backend, frontend, banco, Firebase, Mercado Pago, dominio e WhatsApp.
+2. Preparar a transicao final de staging para producao sem quebrar os ambientes ja validados.

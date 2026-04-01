@@ -1,25 +1,27 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { Phone, Lock, ArrowRight, CheckCircle2, Store } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
 export default function CustomerLogin() {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const slug = searchParams.get('slug') || localStorage.getItem('last_slug') || 'default';
 
     const [phone, setPhone] = useState('');
     const [otp, setOtp] = useState('');
+    const [slug, setSlug] = useState('default');
     const [step, setStep] = useState<'phone' | 'otp'>('phone');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     useEffect(() => {
-        if (slug) localStorage.setItem('last_slug', slug);
-    }, [slug]);
+        const params = new URLSearchParams(window.location.search);
+        const nextSlug = params.get('slug') || localStorage.getItem('last_slug') || 'default';
+        setSlug(nextSlug);
+        localStorage.setItem('last_slug', nextSlug);
+    }, []);
 
     const handleRequestOtp = async (e: React.FormEvent) => {
         e.preventDefault();

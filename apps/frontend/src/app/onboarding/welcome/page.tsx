@@ -1,12 +1,17 @@
 'use client';
 
-import { useSearchParams } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 export default function WelcomeOnboardingPage() {
-    const searchParams = useSearchParams();
-    const id = searchParams.get('id');
-    const slug = searchParams.get('slug');
+    const [id, setId] = useState<string | null>(null);
+    const [slug, setSlug] = useState<string | null>(null);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        setId(params.get('id'));
+        setSlug(params.get('slug'));
+    }, []);
 
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 text-center">
