@@ -36,7 +36,7 @@ export class MercadoPagoService {
             }];
 
             const API_URL = env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-            const webhookUrl = `${API_URL}/webhook/payment`;
+            const webhookUrl = `${API_URL}/api/payments/mercadopago/webhook/mercadopago`;
 
             const payload = {
                 items: singleLineItem,

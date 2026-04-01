@@ -35,7 +35,7 @@ export class PixPaymentService {
         const publicApiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
 
         this.webhookUrl = configuredWebhookUrl
-            || (publicApiBase ? `${publicApiBase}/api/webhooks/mercadopago` : 'http://localhost:3000/api/webhooks/mercadopago');
+            || (publicApiBase ? `${publicApiBase}/api/payments/mercadopago/webhook/mercadopago` : 'http://localhost:3000/api/payments/mercadopago/webhook/mercadopago');
     }
 
     isMockMode(): boolean {
