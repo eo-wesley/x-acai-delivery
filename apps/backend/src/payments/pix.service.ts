@@ -92,14 +92,8 @@ export class PixPaymentService {
 
             if (!res.ok) {
                 const errBody = await res.text();
-                try {
-                    PixPaymentService.lastError = JSON.parse(errBody);
-                } catch (e) {
-                    PixPaymentService.lastError = errBody;
-                }
                 console.error(`[PIX] MP API error ${res.status}:`, errBody);
-                // Fallback to mock on API error
-                return this.createMockPixPayment(params.orderId, params.totalCents);
+                throw new Error(`Mercado Pago API Error (${res.status}): ${errBody}`);
             }
 
             const data = (await res.json()) as any;
