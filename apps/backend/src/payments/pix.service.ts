@@ -1,3 +1,4 @@
+import { env } from '../config/env';
 import { randomUUID } from 'crypto';
 
 /**
@@ -30,9 +31,9 @@ export class PixPaymentService {
     private webhookUrl: string;
 
     constructor() {
-        this.token = process.env.MP_ACCESS_TOKEN || process.env.PAYMENT_API_KEY || '';
-        const configuredWebhookUrl = process.env.MP_WEBHOOK_URL?.trim();
-        const publicApiBase = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
+        this.token = env.MP_ACCESS_TOKEN || env.PAYMENT_API_KEY || '';
+        const configuredWebhookUrl = env.MP_WEBHOOK_URL?.trim();
+        const publicApiBase = env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, '');
 
         this.webhookUrl = configuredWebhookUrl
             || (publicApiBase ? `${publicApiBase}/api/payments/mercadopago/webhook/mercadopago` : 'http://localhost:3000/api/payments/mercadopago/webhook/mercadopago');

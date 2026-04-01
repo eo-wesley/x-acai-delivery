@@ -6,7 +6,7 @@ export class MercadoPagoService {
     private apiUrl = 'https://api.mercadopago.com/checkout/preferences';
 
     constructor() {
-        this.accessToken = env.PAYMENT_API_KEY || '';
+        this.accessToken = env.MP_ACCESS_TOKEN || env.PAYMENT_API_KEY || '';
     }
 
     async createPreference(orderId: string, totalCents: number, items: Array<any>): Promise<string> {

@@ -13,6 +13,8 @@ const envSchema = z.object({
     // Deployment & Payment
     NEXT_PUBLIC_API_URL: z.string().optional(),
     PAYMENT_API_KEY: z.string().optional(),
+    MP_ACCESS_TOKEN: z.string().optional(),
+    MP_WEBHOOK_URL: z.string().optional(),
 
     // WhatsApp Notification Provider
     WHATSAPP_PROVIDER: z.enum(['mock', 'meta', 'evolution']).default('mock'),
