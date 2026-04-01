@@ -53,6 +53,7 @@ router.get('/env-diagnostic', async (req, res) => {
         mp_access_token_prefix: env.MP_ACCESS_TOKEN?.substring(0, 8),
         mp_api_connectivity: mp_status,
         mp_error_details,
+        last_pix_error: (await import('../payments/pix.service')).PixPaymentService.lastError,
         present_keys: Object.keys(process.env).filter(key => 
             key.includes('MP') || key.includes('PAYMENT') || key.includes('API') || key.includes('TOKEN')
         )

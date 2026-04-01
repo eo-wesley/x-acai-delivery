@@ -29,6 +29,7 @@ export interface PixPaymentResult {
 export class PixPaymentService {
     private token: string;
     private webhookUrl: string;
+    public static lastError: any = null;
 
     constructor() {
         this.token = env.MP_ACCESS_TOKEN || env.PAYMENT_API_KEY || '';
@@ -91,6 +92,11 @@ export class PixPaymentService {
 
             if (!res.ok) {
                 const errBody = await res.text();
+                try {
+                    PixPaymentService.lastError = JSON.parse(errBody);
+                } catch (e) {
+                    PixPaymentService.lastError = errBody;
+                }
                 console.error(`[PIX] MP API error ${res.status}:`, errBody);
                 // Fallback to mock on API error
                 return this.createMockPixPayment(params.orderId, params.totalCents);
