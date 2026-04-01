@@ -291,8 +291,9 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
         } else if (paymentMethod === 'pix') {
             const pixInfo = await pixPaymentService.createPixPayment({
                 orderId: order.id,
-                totalCents: data.totalCents,
-                customerName: data.customerName || 'Cliente X-Açaí'
+                totalCents: finalTotal,
+                customerName: data.customerName || 'Cliente X-Açaí',
+                customerEmail: data.customerEmail
             });
 
             await db.run(

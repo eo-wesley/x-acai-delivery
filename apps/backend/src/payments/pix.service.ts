@@ -29,7 +29,6 @@ export interface PixPaymentResult {
 export class PixPaymentService {
     private token: string;
     private webhookUrl: string;
-    public static lastError: any = null;
 
     constructor() {
         this.token = env.MP_ACCESS_TOKEN || env.PAYMENT_API_KEY || '';
@@ -92,8 +91,8 @@ export class PixPaymentService {
 
             if (!res.ok) {
                 const errBody = await res.text();
-                console.error(`[PIX] MP API error ${res.status}:`, errBody);
-                throw new Error(`Mercado Pago API Error (${res.status}): ${errBody} | PAYLOAD: ${JSON.stringify(payload)}`);
+                console.error(`[PIX] Mercado Pago API error ${res.status}:`, errBody);
+                throw new Error(`Falha no Pagamento Pix (MP ${res.status})`);
             }
 
             const data = (await res.json()) as any;
