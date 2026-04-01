@@ -147,7 +147,10 @@ adminRouter.get('/admin/metrics', adminAuthMiddleware, tenantMiddleware, async (
 
         const byStatus = await db.all(`SELECT status, COUNT(*) as count FROM orders WHERE restaurant_id = ? GROUP BY status`, [tenantId]);
 
-        const activeOrders = await db.get(`SELECT COUNT(*) as count FROM orders WHERE restaurant_id = ? AND status IN ('accepted','preparing','delivering')`, [tenantId]);
+        const activeOrders = await db.get(
+            `SELECT COUNT(*) as count FROM orders WHERE restaurant_id = ? AND status IN ('pending_payment', 'pending', 'accepted', 'confirmed', 'preparing', 'delivering')`,
+            [tenantId]
+        );
 
         const avgRating = await db.get(`SELECT AVG(stars) as avg, COUNT(*) as total FROM order_ratings WHERE restaurant_id = ?`, [tenantId]);
 

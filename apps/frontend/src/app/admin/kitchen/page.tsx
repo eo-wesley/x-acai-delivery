@@ -64,8 +64,8 @@ export default function KitchenDisplay() {
             if (!res.ok) return;
             const data: Order[] = await res.json();
 
-            // Filter only kitchen relevant: pending (new), accepted, preparing
-            const kitchenOrders = data.filter(o => ['pending', 'accepted', 'preparing'].includes(o.status))
+            // Kitchen should keep newly paid Pix orders visible until production starts.
+            const kitchenOrders = data.filter(o => ['pending', 'accepted', 'confirmed', 'preparing'].includes(o.status))
                 .map(o => ({
                     ...o,
                     items: typeof o.items === 'string' ? JSON.parse(o.items) : (o.items || [])
@@ -166,7 +166,7 @@ export default function KitchenDisplay() {
                         return (
                             <div key={order.id} className="bg-white rounded-[32px] overflow-hidden shadow-2xl flex flex-col h-full border-4 border-gray-800/50 hover:border-gray-700 transition-colors group">
                                 {/* Header do Card */}
-                                <div className={`p-5 flex items-center justify-between border-b ${order.status === 'pending' ? 'bg-orange-500 text-white' : 'bg-gray-50 text-gray-800'}`}>
+                                <div className={`p-5 flex items-center justify-between border-b ${['pending', 'accepted', 'confirmed'].includes(order.status) ? 'bg-orange-500 text-white' : 'bg-gray-50 text-gray-800'}`}>
                                     <div>
                                         <div className="flex items-center gap-2 mb-1">
                                             <span className={`${typeColor} text-[9px] font-black px-2 py-0.5 rounded-full text-white uppercase flex items-center gap-1`}>
@@ -220,7 +220,7 @@ export default function KitchenDisplay() {
 
                                 {/* Ações */}
                                 <div className="p-5 grid grid-cols-1 gap-2 border-t bg-gray-50">
-                                    {order.status === 'pending' && (
+                                    {['pending', 'accepted', 'confirmed'].includes(order.status) && (
                                         <button
                                             onClick={() => updateStatus(order.id, 'preparing')}
                                             className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-5 rounded-[24px] flex items-center justify-center gap-3 transition active:scale-95 shadow-xl shadow-orange-500/20 group-hover:scale-[1.02]"
@@ -229,7 +229,7 @@ export default function KitchenDisplay() {
                                             COMEÇAR AGORA
                                         </button>
                                     )}
-                                    {(order.status === 'preparing' || order.status === 'accepted') && (
+                                    {order.status === 'preparing' && (
                                         <button
                                             onClick={() => updateStatus(order.id, order.type === 'dine_in' ? 'completed' : 'delivering')}
                                             className="w-full bg-green-600 hover:bg-green-700 text-white font-black py-5 rounded-[24px] flex items-center justify-center gap-3 transition active:scale-95 shadow-xl shadow-green-500/20 group-hover:scale-[1.02]"

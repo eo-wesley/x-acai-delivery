@@ -1,98 +1,74 @@
 # Project Status - X-Acai Delivery
 
-Data: 2026-03-27
+Data: 2026-04-01
 
-## Estado atual validado
+## Estado atual reconstruido
 
-- Autenticacao admin com Firebase funcionando
-- Painel admin funcionando
-- Fluxo de pedidos E2E funcionando
-- Integracao Pix Mercado Pago funcionando
-- Webhook confirmando pagamento e atualizando pedido
-- Status de pagamento visivel no admin
-- Legibilidade operacional do admin corrigida
+- Backend de staging online no Render com PostgreSQL no Neon
+- Auth admin padronizada em Firebase no backend e no frontend admin
+- Menu admin e menu publico validados em staging
+- Smoke test visual do frontend/admin concluido
+- WhatsApp real local validado com Evolution
+- Pix sandbox real em staging validado sem fallback mock
+- Webhook do Mercado Pago atualizando pedidos para `paid` / `confirmed`
 
-## Entrega desta etapa
+## Ultimo ponto confirmado no GitHub antes desta entrega
 
-Foco executado: UX da tela de pagamento Pix no frontend.
+Commits mais recentes em `origin/main`:
 
-Commit publicado desta etapa:
+- `09621a69` fix(pix): persist payment logs with current staging schema
+- `44d998c4` fix(pix): honor staging webhook url and expose payment logs
+- `a27c5a1c` feat(db): publish staging postgres migration layer
+- `c7c9d2b2` fix(admin): unify staging admin auth on firebase
 
-- `adc1d8f892a0fefb26f5a4fae39dcb76b5a8aaa7`
+Esses commits consolidaram o staging real, o Firebase Admin no backend, a camada de migracao PostgreSQL e a observabilidade minima de pagamentos.
 
-Concluido nesta entrega:
+## Entrega atual
 
-- polling do Pix estabilizado para rodar a cada 3s sem sobreposicao de requisicoes
-- compatibilidade entre frontend e backend para rota de status de pagamento
-- resolucao do tenant slug alinhada no storefront e persistida no fluxo Pix
-- QR Code maior e mais legivel no mobile
-- botao de copiar codigo Pix mantido e reforcado na UX
-- estado claro de sucesso antes do redirecionamento
-- redirecionamento automatico para a tela do pedido com feedback de pagamento aprovado
-- CTA no pedido para reabrir a tela Pix quando o pagamento ainda estiver pendente
-
-## Etapa publicada depois da UX Pix
-
-Foco executado: camada operacional de notificacoes via WhatsApp no backend.
-
-Commit publicado desta etapa:
-
-- `2267a8993ec4f4695f8f384af81d229f8c473457`
+Foco executado: normalizacao operacional do status `confirmed` apos aprovacao Pix.
 
 Concluido nesta entrega:
 
-- schema de `notification_logs` alinhado com observabilidade operacional por evento, destinatario, papel, status e motivo
-- `whatsapp_configs` garantida no bootstrap do banco para compatibilidade com configuracao por restaurante
-- trilha unica de disparo via `eventBus` + camada de notificacao existente
-- compatibilidade preservada entre `customerPhone` e `recipientPhone` durante a transicao
-- mensagens operacionais automaticas para:
-  pedido recebido
-  pagamento aprovado
-  pedido saiu para entrega
-- envio para cliente nos 3 eventos e para a loja no evento de pedido recebido
-- idempotencia pratica com `idempotency_key` e trava em memoria para evitar duplicidade concorrente
-- webhook do Mercado Pago e app do entregador sem envio direto paralelo
-- falha no WhatsApp mantida como non-blocking para nao derrubar o fluxo principal do pedido
+- tela de pedidos do admin ajustada para tratar `pending_payment`, `accepted` e `confirmed`
+- fluxo do pedido pago segue no admin para `preparing` sem ficar preso em status cru
+- KDS/cozinha passa a exibir pedidos `confirmed`
+- Live Hub e contadores operacionais passam a considerar `confirmed`
+- analytics e dashboard deixam de subcontar pedidos pagos que aguardam preparo
+- documentos de continuidade recriados e atualizados com o ponto real do produto
 
-## Validacao adicional desta etapa
+## Arquivos principais desta entrega
 
-Validado em mock com SQLite temporario:
+- `apps/frontend/src/app/admin/orders/page.tsx`
+- `apps/frontend/src/app/admin/kitchen/page.tsx`
+- `apps/frontend/src/app/admin/live/page.tsx`
+- `apps/backend/src/db/repositories/analytics.repo.ts`
+- `apps/backend/src/db/repositories/operations.repo.ts`
+- `apps/backend/src/routes/admin.router.ts`
+- `PROJECT_STATUS.md`
+- `task.md`
+- `implementation_plan.md`
+- `walkthrough.md`
 
-- `order_created` gerou 1 log `sent` para cliente e 1 log `sent` para loja
-- repeticao concorrente do mesmo evento nao gerou duplicidade de envio/log `sent`
-- `order_accepted` gerou 1 log `sent` para cliente
-- `order_delivering` gerou 1 log `sent` para cliente
-- cenario sem telefone gerou logs `skipped` com `customer_phone_missing` e `store_phone_missing`
+## Validacoes ja confirmadas antes desta entrega
 
-Observacao de ambiente:
+- `/health` em staging respondendo com banco ok
+- `/api/admin/profile` funcional com token Firebase valido
+- `POST /api/admin/menu?slug=default` funcional
+- menu publico refletindo alteracoes do admin
+- `POST /api/default/orders` funcional em staging
+- `GET /api/default/orders/:id/payment-status` consistente com o estado do pedido
+- webhook do Mercado Pago na rota:
+  `https://x-acai-staging-backend.onrender.com/api/payments/mercadopago/webhook/mercadopago`
 
-- durante a validacao apareceu um warning nao bloqueante de BOM/inventario por ausencia da tabela `recipes` no banco temporario de teste; isso nao afetou a camada de notificacao e nao foi alterado nesta etapa
+## Risco residual atual
 
-## Arquivos alterados nesta etapa
+- Ainda existem arquivos legados e alteracoes locais fora deste escopo no worktree; eles nao foram tocados nesta entrega.
+- O backlog historico do repositorio esta desatualizado em relacao ao estado real do staging.
 
-- apps/frontend/src/hooks/useTenant.ts
-- apps/frontend/src/hooks/usePaymentPolling.ts
-- apps/frontend/src/app/checkout/page.tsx
-- apps/frontend/src/app/pix/[id]/page.tsx
-- apps/frontend/src/app/order/[id]/page.tsx
-- apps/backend/src/routes/orders.router.ts
+## Proximo passo mais coerente apos esta entrega
 
-## Validacao executada
-
-Validado nesta maquina:
-
-- checagem sintatica dos arquivos alterados com TypeScript: OK
-- git diff --check sem erros bloqueantes de patch: OK
-
-Limitacoes do ambiente atual:
-
-- apps/frontend esta sem dependencias instaladas localmente, entao `npm run lint` e `npm run build` nao puderam rodar
-- o backend possui dependencias faltando e erros de tipagem pre-existentes fora do escopo desta etapa, entao `npm run build` nao representa apenas esta entrega
-
-## Proximas missoes recomendadas
-
-1. Instalar dependencias do frontend e validar a jornada Pix no browser real.
-2. Revisar o ambiente do backend para restaurar um build limpo.
-3. Avancar para infraestrutura de producao (Postgres, staging e secrets).
-4. Ativar mensageria real no WhatsApp.
-5. Validar webhook Pix em HTTPS real antes do deploy comercial.
+1. Fazer um fechamento operacional da jornada Pix no admin com observabilidade visual de pagamento/logs, se isso ainda estiver faltando na interface.
+2. Escolher o proximo bloco de endurecimento de producao entre:
+   - deploy publico do frontend de staging
+   - endurecimento operacional do WhatsApp em cloud
+   - limpeza dos fluxos/admin ainda presos em `/api/...` relativo

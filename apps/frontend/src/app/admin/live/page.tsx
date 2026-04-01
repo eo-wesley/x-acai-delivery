@@ -54,6 +54,8 @@ export default function LiveHubPage() {
 
     const getStatusColor = (status: string) => {
         switch (status) {
+            case 'confirmed': return 'text-emerald-700 bg-emerald-100';
+            case 'accepted': return 'text-sky-700 bg-sky-100';
             case 'preparing': return 'text-blue-600 bg-blue-100';
             case 'delivering': return 'text-orange-600 bg-orange-100';
             case 'pending_payment': return 'text-gray-500 bg-gray-100';

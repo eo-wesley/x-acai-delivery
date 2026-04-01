@@ -40,7 +40,7 @@ export class OperationsRepo {
 
         // Summary Stats
         const stats = {
-            pending: processedOrders.filter(o => ['pending_payment', 'received'].includes(o.status)).length,
+            pending: processedOrders.filter(o => ['pending_payment', 'pending', 'received', 'accepted', 'confirmed'].includes(o.status)).length,
             preparing: processedOrders.filter(o => o.status === 'preparing').length,
             delivering: processedOrders.filter(o => o.status === 'delivering').length,
             delayed_count: processedOrders.filter(o => o.is_delayed).length
