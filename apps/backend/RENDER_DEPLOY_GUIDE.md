@@ -1,45 +1,76 @@
 # RENDER DEPLOYMENT GUIDE
 
-Este guia contém os valores exatos e padronizados que você deve usar no painel do Render para concluir a implantação automatizada via GitHub. O projeto foi preparado para usar o motor auto-detectável do Render e as configurações em `.yaml`. Se você for fazer pelo Dashboard Web antigo manualmente, copie estes dados.
+Este guia reflete o estado atual do backend de producao do X-Acai. O caminho correto agora e o runtime nativo `Node`, sem `Dockerfile`, usando o blueprint da raiz em `render.yaml`.
 
-### 1) Configurações de Build e Setup
+## 1) Configuracao correta do servico
 
-Abra as **Settings** do seu Web Service no Render ou crie um novo conectado ao seu repositório:
+Crie o backend de producao pelo Render com estes valores:
 
-- **Environment/Runtime**: Node (ou Docker se a UI for a que permite forçar web context, mas o `package.json` já tem tudo para rodar normal no Node nativo também).
-- **Root Directory**: `apps/backend` (Isso corrige o erro de "package.json not found").
-- **Build Command**: `yarn install && yarn build` (ou `npm ci && npm run build`).
-- **Start Command**: `node dist/server.js` (ou `yarn start`).
+- **Type**: `web`
+- **Runtime**: `node`
+- **Name**: `x-acai-production-backend`
+- **Root Directory**: `apps/backend`
+- **Build Command**: `npm ci --include=dev`
+- **Pre-Deploy Command**: `npm run db:migrate`
+- **Start Command**: `npx tsx src/server.ts`
+- **Health Check Path**: `/health`
+- **Auto Deploy**: `off`
+- **Plan**: `starter`
 
-### 2) Configuração do Firebase (A Nova Variável)
+O arquivo [render.yaml](C:\Users\Bom\Documents\New project.tmp-seq-main\render.yaml) ja deixa isso declarado para a criacao por Blueprint.
 
-O backend foi recodificado para receber a sua conta de serviço do Firebase (Service Account) inteira em uma única variável de ambiente, muito mais seguro e com menos chance de você errar ao colar chaves com `\n`.
+## 2) Firebase Admin
 
-**Para obter a variável:**
-1. Vá no [Firebase Console](https://console.firebase.google.com).
-2. Selecione o seu projeto ativo de produção.
-3. Clique na Engrenagem ⚙️ (Project settings) > **Service accounts**.
-4. Clique em **Generate new private key** (Isso baixará um arquivo `.json`).
-5. Abra o arquivo `.json` no Bloco de Notas (ou seu editor de código) e **copie todo o conteúdo dele**.
+O backend usa uma unica variavel para o Firebase Admin:
 
-**No painel do Render (guia Environment):**
-- **Crie uma variável chamada:** `FIREBASE_SERVICE_ACCOUNT_JSON`
-- **Cole o valor:** (O conteúdo integral do `.json` copiado no passo 5).
+- `FIREBASE_SERVICE_ACCOUNT_JSON`
 
-### 3) Lista Completa de Environment Variables:
+Como obter:
+
+1. Acesse o Firebase Console.
+2. Entre no projeto de producao.
+3. Abra `Project settings` > `Service accounts`.
+4. Gere uma nova private key.
+5. Copie o conteudo inteiro do arquivo JSON.
+
+No Render:
+
+- Crie a variavel `FIREBASE_SERVICE_ACCOUNT_JSON`
+- Cole o JSON completo como valor
+
+Apague variaveis antigas granulares se existirem:
+
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
+
+## 3) Variaveis do backend de producao
 
 | KEY | VALUE |
 | --- | --- |
 | `NODE_ENV` | `production` |
-| `PORT` | `3000` *(o Render sobrescreve isso dinamicamente, mas defina 3000)* |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | `{"type": "service_account", "project_id": ...}` |
+| `PORT` | `10000` |
+| `DB_SEED_MINIMAL` | `false` |
+| `WHATSAPP_PROVIDER` | `mock` *(manter assim ate a etapa de WhatsApp em producao)* |
+| `DATABASE_URL` | string real do Neon de producao |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | JSON completo da service account |
+| `MP_ACCESS_TOKEN` | token real de producao do Mercado Pago |
+| `MP_WEBHOOK_URL` | `https://api.seudominio.com/api/payments/mercadopago/webhook/mercadopago` |
+| `JWT_SECRET` | segredo interno do backend *(o blueprint pode gerar automaticamente)* |
 
-*(Obs: Apague as variáveis antigas de projeto/credencial granulares se você já tiver tentado colocá-las no Render. Use APENAS a `FIREBASE_SERVICE_ACCOUNT_JSON` e a arquitetura nova vai absorver corretamente).*
+Observacoes:
 
-### 4) Finalizando
+- `NEXT_PUBLIC_API_URL` so precisa entrar quando voce ja tiver a URL publica final da API; ela e usada como fallback do Pix e no fluxo legado de checkout do Mercado Pago
+- `CORS_ORIGIN` so precisa ser fixada quando o frontend de producao estiver publicado; o backend aceita multiplas origens separadas por virgula
 
-Depois de salvar as variáveis de ambiente:
-1. Clique em **"Manual Deploy"**.
-2. Escolha **"Clear build cache & deploy"** (Garante que o root directory seja lido do zero).
-3. Após o build concluído com sucesso, acesse a URL do seu serviço + `/health` para confirmar.
-   Ex: `https://seu-web-service.onrender.com/health` retornará 200 OK.
+## 4) Deploy
+
+Depois de salvar as variaveis:
+
+1. Crie o servico via **Blueprint** usando o `render.yaml` da raiz, ou replique exatamente os mesmos valores manualmente.
+2. O `preDeployCommand` ja roda `npm run db:migrate`, entao nao ha shell manual obrigatoria para bootstrap.
+3. Depois do deploy, valide:
+   - `GET /health`
+   - `GET /api/default/menu`
+   - `POST /api/default/orders`
+4. Para validar rotas admin protegidas, use um token Firebase valido do projeto de producao.

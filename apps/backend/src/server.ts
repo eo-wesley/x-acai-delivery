@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import './config/env';
+import { env } from './config/env';
 import './store/firestore.client';
 import { randomUUID } from 'crypto';
 import { setupDatabase } from './db/db.client';
@@ -66,6 +66,16 @@ import { monitoringService } from './services/monitoring.service';
 
 const app = express();
 
+const allowedOrigins = env.CORS_ORIGIN
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+const corsOrigin =
+  allowedOrigins.length === 0 || allowedOrigins.includes('*')
+    ? true
+    : allowedOrigins;
+
 app.get('/test', (req, res) => res.send('ok_from_server'));
 
 // Enable Enterprise Monitoring (Prometheus & Sentry)
@@ -95,7 +105,10 @@ if (process.env.NODE_ENV !== 'test') {
   });
 }
 
-app.use(cors());
+app.use(cors({
+  origin: corsOrigin,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(loggingMiddleware);
 

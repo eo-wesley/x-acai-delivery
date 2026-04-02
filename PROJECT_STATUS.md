@@ -15,6 +15,7 @@ Data: 2026-04-01
 - Frontend preparado para deploy remoto separado do backend
 - Checklist final de producao consolidada no repo
 - Banco de producao provisionado no Neon com schema migrado
+- Blueprint de producao do Render alinhado com runtime Node e migracao automatica pre-deploy
 
 ## Ultimo ponto confirmado no GitHub antes desta entrega
 
@@ -91,6 +92,20 @@ Concluido nesta continuidade:
 - migration versionada aplicada com sucesso na base de producao
 - segunda execucao de `db:migrate` confirmou idempotencia
 - seed minima nao foi executada na producao por seguranca, para nao criar tenant/item artificial sem necessidade operacional
+
+## Atualizacao desta continuidade - ETAPA 2 da producao real (preparo tecnico)
+
+- `render.yaml` da raiz deixou de apontar para Docker legado e passou a declarar o backend de producao no runtime nativo `node`
+- o blueprint agora usa:
+  - `rootDir: apps/backend`
+  - `buildCommand: npm ci --include=dev`
+  - `preDeployCommand: npm run db:migrate`
+  - `startCommand: npx tsx src/server.ts`
+  - `healthCheckPath: /health`
+  - `autoDeployTrigger: off`
+- o `render.docker.legacy.yaml` preserva a configuracao historica antiga sem continuar guiando a producao
+- `CORS_ORIGIN` passou a ser respeitado pelo backend, mantendo fallback seguro para `*` quando nao configurado
+- a documentacao do Render/producao foi alinhada com as variaveis realmente usadas pelo backend hoje
 
 ## Validacao adicional desta continuidade
 

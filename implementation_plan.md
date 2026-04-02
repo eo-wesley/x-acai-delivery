@@ -21,7 +21,8 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 2. Validar a `DATABASE_URL` real de producao no Neon.
 3. Aplicar `db:migrate` na base de producao.
 4. Confirmar schema pronto sem executar seed minima.
-5. Avancar para a publicacao do backend de producao no Render.
+5. Alinhar o `render.yaml` da raiz para o runtime Node com `preDeployCommand`.
+6. Publicar o backend de producao no Render.
 
 ## Escopo tecnico
 

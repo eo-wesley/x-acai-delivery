@@ -4,7 +4,7 @@ Data: 2026-04-01
 
 ## Missao ativa
 
-Publicar o backend de producao no Render usando o banco Neon ja provisionado, sem quebrar staging, SQLite local ou os fluxos ja validados.
+Provisionar o backend de producao no Render usando o banco Neon ja provisionado e o blueprint Node atualizado, sem quebrar staging, SQLite local ou os fluxos ja validados.
 
 ## Contexto confirmado
 
@@ -21,7 +21,7 @@ Publicar o backend de producao no Render usando o banco Neon ja provisionado, se
 
 ## Problema concreto atacado nesta etapa
 
-O banco de producao ja esta pronto, mas o backend de producao ainda nao foi provisionado no Render com as variaveis reais de Firebase, Mercado Pago e base de dados.
+O banco de producao ja esta pronto, o blueprint de deploy foi alinhado para Node nativo, mas o backend de producao ainda nao foi provisionado no Render com as variaveis reais de Firebase, Mercado Pago e base de dados.
 
 ## Resultado esperado
 

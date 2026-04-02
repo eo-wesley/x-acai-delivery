@@ -45,6 +45,11 @@ Data: 2026-04-01
    - `db:migrate` aplicada com sucesso
    - schema `public` confirmado com as tabelas do produto
    - seed minima evitada por seguranca
+6. Producao real - backend:
+   - `render.yaml` revisto e corrigido para remover o caminho legado em Docker
+   - blueprint atualizado para `node`, `rootDir: apps/backend` e `preDeployCommand: npm run db:migrate`
+   - `CORS_ORIGIN` passou a ser aplicado no backend em runtime
+   - variaveis obrigatorias do Render reduzidas ao contrato realmente usado pelo codigo
 
 ## Como ler o estado do projeto daqui para frente
 

@@ -15,7 +15,6 @@ Data: 2026-04-01
 ## O que ainda falta para ir a producao
 
 - criar o backend de producao no Render
-- criar o banco PostgreSQL de producao no Neon
 - publicar o frontend de producao no Vercel
 - configurar as credenciais reais de Firebase, Mercado Pago e Evolution
 - apontar dominio e subdominios HTTPS reais
@@ -25,37 +24,44 @@ Data: 2026-04-01
 
 ### 1. Backend de producao
 
-Criar um novo servico Node no Render para o backend de producao com:
+Criar um novo servico Node no Render para o backend de producao com o blueprint da raiz:
 
+- `Name`: `x-acai-production-backend`
 - `Root Directory`: `apps/backend`
 - `Build Command`: `npm ci --include=dev`
+- `Pre-Deploy Command`: `npm run db:migrate`
 - `Start Command`: `npx tsx src/server.ts`
 - `Health Check Path`: `/health`
+- `Auto Deploy`: `off`
+- `Plan`: `starter`
 
 Variaveis minimas:
 
 - `DATABASE_URL`
 - `JWT_SECRET`
-- `ENCRYPTION_KEY`
 - `FIREBASE_SERVICE_ACCOUNT_JSON`
 - `MP_ACCESS_TOKEN`
 - `MP_WEBHOOK_URL`
+- `WHATSAPP_PROVIDER=mock` inicialmente
+
+Variaveis para uma segunda passada, quando WhatsApp de producao estiver pronto:
+
+- `NEXT_PUBLIC_API_URL`
+- `CORS_ORIGIN`
 - `WHATSAPP_PROVIDER=evolution`
 - `WHATSAPP_BASE_URL`
 - `WHATSAPP_INSTANCE`
 - `WHATSAPP_API_KEY`
-- `CORS_ORIGIN`
-- `BASE_DOMAIN`
 
 ### 2. PostgreSQL de producao
 
-Criar o banco no Neon e conectar o backend de producao com `DATABASE_URL`.
+Banco Neon de producao ja provisionado e migrado. O backend de producao so precisa usar a `DATABASE_URL` real dessa base.
 
 Bootstrap recomendado:
 
-1. rodar `npm run db:migrate`
-2. rodar `npm run db:seed:minimal` somente se precisar subir tenant/item inicial
-3. manter `DB_SEED_MINIMAL=false` depois do bootstrap
+1. deixar `preDeployCommand` rodar `npm run db:migrate`
+2. nao rodar `npm run db:seed:minimal` em producao sem decisao operacional explicita
+3. manter `DB_SEED_MINIMAL=false`
 
 ### 3. Firebase
 
@@ -134,8 +140,7 @@ Recomendacao:
 
 ## Proximo passo minimo quando for virar producao
 
-1. provisionar Neon de producao
-2. provisionar backend de producao no Render
-3. colar credenciais reais
-4. publicar frontend no Vercel
-5. validar smoke final
+1. provisionar backend de producao no Render
+2. colar credenciais reais
+3. publicar frontend no Vercel
+4. validar smoke final
