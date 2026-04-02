@@ -50,6 +50,12 @@ Data: 2026-04-01
    - blueprint atualizado para `node`, `rootDir: apps/backend` e `preDeployCommand: npm run db:migrate`
    - `CORS_ORIGIN` passou a ser aplicado no backend em runtime
    - variaveis obrigatorias do Render reduzidas ao contrato realmente usado pelo codigo
+7. Producao real - validacao inicial do backend:
+   - `GET /health` confirmou backend online com banco `ok`
+   - hostname final do Render ficou `https://x-acai-production-backend.onrender.com`
+   - rotas admin responderam `401` com a mensagem esperada de Firebase quando chamadas sem token
+   - menu publico respondeu vazio, coerente com a base sem seed minima
+   - criacao de pedido respondeu `201`, mas com `payment_reference` em `mock_...`, revelando bloqueio real de configuracao do Mercado Pago em producao
 
 ## Como ler o estado do projeto daqui para frente
 

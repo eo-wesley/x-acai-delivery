@@ -16,6 +16,7 @@ Data: 2026-04-01
 - Checklist final de producao consolidada no repo
 - Banco de producao provisionado no Neon com schema migrado
 - Blueprint de producao do Render alinhado com runtime Node e migracao automatica pre-deploy
+- Backend de producao online em `https://x-acai-production-backend.onrender.com`
 
 ## Ultimo ponto confirmado no GitHub antes desta entrega
 
@@ -107,6 +108,17 @@ Concluido nesta continuidade:
 - `CORS_ORIGIN` passou a ser respeitado pelo backend, mantendo fallback seguro para `*` quando nao configurado
 - a documentacao do Render/producao foi alinhada com as variaveis realmente usadas pelo backend hoje
 
+## Atualizacao desta continuidade - ETAPA 2 da producao real (validacao inicial)
+
+- backend de producao publicado no Render em `https://x-acai-production-backend.onrender.com`
+- `GET /health` respondeu `200` com `database: ok`
+- o hostname publico final confirmou que o webhook provisoriamente sugerido para o Mercado Pago ja estava correto:
+  `https://x-acai-production-backend.onrender.com/api/payments/mercadopago/webhook/mercadopago`
+- `GET /api/admin/profile?slug=default` e `GET /api/admin/menu?slug=default` responderam `401` com a mensagem esperada de Firebase, confirmando que a protecao admin esta ativa em producao
+- `GET /api/default/menu` respondeu `200`, mas vazio, coerente com a decisao de nao executar seed minima nem cadastrar catalogo artificial na base de producao
+- `POST /api/default/orders` respondeu `201`, porem o pedido ainda nasceu com `payment_reference` em `mock_...`, indicando que o `MP_ACCESS_TOKEN` real nao entrou efetivamente no fluxo de Pix da producao
+- o backend de producao ficou operacionalmente online, mas ainda nao pode ser considerado pronto para checkout real ate o Mercado Pago sair do fallback mock e ate existir um token Firebase valido para smoke autenticado completo do admin
+
 ## Validacao adicional desta continuidade
 
 - `npm run build` do frontend passou com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*` preenchidos
@@ -148,11 +160,11 @@ Concluido nesta continuidade:
 - Ainda existem arquivos legados e alteracoes locais fora deste escopo no worktree principal; eles nao entram nesta integracao.
 - O backlog historico do repositorio continua mais desatualizado que este status consolidado.
 - Permanecem warnings nao bloqueantes do Next 16 sobre metadata/viewport legados e `middleware` deprecated.
-- Backend de producao no Render ainda nao foi provisionado.
+- Backend de producao no Render ja esta online, mas o Pix ainda cai em fallback mock e o smoke autenticado do admin ainda depende de um Firebase ID token valido.
 
 ## Proximo passo operacional
 
-1. Provisionar o backend de producao no Render apontando para o Neon ja criado.
-2. Colar as credenciais reais nos provedores.
+1. Confirmar/corrigir `MP_ACCESS_TOKEN` real no Render de producao para tirar o Pix do fallback mock.
+2. Obter um Firebase ID token valido do projeto de producao para smoke autenticado do admin.
 3. Publicar frontend em dominio HTTPS final.
 4. Rodar o smoke test final ponta a ponta.

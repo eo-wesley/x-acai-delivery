@@ -23,6 +23,8 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 4. Confirmar schema pronto sem executar seed minima.
 5. Alinhar o `render.yaml` da raiz para o runtime Node com `preDeployCommand`.
 6. Publicar o backend de producao no Render.
+7. Validar `/health`, rotas admin protegidas, menu publico e criacao de pedido em producao.
+8. Corrigir o bloqueio de configuracao do Mercado Pago em producao antes de avancar para o frontend.
 
 ## Escopo tecnico
 

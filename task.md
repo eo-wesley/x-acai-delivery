@@ -4,7 +4,7 @@ Data: 2026-04-01
 
 ## Missao ativa
 
-Provisionar o backend de producao no Render usando o banco Neon ja provisionado e o blueprint Node atualizado, sem quebrar staging, SQLite local ou os fluxos ja validados.
+Concluir a validacao real do backend de producao no Render, tirando o Pix do fallback mock e fechando o smoke autenticado do admin antes de avancar para o frontend de producao.
 
 ## Contexto confirmado
 
@@ -21,11 +21,11 @@ Provisionar o backend de producao no Render usando o banco Neon ja provisionado 
 
 ## Problema concreto atacado nesta etapa
 
-O banco de producao ja esta pronto, o blueprint de deploy foi alinhado para Node nativo, mas o backend de producao ainda nao foi provisionado no Render com as variaveis reais de Firebase, Mercado Pago e base de dados.
+O backend de producao ja esta online e conectado ao banco Neon, mas o fluxo de Pix ainda cai em `mock_...` e o smoke autenticado do admin ainda depende de um Firebase ID token valido do projeto de producao.
 
 ## Resultado esperado
 
-- backend de producao publicado com `/health` respondendo
-- contrato de variaveis do Render validado
-- base de producao Neon ligada ao backend com seguranca
+- backend de producao respondendo com Pix real
+- contrato de variaveis do Render confirmado em producao
+- rota admin protegida validada com token Firebase real
 - trilha do rollout permanecendo salva no repo e no GitHub
