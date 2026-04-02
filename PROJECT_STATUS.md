@@ -14,6 +14,7 @@ Data: 2026-04-01
 - Webhook do Mercado Pago atualizando pedidos para `paid` / `confirmed`
 - Frontend preparado para deploy remoto separado do backend
 - Checklist final de producao consolidada no repo
+- Banco de producao provisionado no Neon com schema migrado
 
 ## Ultimo ponto confirmado no GitHub antes desta entrega
 
@@ -83,6 +84,14 @@ Concluido nesta continuidade:
   - WhatsApp: Evolution publica separada do local/staging
 - ficou explicitado o que ja esta pronto para producao e o que ainda depende de provisionamento real
 
+## Atualizacao desta continuidade - ETAPA 1 da producao real
+
+- banco de producao provisionado no Neon
+- `DATABASE_URL` real confirmada como PostgreSQL valida para o backend
+- migration versionada aplicada com sucesso na base de producao
+- segunda execucao de `db:migrate` confirmou idempotencia
+- seed minima nao foi executada na producao por seguranca, para nao criar tenant/item artificial sem necessidade operacional
+
 ## Validacao adicional desta continuidade
 
 - `npm run build` do frontend passou com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*` preenchidos
@@ -117,16 +126,18 @@ Concluido nesta continuidade:
 - webhook do Mercado Pago atualizando pedido para `paid` / `confirmed`
 - WhatsApp local validado com conectividade real na Evolution
 - build do frontend validada para deploy remoto com env publico preenchido
+- base de producao no Neon conectando e respondendo com schema pronto
 
 ## Risco residual atual
 
 - Ainda existem arquivos legados e alteracoes locais fora deste escopo no worktree principal; eles nao entram nesta integracao.
 - O backlog historico do repositorio continua mais desatualizado que este status consolidado.
 - Permanecem warnings nao bloqueantes do Next 16 sobre metadata/viewport legados e `middleware` deprecated.
+- Backend de producao no Render ainda nao foi provisionado.
 
 ## Proximo passo operacional
 
-1. Provisionar Neon, Render, Vercel e Evolution publica de producao.
+1. Provisionar o backend de producao no Render apontando para o Neon ja criado.
 2. Colar as credenciais reais nos provedores.
-3. Publicar backend e frontend em dominio HTTPS final.
+3. Publicar frontend em dominio HTTPS final.
 4. Rodar o smoke test final ponta a ponta.

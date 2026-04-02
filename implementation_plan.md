@@ -15,6 +15,14 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 5. Consolidar um checklist final de producao com provedores, variaveis e smoke test.
 6. Atualizar os documentos de continuidade e subir tudo para `main`.
 
+## Atualizacao da fase de producao real
+
+1. Revisar a camada de banco e a documentacao atual.
+2. Validar a `DATABASE_URL` real de producao no Neon.
+3. Aplicar `db:migrate` na base de producao.
+4. Confirmar schema pronto sem executar seed minima.
+5. Avancar para a publicacao do backend de producao no Render.
+
 ## Escopo tecnico
 
 - Frontend:

@@ -23,6 +23,8 @@ Data: 2026-04-01
   - `onboarding/welcome`
   - `login`
   - `admin/reports`
+- a `DATABASE_URL` de producao recebida aponta para um Postgres real no Neon
+- a base de producao estava inicialmente sem tabelas no schema `public`
 
 ## Mudanca aplicada nesta entrega
 
@@ -38,6 +40,11 @@ Data: 2026-04-01
 4. Producao:
    - envs e webhook atualizados
    - checklist final de producao criada em `docs/PRODUCTION_CHECKLIST.md`
+5. Producao real - banco:
+   - conexao real com o Neon validada
+   - `db:migrate` aplicada com sucesso
+   - schema `public` confirmado com as tabelas do produto
+   - seed minima evitada por seguranca
 
 ## Como ler o estado do projeto daqui para frente
 
