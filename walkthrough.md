@@ -56,6 +56,10 @@ Data: 2026-04-01
    - rotas admin responderam `401` com a mensagem esperada de Firebase quando chamadas sem token
    - menu publico respondeu vazio, coerente com a base sem seed minima
    - criacao de pedido respondeu `201`, mas com `payment_reference` em `mock_...`, revelando bloqueio real de configuracao do Mercado Pago em producao
+8. Producao real - frontend:
+   - configuracao do projeto na Vercel revisada e sem bloqueio estrutural de deploy
+   - o primeiro deploy ficou dependente apenas de um novo push na `main`, porque ainda nao havia nenhum deployment registrado no projeto
+   - o trigger escolhido foi uma alteracao minima de documentacao, sem impacto funcional no app
 
 ## Como ler o estado do projeto daqui para frente
 
