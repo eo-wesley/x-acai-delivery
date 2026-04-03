@@ -13,6 +13,6 @@
         "NEXT_PUBLIC_FIREBASE_APP_ID": "@next_public_firebase_app_id"
     },
     "regions": [
-        "sao1"
+        "iad1"
     ]
 }
