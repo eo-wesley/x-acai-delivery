@@ -1,186 +1,156 @@
 # Project Status - X-Acai Delivery
 
-Data: 2026-04-01
+Data: 2026-03-27
 
-## Estado atual reconstruido
+## Estado atual validado
 
-- Backend de staging online no Render com PostgreSQL no Neon
-- Auth admin padronizada em Firebase no backend e no frontend admin
-- Menu admin e menu publico validados em staging
-- Smoke test visual do frontend/admin concluido
-- WhatsApp real local validado com Evolution
-- Staging mantido com `WHATSAPP_PROVIDER=mock` por decisao tecnica correta
-- Pix sandbox real em staging validado sem fallback mock
-- Webhook do Mercado Pago atualizando pedidos para `paid` / `confirmed`
-- Frontend preparado para deploy remoto separado do backend
-- Checklist final de producao consolidada no repo
-- Banco de producao provisionado no Neon com schema migrado
-- Blueprint de producao do Render alinhado com runtime Node e migracao automatica pre-deploy
-- Backend de producao online em `https://x-acai-production-backend.onrender.com`
+- Autenticacao admin com Firebase funcionando
+- Painel admin funcionando
+- Fluxo de pedidos E2E funcionando
+- Integracao Pix Mercado Pago funcionando
+- Webhook confirmando pagamento e atualizando pedido
+- Status de pagamento visivel no admin
+- Legibilidade operacional do admin corrigida
 
-## Ultimo ponto confirmado no GitHub antes desta entrega
+## Entrega desta etapa
 
-Commits mais recentes em `origin/main`:
+Foco executado: UX da tela de pagamento Pix no frontend.
 
-- `416d9c6b` feat: stabilize real Pix integration in staging and remove debug tools
-- `70eb5ec8` fix: add MP_ACCESS_TOKEN and MP_WEBHOOK_URL to env schema and unify services
-- `96b2baea` fix: unify mercadopago webhook paths across backend and test scripts
-- `a27c5a1c` feat(db): publish staging postgres migration layer
-- `c7c9d2b2` fix(admin): unify staging admin auth on firebase
+Commit publicado desta etapa:
 
-Esses commits consolidaram o staging real, fecharam a entrada do Mercado Pago sandbox sem fallback mock e estabilizaram a base operacional de Firebase, PostgreSQL e webhook.
+- `adc1d8f892a0fefb26f5a4fae39dcb76b5a8aaa7`
 
-## Historico recente preservado
+Concluido nesta entrega:
 
-- UX Pix no frontend consolidada com polling, QR mais legivel e retorno claro de pagamento aprovado
-- camada operacional de notificacoes via WhatsApp unificada no backend
-- WhatsApp real local validado com Evolution API na instancia `acai-delivery`
-- Pix real em staging validado com `payment_reference` real e webhook na rota:
-  `https://x-acai-staging-backend.onrender.com/api/payments/mercadopago/webhook/mercadopago`
+- polling do Pix estabilizado para rodar a cada 3s sem sobreposicao de requisicoes
+- compatibilidade entre frontend e backend para rota de status de pagamento
+- resolucao do tenant slug alinhada no storefront e persistida no fluxo Pix
+- QR Code maior e mais legivel no mobile
+- botao de copiar codigo Pix mantido e reforcado na UX
+- estado claro de sucesso antes do redirecionamento
+- redirecionamento automatico para a tela do pedido com feedback de pagamento aprovado
+- CTA no pedido para reabrir a tela Pix quando o pagamento ainda estiver pendente
 
-## Decisao tecnica registrada nesta continuidade
+## Etapa publicada depois da UX Pix
 
-- O staging continua em `WHATSAPP_PROVIDER=mock`.
-- Nao existe Evolution publica confirmada para staging neste momento.
-- O provider `evolution` ja esta pronto no backend, mas nao foi ativado no Render para evitar acoplar staging a um endpoint inexistente ou local.
-- O WhatsApp real permanece validado no ambiente local com Evolution, sem quebrar o staging.
+Foco executado: camada operacional de notificacoes via WhatsApp no backend.
 
-## Entrega atual
+Commit publicado desta etapa:
 
-Foco executado nesta continuidade sequencial:
+- `2267a8993ec4f4695f8f384af81d229f8c473457`
 
-- registrar a decisao correta de manter WhatsApp mock no staging
-- preparar o frontend para deploy remoto separado do backend
-- consolidar a checklist final de producao no repo
+Concluido nesta entrega:
 
-Concluido nesta continuidade:
+- schema de `notification_logs` alinhado com observabilidade operacional por evento, destinatario, papel, status e motivo
+- `whatsapp_configs` garantida no bootstrap do banco para compatibilidade com configuracao por restaurante
+- trilha unica de disparo via `eventBus` + camada de notificacao existente
+- compatibilidade preservada entre `customerPhone` e `recipientPhone` durante a transicao
+- mensagens operacionais automaticas para:
+  pedido recebido
+  pagamento aprovado
+  pedido saiu para entrega
+- envio para cliente nos 3 eventos e para a loja no evento de pedido recebido
+- idempotencia pratica com `idempotency_key` e trava em memoria para evitar duplicidade concorrente
+- webhook do Mercado Pago e app do entregador sem envio direto paralelo
+- falha no WhatsApp mantida como non-blocking para nao derrubar o fluxo principal do pedido
 
-- consistencia operacional do status `confirmed` preservada na `main`
-- staging mantido estavel com `WHATSAPP_PROVIDER=mock`
-- frontend alinhado com backend remoto em `finance` e `logistics`
-- build do frontend validada para deploy remoto com env publico preenchido
-- documentacao de producao e continuidade atualizada no GitHub
+## Validacao adicional desta etapa
 
-## Atualizacao desta continuidade - ETAPA 2
+Validado em mock com SQLite temporario:
 
-- `finance` e `logistics` do admin deixaram de usar `/api/...` relativo e passaram a usar backend remoto com `NEXT_PUBLIC_API_URL`, `Authorization` e `slug`
-- o deploy do frontend no Vercel passou a declarar tambem as variaveis publicas do Firebase
-- a documentacao de ambiente foi alinhada com o webhook real do Mercado Pago em `/api/payments/mercadopago/webhook/mercadopago`
-- a build do frontend passou no checkout limpo depois de corrigir bloqueios reais de publicacao em:
-  - `criar-delivery`
-  - `pix/[id]`
-  - `onboarding/welcome`
-  - `login`
-  - `admin/reports`
+- `order_created` gerou 1 log `sent` para cliente e 1 log `sent` para loja
+- repeticao concorrente do mesmo evento nao gerou duplicidade de envio/log `sent`
+- `order_accepted` gerou 1 log `sent` para cliente
+- `order_delivering` gerou 1 log `sent` para cliente
+- cenario sem telefone gerou logs `skipped` com `customer_phone_missing` e `store_phone_missing`
 
-## Atualizacao desta continuidade - ETAPA 3
+Observacao de ambiente:
 
-- checklist final de producao criada em `docs/PRODUCTION_CHECKLIST.md`
-- defaults finais consolidados:
-  - backend: Render
-  - frontend: Vercel
-  - banco: Neon
-  - auth admin: Firebase
-  - pagamentos: Mercado Pago
-  - dominio/DNS: Cloudflare
-  - WhatsApp: Evolution publica separada do local/staging
-- ficou explicitado o que ja esta pronto para producao e o que ainda depende de provisionamento real
+- durante a validacao apareceu um warning nao bloqueante de BOM/inventario por ausencia da tabela `recipes` no banco temporario de teste; isso nao afetou a camada de notificacao e nao foi alterado nesta etapa
 
-## Atualizacao desta continuidade - ETAPA 1 da producao real
+## Arquivos alterados nesta etapa
 
-- banco de producao provisionado no Neon
-- `DATABASE_URL` real confirmada como PostgreSQL valida para o backend
-- migration versionada aplicada com sucesso na base de producao
-- segunda execucao de `db:migrate` confirmou idempotencia
-- seed minima nao foi executada na producao por seguranca, para nao criar tenant/item artificial sem necessidade operacional
+- apps/frontend/src/hooks/useTenant.ts
+- apps/frontend/src/hooks/usePaymentPolling.ts
+- apps/frontend/src/app/checkout/page.tsx
+- apps/frontend/src/app/pix/[id]/page.tsx
+- apps/frontend/src/app/order/[id]/page.tsx
+- apps/backend/src/routes/orders.router.ts
 
-## Atualizacao desta continuidade - ETAPA 2 da producao real (preparo tecnico)
+## Validacao executada
 
-- `render.yaml` da raiz deixou de apontar para Docker legado e passou a declarar o backend de producao no runtime nativo `node`
-- o blueprint agora usa:
-  - `rootDir: apps/backend`
-  - `buildCommand: npm ci --include=dev`
-  - `preDeployCommand: npm run db:migrate`
-  - `startCommand: npx tsx src/server.ts`
-  - `healthCheckPath: /health`
-  - `autoDeployTrigger: off`
-- o `render.docker.legacy.yaml` preserva a configuracao historica antiga sem continuar guiando a producao
-- `CORS_ORIGIN` passou a ser respeitado pelo backend, mantendo fallback seguro para `*` quando nao configurado
-- a documentacao do Render/producao foi alinhada com as variaveis realmente usadas pelo backend hoje
+Validado nesta maquina:
 
-## Atualizacao desta continuidade - ETAPA 2 da producao real (validacao inicial)
+- checagem sintatica dos arquivos alterados com TypeScript: OK
+- git diff --check sem erros bloqueantes de patch: OK
 
-- backend de producao publicado no Render em `https://x-acai-production-backend.onrender.com`
-- `GET /health` respondeu `200` com `database: ok`
-- o hostname publico final confirmou que o webhook provisoriamente sugerido para o Mercado Pago ja estava correto:
-  `https://x-acai-production-backend.onrender.com/api/payments/mercadopago/webhook/mercadopago`
-- `GET /api/admin/profile?slug=default` e `GET /api/admin/menu?slug=default` responderam `401` com a mensagem esperada de Firebase, confirmando que a protecao admin esta ativa em producao
-- `GET /api/default/menu` respondeu `200`, mas vazio, coerente com a decisao de nao executar seed minima nem cadastrar catalogo artificial na base de producao
-- `POST /api/default/orders` respondeu `201`, porem o pedido ainda nasceu com `payment_reference` em `mock_...`, indicando que o `MP_ACCESS_TOKEN` real nao entrou efetivamente no fluxo de Pix da producao
-- o backend de producao ficou operacionalmente online, mas ainda nao pode ser considerado pronto para checkout real ate o Mercado Pago sair do fallback mock e ate existir um token Firebase valido para smoke autenticado completo do admin
+Limitacoes do ambiente atual:
 
-## Validacao adicional desta continuidade
+- apps/frontend esta sem dependencias instaladas localmente, entao `npm run lint` e `npm run build` nao puderam rodar
+- o backend possui dependencias faltando e erros de tipagem pre-existentes fora do escopo desta etapa, entao `npm run build` nao representa apenas esta entrega
 
-- `npm run build` do frontend passou com `NEXT_PUBLIC_API_URL` e `NEXT_PUBLIC_FIREBASE_*` preenchidos
-- o warning residual atual e nao bloqueante fica restrito a metadata/viewport legadas e ao aviso de `middleware` deprecated do Next 16
+## Etapa publicada em 2026-03-31
 
-## Arquivos principais desta continuidade
+Foco executado: estabilização de infraestrutura e validação E2E Pix/Webhook em Staging.
 
-- `apps/frontend/src/app/admin/finance/page.tsx`
-- `apps/frontend/src/app/admin/logistics/page.tsx`
-- `apps/frontend/src/app/admin/reports/page.tsx`
-- `apps/frontend/src/app/criar-delivery/page.tsx`
-- `apps/frontend/src/app/login/page.tsx`
-- `apps/frontend/src/app/onboarding/welcome/page.tsx`
-- `apps/frontend/src/app/order/[id]/page.tsx`
-- `apps/frontend/src/app/pix/[id]/page.tsx`
-- `apps/frontend/vercel.json`
-- `docs/PRODUCTION_ENVIRONMENT.md`
-- `docs/PRODUCTION_CHECKLIST.md`
-- `PROJECT_STATUS.md`
-- `task.md`
-- `implementation_plan.md`
-- `walkthrough.md`
+Commit publicado desta etapa:
 
-## Validacoes ja confirmadas
+- `880bc811` (Correção Pix PWA)
+- `3dcbcd4a` (Validação WhatsApp Local)
+- `96b2baea` (Unificação de rotas de Webhook)
+- `70eb5ec8` (Estabilização de variáveis env no Zod)
 
-- `/health` em staging respondendo com banco ok
-- `/api/admin/profile` funcional com token Firebase valido
-- `POST /api/admin/menu?slug=default` funcional
-- menu publico refletindo alteracoes do admin
-- `POST /api/default/orders` funcional em staging
-- `GET /api/default/orders/:id/payment-status` consistente com o estado do pedido
-- webhook do Mercado Pago atualizando pedido para `paid` / `confirmed`
-- WhatsApp local validado com conectividade real na Evolution
-- build do frontend validada para deploy remoto com env publico preenchido
-- base de producao no Neon conectando e respondendo com schema pronto
+Concluido nesta entrega:
 
-## Risco residual atual
+- Identificação e unificação das rotas de Webhook do Mercado Pago (fallbacks agora apontam para `/api/payments/mercadopago/webhook/mercadopago`).
+- Correção do `env.ts` (Zod) para permitir a leitura das variáveis `MP_ACCESS_TOKEN` e `MP_WEBHOOK_URL` em ambiente de produção (Render).
+- Script de teste E2E (`test-pix-staging.js`) configurado e validado como ferramenta de infraestrutura.
+- WhatsApp local comprovadamente operacional (visto em etapa anterior).
 
-- Ainda existem arquivos legados e alteracoes locais fora deste escopo no worktree principal; eles nao entram nesta integracao.
-- O backlog historico do repositorio continua mais desatualizado que este status consolidado.
-- Permanecem warnings nao bloqueantes do Next 16 sobre metadata/viewport legados e `middleware` deprecated.
-- Backend de producao no Render ja esta online, mas o Pix ainda cai em fallback mock e o smoke autenticado do admin ainda depende de um Firebase ID token valido.
+## Proximas missoes recomendadas
 
-## Proximo passo operacional
+1. **VALIDAÇÃO FINAL:** Re-executar o script `node tmp/test-pix-staging.js` assim que o deploy automático do Render (commit `70eb5ec8`) estiver concluído (uptime do servidor RESETAR).
+2. Instalar dependencias do frontend localmente e validar build em dev server.
+3. Migrar banco de dados SQLite de staging para PostgreSQL (Neon/Supabase) para suportar persistência real.
+4. Implementar dashboard administrativo para gestão de instâncias de WhatsApp por restaurante (Multi-tenant).
+5. Configurar domínios customizados com SSL e headers de segurança Gringo para o PWA.
 
-1. Confirmar/corrigir `MP_ACCESS_TOKEN` real no Render de producao para tirar o Pix do fallback mock.
-2. Obter um Firebase ID token valido do projeto de producao para smoke autenticado do admin.
-3. Publicar frontend em dominio HTTPS final.
-4. Rodar o smoke test final ponta a ponta.
+## Etapa de Importação iFood — 2026-04-08
 
-## Atualizacao desta continuidade - importacao do cardapio iFood
+Foco executado: corrigir sort_order ponta-a-ponta + criar importador one-off de cardápio iFood.
 
-- o menu de producao do X-Acai segue vazio, o que bloqueia a validacao real do Pix no frontend publico
-- a leitura do cardapio do iFood pelo HTML publico continua insuficiente: a pagina publica chega com `menu`, `categories` e `filteredCatalog` vazios no SSR
-- a ordem exata do cardapio no X-Acai agora tem suporte tecnico fechado na camada de menu:
-  - `sort_order` passou a ser lido e persistido pelo repositrio de menu
-  - o admin/menu passou a expor `sort_order` para cadastro e edicao
-  - a leitura do menu foi ajustada para respeitar `sort_order` com fallback estavel
-- foi criado o importador one-off `scripts/import-ifood-menu.js` para:
-  - abrir Chrome/Edge com sessao dedicada
-  - reutilizar login real no iFood e no admin do X-Acai
-  - capturar respostas JSON do iFood pela sessao autenticada
-  - normalizar o snapshot do catalogo
-  - gravar o cardapio na producao via rotas oficiais do admin
-- essa etapa ainda depende de um passo manual inevitavel: login no iFood e no admin dentro do navegador aberto pelo importador
+### Problemas encontrados e corrigidos
+
+- `menu.repo.ts` → `listMenu()` e `getMenuByCategory()` não tinham `ORDER BY sort_order` — **CORRIGIDO**
+- `menu.repo.ts` → `createMenuItem()` não persistia `sort_order` — **CORRIGIDO** (INSERT inclui coluna)
+- `menu.repo.ts` → `updateMenuItem()` não aceitava `sort_order` — **CORRIGIDO**
+- Interface `MenuItem` não tinha campo `sort_order` — **CORRIGIDO**
+- `scripts/import-ifood-menu.js` **não existia** (estava só no plano) — **CRIADO**
+
+### O que o importador faz
+
+Script em 3 fases estanques:
+- `--phase extract` — Valida snapshot cru do iFood (sem gravar nada)
+- `--phase normalize` — Valida + normaliza + salva `tmp/ifood-normalized.json`
+- `--phase write` — normalize + escreve em produção via API oficial do admin
+- `--phase all` — tudo de uma vez
+- `--dry-run` — simula sem gravar
+
+Rotas usadas (API oficial, nunca banco direto):
+- `POST /api/:slug/admin/menu` — cria produto com `sort_order`
+- `POST /api/:slug/admin/menu/:id/options/groups` — cria grupo de opções
+- `POST /api/:slug/admin/menu/:id/options/groups/:gid/items` — cria item de opção
+
+### Próximos passos da importação
+
+1. Login no iFood no navegador → executar bookmarklet do Console → salvar `tmp/ifood-snapshot.json`
+2. Rodar `node scripts/import-ifood-menu.js --phase normalize`
+3. Revisar `tmp/ifood-normalized.json`
+4. Rodar com credenciais reais:
+   ```
+   XACAI_API_URL=https://x-acai-backend.onrender.com \
+   XACAI_ADMIN_TOKEN=<firebase-token> \
+   XACAI_SLUG=default \
+   node scripts/import-ifood-menu.js --phase write
+   ```
+5. Validar menu público, admin e fluxo de checkout até Pix

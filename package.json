@@ -9,6 +9,8 @@
     "ifood:import": "node scripts/import-ifood-menu.js",
     "test:flow": "node scripts/test-full-flow-v2.js",
     "test:onboarding": "node scripts/test-onboarding.js",
+    "import:ifood": "node scripts/import-ifood-menu.js",
+    "import:ifood:dry": "node scripts/import-ifood-menu.js --phase all --dry-run",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:prod": "docker compose -f docker-compose.prod.yml up -d"

@@ -1,674 +1,403 @@
+#!/usr/bin/env node
+/**
+ * import-ifood-menu.js — Importador one-off do cardápio iFood → X-Açaí
+ *
+ * Fluxo em 3 fases estanques:
+ *   FASE 1 (extract)   — Lê o snapshot JSON capturado pelo bookmarklet do navegador
+ *   FASE 2 (normalize) — Valida e normaliza para o schema do X-Açaí, preservando sort_order exato
+ *   FASE 3 (write)     — Grava em produção via API oficial do admin do X-Açaí (nunca direto no banco)
+ *
+ * Uso:
+ *   node scripts/import-ifood-menu.js --phase extract   # apenas valida snapshot
+ *   node scripts/import-ifood-menu.js --phase normalize # valida + normaliza + salva snapshot.json
+ *   node scripts/import-ifood-menu.js --phase write     # normalize + write (exige --api-url e --token)
+ *   node scripts/import-ifood-menu.js --phase all       # tudo
+ *
+ * Variáveis de ambiente:
+ *   XACAI_API_URL    = URL da API de produção (ex: https://backend.onrender.com)
+ *   XACAI_ADMIN_TOKEN = Firebase ID Token do admin
+ *   XACAI_SLUG       = Slug do restaurante (ex: default)
+ *   IFOOD_SNAPSHOT   = Caminho do snapshot JSON (default: ./tmp/ifood-snapshot.json)
+ */
+
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
 
-const DEFAULT_IFOOD_URL = process.env.IFOOD_STORE_URL || process.env.IFOOD_URL || 'https://www.ifood.com.br/delivery/sao-paulo-sp/x-acai-cidade-moncoes/79f3b413-0d12-4d26-a46c-42f65af3759b';
-const DEFAULT_FRONTEND_URL = process.env.XACAI_FRONTEND_URL || 'https://x-acai-delivery.vercel.app';
-const DEFAULT_ADMIN_URL = process.env.XACAI_ADMIN_URL || `${DEFAULT_FRONTEND_URL}/admin/menu?slug=default`;
-const DEFAULT_API_URL = process.env.XACAI_API_URL || 'https://x-acai-production-backend.onrender.com';
-const DEFAULT_SLUG = process.env.XACAI_TENANT_SLUG || 'default';
-const DEBUG_PORT = Number(process.env.IFOOD_IMPORT_DEBUG_PORT || 9222);
-const PROFILE_DIR = process.env.IFOOD_IMPORT_PROFILE_DIR || path.join(os.tmpdir(), 'xacai-ifood-import-profile');
-const OUTPUT_DIR = process.env.IFOOD_IMPORT_OUTPUT_DIR || path.join(process.cwd(), 'tmp', 'ifood-import');
-const CAPTURE_WAIT_MS = Number(process.env.IFOOD_IMPORT_CAPTURE_WAIT_MS || 15000);
-const CLICK_DETAILS_WAIT_MS = Number(process.env.IFOOD_IMPORT_DETAILS_WAIT_MS || 2500);
-const MAX_TARGET_WAIT_MS = Number(process.env.IFOOD_IMPORT_TARGET_WAIT_MS || 30000);
+// ─── Config ──────────────────────────────────────────────────────────────────
 
-function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
+const args = process.argv.slice(2);
+const getArg = (name) => {
+    const idx = args.indexOf(name);
+    return idx !== -1 ? args[idx + 1] : null;
+};
+const PHASE = getArg('--phase') || 'normalize';
 
-function ensureDir(dir) {
-    fs.mkdirSync(dir, { recursive: true });
-}
+const API_URL = process.env.XACAI_API_URL || getArg('--api-url') || 'http://localhost:3000';
+const ADMIN_TOKEN = process.env.XACAI_ADMIN_TOKEN || getArg('--token') || '';
+const SLUG = process.env.XACAI_SLUG || getArg('--slug') || 'default';
+const SNAPSHOT_PATH = process.env.IFOOD_SNAPSHOT || getArg('--snapshot') || path.join(__dirname, '../tmp/ifood-snapshot.json');
+const NORMALIZED_PATH = path.join(__dirname, '../tmp/ifood-normalized.json');
 
-function timestamp() {
-    return new Date().toISOString().replace(/[:.]/g, '-');
-}
+const DRY_RUN = args.includes('--dry-run');
 
-function findChromeExecutable() {
-    const candidates = [
-        process.env.CHROME_PATH,
-        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
-    ].filter(Boolean);
+// ─── FASE 1: Extract (valida o snapshot cru do iFood) ────────────────────────
 
-    for (const candidate of candidates) {
-        if (fs.existsSync(candidate)) return candidate;
+function extractAndValidate(raw) {
+    console.log('\n[FASE 1] Validando snapshot iFood...');
+
+    if (!raw || typeof raw !== 'object') {
+        throw new Error('Snapshot inválido: precisa ser um objeto JSON.');
     }
 
-    throw new Error('Chrome/Edge nao encontrado. Defina CHROME_PATH se necessario.');
-}
+    // O bookmarklet captura o formato do iFood API (catálogo completo)
+    // Suporta dois formatos: array de categorias ou objeto com campo "categories"
+    let categories = [];
 
-async function fetchJson(url) {
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status} ao acessar ${url}`);
+    if (Array.isArray(raw)) {
+        categories = raw;
+    } else if (Array.isArray(raw.categories)) {
+        categories = raw.categories;
+    } else if (Array.isArray(raw.catalog)) {
+        categories = raw.catalog;
+    } else if (Array.isArray(raw.data)) {
+        categories = raw.data;
+    } else {
+        throw new Error(
+            'Snapshot iFood não reconhecido. Esperado: array de categorias, ou objeto com campo "categories", "catalog" ou "data".\n' +
+            'Chaves encontradas: ' + Object.keys(raw).join(', ')
+        );
     }
-    return response.json();
-}
 
-async function waitForDebugger(port, timeoutMs = MAX_TARGET_WAIT_MS) {
-    const started = Date.now();
-    let lastError = null;
+    if (categories.length === 0) {
+        throw new Error('Snapshot sem categorias. Verifique se o cardápio está visível no iFood antes de capturar.');
+    }
 
-    while (Date.now() - started < timeoutMs) {
-        try {
-            await fetchJson(`http://127.0.0.1:${port}/json/version`);
-            return;
-        } catch (error) {
-            lastError = error;
-            await sleep(500);
+    let totalItems = 0;
+    let totalGroups = 0;
+    let totalOptions = 0;
+
+    for (const cat of categories) {
+        if (!cat.name && !cat.category) {
+            throw new Error('Categoria sem nome encontrada no snapshot.');
         }
-    }
-
-    throw new Error(`DevTools nao respondeu na porta ${port}: ${lastError?.message || 'timeout'}`);
-}
-
-class CdpClient {
-    constructor(wsUrl) {
-        this.wsUrl = wsUrl;
-        this.ws = null;
-        this.id = 0;
-        this.pending = new Map();
-        this.listeners = new Map();
-    }
-
-    async connect() {
-        this.ws = new WebSocket(this.wsUrl);
-
-        this.ws.onmessage = event => {
-            const message = JSON.parse(event.data.toString());
-
-            if (message.id && this.pending.has(message.id)) {
-                const { resolve, reject } = this.pending.get(message.id);
-                this.pending.delete(message.id);
-                if (message.error) {
-                    reject(new Error(message.error.message || 'CDP error'));
-                } else {
-                    resolve(message.result);
-                }
-                return;
-            }
-
-            const handlers = this.listeners.get(message.method) || [];
-            for (const handler of handlers) {
-                handler(message.params);
-            }
-        };
-
-        await new Promise((resolve, reject) => {
-            this.ws.onopen = resolve;
-            this.ws.onerror = reject;
-        });
-    }
-
-    send(method, params = {}) {
-        if (!this.ws) {
-            throw new Error('CDP websocket nao conectado');
-        }
-
-        return new Promise((resolve, reject) => {
-            const messageId = ++this.id;
-            this.pending.set(messageId, { resolve, reject });
-            this.ws.send(JSON.stringify({ id: messageId, method, params }));
-        });
-    }
-
-    on(method, handler) {
-        const list = this.listeners.get(method) || [];
-        list.push(handler);
-        this.listeners.set(method, list);
-    }
-
-    async close() {
-        if (!this.ws) return;
-        await new Promise(resolve => {
-            this.ws.onclose = resolve;
-            this.ws.close();
-        });
-    }
-}
-
-async function getTargets() {
-    return fetchJson(`http://127.0.0.1:${DEBUG_PORT}/json`);
-}
-
-async function waitForTarget(predicate, timeoutMs = MAX_TARGET_WAIT_MS) {
-    const started = Date.now();
-    while (Date.now() - started < timeoutMs) {
-        const targets = await getTargets();
-        const target = targets.find(predicate);
-        if (target) return target;
-        await sleep(500);
-    }
-    throw new Error('Target nao encontrado no Chrome remoto.');
-}
-
-async function connectToTarget(predicate) {
-    const target = await waitForTarget(predicate);
-    const client = new CdpClient(target.webSocketDebuggerUrl);
-    await client.connect();
-    await client.send('Page.enable');
-    await client.send('Runtime.enable');
-    await client.send('Network.enable');
-    return client;
-}
-
-async function evaluate(client, fn, args = []) {
-    const expression = `(${fn}).apply(null, ${JSON.stringify(args)})`;
-    const result = await client.send('Runtime.evaluate', {
-        expression,
-        returnByValue: true,
-        awaitPromise: true,
-    });
-
-    if (result.exceptionDetails) {
-        const details = result.exceptionDetails.text || result.exceptionDetails.exception?.description || 'Runtime evaluation failed';
-        throw new Error(details);
-    }
-
-    return result.result?.value;
-}
-
-function launchBrowser() {
-    ensureDir(PROFILE_DIR);
-    const executable = findChromeExecutable();
-    const args = [
-        `--remote-debugging-port=${DEBUG_PORT}`,
-        '--remote-allow-origins=*',
-        `--user-data-dir=${PROFILE_DIR}`,
-        '--no-first-run',
-        '--new-window',
-        DEFAULT_IFOOD_URL,
-        DEFAULT_ADMIN_URL,
-    ];
-
-    spawn(executable, args, {
-        detached: true,
-        stdio: 'ignore',
-    }).unref();
-}
-
-function cleanText(value) {
-    if (!value) return '';
-    return String(value).replace(/\s+/g, ' ').trim();
-}
-
-function parsePriceToCents(value) {
-    if (value === null || value === undefined || value === '') return null;
-
-    if (typeof value === 'number') {
-        if (Number.isInteger(value) && value >= 100) return value;
-        return Math.round(value * 100);
-    }
-
-    const text = cleanText(value);
-    if (!text) return null;
-    const normalized = text
-        .replace(/R\$/gi, '')
-        .replace(/\./g, '')
-        .replace(',', '.')
-        .trim();
-
-    const numeric = Number(normalized);
-    if (!Number.isNaN(numeric)) {
-        if (Number.isInteger(numeric) && numeric >= 100) return numeric;
-        return Math.round(numeric * 100);
-    }
-
-    return null;
-}
-
-function firstString(source, keys) {
-    for (const key of keys) {
-        const value = source?.[key];
-        if (typeof value === 'string' && cleanText(value)) {
-            return cleanText(value);
-        }
-    }
-    return null;
-}
-
-function firstArray(source, keys) {
-    for (const key of keys) {
-        if (Array.isArray(source?.[key])) return source[key];
-    }
-    return null;
-}
-
-function firstPrice(source) {
-    const keys = ['unitPrice', 'price', 'unitMinPrice', 'promotionalPrice', 'minimumPromotionalPrice', 'value'];
-    for (const key of keys) {
-        const parsed = parsePriceToCents(source?.[key]);
-        if (parsed !== null) return parsed;
-    }
-    return null;
-}
-
-function isProductLike(node) {
-    if (!node || typeof node !== 'object' || Array.isArray(node)) return false;
-    const name = firstString(node, ['description', 'name', 'title']);
-    const price = firstPrice(node);
-    return Boolean(name && price !== null);
-}
-
-function normalizeOptionGroups(source) {
-    const groups = [];
-    const groupArrays = [
-        ...[source?.garnishChoices, source?.optionGroups, source?.optionsGroups, source?.modifierGroups].filter(Array.isArray),
-    ];
-
-    for (const groupArray of groupArrays) {
-        for (let index = 0; index < groupArray.length; index += 1) {
-            const group = groupArray[index];
-            const optionArray = firstArray(group, ['garnishItens', 'items', 'options', 'modifierOptions']) || [];
-            const options = optionArray
-                .map((option, optionIndex) => {
-                    const name = firstString(option, ['description', 'name', 'title']);
-                    if (!name) return null;
-                    return {
-                        name,
-                        price_cents: firstPrice(option) || 0,
-                        available: option.available !== false,
-                        sort_order: option.sort_order ?? optionIndex,
-                    };
-                })
-                .filter(Boolean);
-
-            if (options.length === 0) continue;
-
-            const minSelect = Number(group.min_select ?? group.min ?? group.minimum ?? 0);
-            const maxSelect = Number(group.max_select ?? group.max ?? group.maximum ?? 1);
-
-            groups.push({
-                name: firstString(group, ['name', 'description', 'title']) || `Grupo ${index + 1}`,
-                required: Boolean(group.required) || minSelect > 0,
-                min_select: Number.isFinite(minSelect) ? minSelect : 0,
-                max_select: Number.isFinite(maxSelect) ? maxSelect : Math.max(1, options.length),
-                sort_order: Number(group.sort_order ?? index),
-                options,
-            });
-        }
-    }
-
-    return groups;
-}
-
-function normalizeItem(source, fallback) {
-    const name = firstString(source, ['description', 'name', 'title']);
-    const priceCents = firstPrice(source);
-
-    if (!name || priceCents === null) return null;
-
-    return {
-        source_code: String(source.code ?? source.id ?? fallback?.source_code ?? '').trim() || null,
-        name,
-        description: firstString(source, ['details', 'subtitle', 'info', 'longDescription']) || fallback?.description || null,
-        price_cents: priceCents,
-        category: fallback?.category || null,
-        sort_order: Number(fallback?.sort_order ?? 0),
-        image_url: firstString(source, ['logoUrl', 'imageUrl', 'photoUrl', 'image']) || fallback?.image_url || null,
-        option_groups: normalizeOptionGroups(source),
-    };
-}
-
-function extractCatalogCandidates(payload, responseUrl) {
-    const candidates = [];
-
-    function visit(node, trace = 'root') {
-        if (!node || typeof node !== 'object') return;
-
-        if (Array.isArray(node)) {
-            if (node.length > 0 && node.every(entry => entry && typeof entry === 'object')) {
-                const categoryItems = [];
-                let sortOrder = 0;
-
-                for (const entry of node) {
-                    const nestedItems = firstArray(entry, ['itens', 'items', 'products', 'menuItems']);
-                    if (!nestedItems || nestedItems.length === 0) continue;
-
-                    const categoryName = firstString(entry, ['name', 'title', 'label']) || null;
-
-                    for (const item of nestedItems) {
-                        const normalized = normalizeItem(item, {
-                            category: categoryName,
-                            sort_order: sortOrder,
-                            source_code: item.code ?? item.id ?? null,
-                        });
-                        if (normalized) {
-                            normalized.sort_order = sortOrder;
-                            categoryItems.push(normalized);
-                            sortOrder += 1;
-                        }
-                    }
-                }
-
-                if (categoryItems.length > 0) {
-                    candidates.push({
-                        kind: 'catalog',
-                        url: responseUrl,
-                        trace,
-                        items: categoryItems,
-                    });
-                }
-
-                const flatItems = [];
-                for (let index = 0; index < node.length; index += 1) {
-                    const normalized = normalizeItem(node[index], { sort_order: index });
-                    if (normalized) {
-                        normalized.sort_order = index;
-                        flatItems.push(normalized);
-                    }
-                }
-
-                if (flatItems.length > 0) {
-                    candidates.push({
-                        kind: 'flat-items',
-                        url: responseUrl,
-                        trace,
-                        items: flatItems,
-                    });
-                }
-            }
-
-            node.forEach((entry, index) => visit(entry, `${trace}[${index}]`));
-            return;
-        }
-
-        const singleItem = normalizeItem(node, {});
-        if (singleItem && singleItem.option_groups.length > 0) {
-            candidates.push({
-                kind: 'details',
-                url: responseUrl,
-                trace,
-                items: [singleItem],
-            });
-        }
-
-        for (const [key, value] of Object.entries(node)) {
-            visit(value, `${trace}.${key}`);
-        }
-    }
-
-    visit(payload);
-    return candidates;
-}
-
-function buildSnapshot(responses) {
-    const parsedResponses = responses
-        .map(response => {
-            try {
-                return {
-                    ...response,
-                    json: JSON.parse(response.body),
-                };
-            } catch {
-                return null;
-            }
-        })
-        .filter(Boolean);
-
-    const candidates = parsedResponses.flatMap(response => extractCatalogCandidates(response.json, response.url));
-    if (candidates.length === 0) {
-        throw new Error('Nenhum candidato de catalogo foi encontrado nas respostas do iFood.');
-    }
-
-    candidates.sort((left, right) => right.items.length - left.items.length);
-    const base = candidates[0];
-
-    const richItemMap = new Map();
-    for (const candidate of candidates) {
-        for (const item of candidate.items) {
-            const key = item.source_code ? `code:${item.source_code}` : `name:${item.name.toLowerCase()}`;
-            const existing = richItemMap.get(key);
-            const existingScore = existing ? existing.option_groups.length * 10 + (existing.description ? existing.description.length : 0) : -1;
-            const candidateScore = item.option_groups.length * 10 + (item.description ? item.description.length : 0);
-            if (!existing || candidateScore >= existingScore) {
-                richItemMap.set(key, item);
+        totalItems += (cat.items || cat.products || []).length;
+        for (const item of (cat.items || cat.products || [])) {
+            const groups = item.optionGroups || item.option_groups || item.choices || [];
+            totalGroups += groups.length;
+            for (const g of groups) {
+                totalOptions += (g.options || g.optionItems || g.items || []).length;
             }
         }
     }
 
-    const items = base.items.map((item, index) => {
-        const key = item.source_code ? `code:${item.source_code}` : `name:${item.name.toLowerCase()}`;
-        const rich = richItemMap.get(key) || {};
+    console.log(`  ✅ Categorias encontradas : ${categories.length}`);
+    console.log(`  ✅ Produtos encontrados   : ${totalItems}`);
+    console.log(`  ✅ Grupos de opção        : ${totalGroups}`);
+    console.log(`  ✅ Itens de opção         : ${totalOptions}`);
+
+    if (totalItems === 0) {
+        throw new Error('Snapshot sem produtos. Verifique se a sessão do iFood estava autenticada e a loja visível.');
+    }
+
+    return { categories, stats: { totalItems, totalGroups, totalOptions } };
+}
+
+// ─── FASE 2: Normalize ───────────────────────────────────────────────────────
+
+function normalizeName(raw) {
+    if (!raw || typeof raw !== 'string') return '';
+    return raw.trim();
+}
+
+function normalizePrice(raw) {
+    if (raw === null || raw === undefined) return 0;
+    // iFood pode vir como float (ex: 29.90) ou inteiro centavos
+    const n = Number(raw);
+    if (isNaN(n)) return 0;
+    // Heurística: se <= 5000 provavelmente já está em reais (float)
+    // O iFood retorna em reais na maioria dos endpoints de catálogo
+    return n < 500 ? Math.round(n * 100) : Math.round(n);
+}
+
+function normalizeItem(rawItem, itemIndex) {
+    const name = normalizeName(
+        rawItem.name || rawItem.description || rawItem.title || ''
+    );
+    if (!name) throw new Error(`Item sem nome na posição ${itemIndex}: ${JSON.stringify(rawItem).substring(0, 100)}`);
+
+    const price_cents = normalizePrice(
+        rawItem.unitPrice ?? rawItem.price ?? rawItem.originalValue ?? rawItem.value ?? 0
+    );
+
+    const image_url = rawItem.logoUrl || rawItem.image || rawItem.imageUrl || rawItem.logo || null;
+    const description = normalizeName(rawItem.description || rawItem.details || '') || null;
+
+    // option_groups
+    const rawGroups = rawItem.optionGroups || rawItem.option_groups || rawItem.choices || rawItem.complementsCategories || [];
+    const option_groups = rawGroups.map((g, gi) => {
+        const groupName = normalizeName(g.name || g.category || `Grupo ${gi + 1}`);
+        const minQty = Number(g.min ?? g.minChoice ?? g.minimumSelections ?? 0);
+        const maxQty = Number(g.max ?? g.maxChoice ?? g.maximumSelections ?? 1);
+        const required = minQty > 0;
+
+        const rawOptions = g.options || g.optionItems || g.items || g.complements || [];
+        const options = rawOptions.map((o, oi) => ({
+            name: normalizeName(o.name || o.description || `Opção ${oi + 1}`),
+            price_cents: normalizePrice(o.price ?? o.additionalPrice ?? o.unitPrice ?? 0),
+            sort_order: oi,
+            available: true,
+        }));
+
+        if (options.length === 0) {
+            console.warn(`  ⚠️  Grupo "${groupName}" sem opções no item "${name}"`);
+        }
+
         return {
-            source_code: item.source_code,
-            name: item.name,
-            description: rich.description || item.description || null,
-            price_cents: rich.price_cents || item.price_cents,
-            category: item.category || rich.category || null,
-            sort_order: index,
-            image_url: rich.image_url || item.image_url || null,
-            option_groups: Array.isArray(rich.option_groups) && rich.option_groups.length > 0 ? rich.option_groups : item.option_groups || [],
+            name: groupName,
+            min_select: minQty,
+            max_select: maxQty,
+            required,
+            sort_order: gi,
+            options,
         };
     });
 
-    const categories = [];
-    const seenCategories = new Set();
-    for (const item of items) {
-        const key = item.category || 'Sem categoria';
-        if (seenCategories.has(key)) continue;
-        seenCategories.add(key);
-        categories.push(key);
-    }
-
     return {
-        generated_at: new Date().toISOString(),
-        ifood_url: DEFAULT_IFOOD_URL,
-        item_count: items.length,
-        categories,
-        items,
-        raw_response_count: responses.length,
+        name,
+        description,
+        price_cents,
+        image_url,
+        available: true,
+        option_groups,
     };
 }
 
-async function captureNetworkResponses(client, onBeforeCapture) {
-    const requestMeta = new Map();
-    const captured = [];
-    const capturedIds = new Set();
+function normalizeMenu({ categories }) {
+    console.log('\n[FASE 2] Normalizando cardápio iFood para schema X-Açaí...');
 
-    client.on('Network.responseReceived', params => {
-        const response = params.response;
-        const captureByMime = (response.mimeType || '').includes('json');
-        const captureByType = params.type === 'XHR' || params.type === 'Fetch';
-        const captureByUrl = (response.url || '').includes('ifood');
+    const normalized = [];
+    let globalItemIndex = 0;
 
-        if (!captureByMime && !captureByType && !captureByUrl) return;
-        requestMeta.set(params.requestId, {
-            url: response.url,
-            status: response.status,
-            mimeType: response.mimeType,
-        });
-    });
+    for (let ci = 0; ci < categories.length; ci++) {
+        const cat = categories[ci];
+        const catName = normalizeName(cat.name || cat.category || cat.title || `Categoria ${ci + 1}`);
+        const rawItems = cat.items || cat.products || cat.itens || [];
 
-    client.on('Network.loadingFinished', async params => {
-        if (!requestMeta.has(params.requestId) || capturedIds.has(params.requestId)) return;
-        capturedIds.add(params.requestId);
+        console.log(`  Categoria [${ci}] "${catName}": ${rawItems.length} produto(s)`);
+
+        for (let ii = 0; ii < rawItems.length; ii++) {
+            const item = normalizeItem(rawItems[ii], globalItemIndex);
+            item.category = catName;
+            item.sort_order = globalItemIndex; // índice global para ordenação absoluta
+
+            normalized.push(item);
+            globalItemIndex++;
+        }
+    }
+
+    console.log(`\n  ✅ Total normalizado: ${normalized.length} produto(s)`);
+    return normalized;
+}
+
+// ─── FASE 3: Write ───────────────────────────────────────────────────────────
+
+async function writeToXacai(normalizedItems) {
+    console.log('\n[FASE 3] Escrevendo cardápio em produção via API oficial do X-Açaí...');
+
+    if (!ADMIN_TOKEN) {
+        throw new Error(
+            'XACAI_ADMIN_TOKEN não definido.\n' +
+            'Defina a variável de ambiente ou use --token <firebase-id-token>'
+        );
+    }
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ADMIN_TOKEN}`,
+    };
+
+    // Helper para fazer fetch com retry simples
+    async function apiPost(path, body) {
+        const url = `${API_URL}/api/${SLUG}${path}`;
+        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+        if (!res.ok) {
+            const text = await res.text().catch(() => '');
+            throw new Error(`POST ${url} falhou (${res.status}): ${text.substring(0, 300)}`);
+        }
+        return res.json();
+    }
+
+    const results = { created: [], failed: [] };
+
+    for (let i = 0; i < normalizedItems.length; i++) {
+        const item = normalizedItems[i];
+        process.stdout.write(`  [${i + 1}/${normalizedItems.length}] ${item.name}...`);
+
+        if (DRY_RUN) {
+            console.log(' (DRY RUN, pulando)');
+            continue;
+        }
 
         try {
-            const body = await client.send('Network.getResponseBody', { requestId: params.requestId });
-            const rawBody = body.base64Encoded ? Buffer.from(body.body, 'base64').toString('utf8') : body.body;
-            captured.push({
-                ...requestMeta.get(params.requestId),
-                body: rawBody,
-            });
-        } catch {
-            // Some responses cannot be retrieved after redirect/navigation.
-        }
-    });
-
-    if (onBeforeCapture) {
-        await onBeforeCapture();
-    }
-
-    await sleep(CAPTURE_WAIT_MS);
-    return captured;
-}
-
-async function captureSession() {
-    const ifoodClient = await connectToTarget(target => (target.url || '').includes('ifood.com.br'));
-    const adminClient = await connectToTarget(target => (target.url || '').includes('x-acai-delivery.vercel.app'));
-
-    const adminContext = await evaluate(adminClient, () => ({
-        token: window.localStorage.getItem('admin_token'),
-        slug: window.localStorage.getItem('admin_slug') || 'default',
-        href: window.location.href,
-    }));
-
-    if (!adminContext?.token) {
-        throw new Error('Nao encontrei admin_token no frontend. Faça login no admin do X-Acai antes de rodar a importacao.');
-    }
-
-    const responses = await captureNetworkResponses(ifoodClient, async () => {
-        await ifoodClient.send('Page.reload', { ignoreCache: true });
-    });
-
-    if (responses.length === 0) {
-        throw new Error('Nenhuma resposta de rede relevante foi capturada do iFood. Garanta que o menu da loja esteja visivel no navegador.');
-    }
-
-    const snapshot = buildSnapshot(responses);
-    snapshot.admin = {
-        slug: adminContext.slug || DEFAULT_SLUG,
-        href: adminContext.href,
-    };
-
-    ensureDir(OUTPUT_DIR);
-    const stamp = timestamp();
-    const rawPath = path.join(OUTPUT_DIR, `ifood-raw-${stamp}.json`);
-    const snapshotPath = path.join(OUTPUT_DIR, `ifood-snapshot-${stamp}.json`);
-
-    fs.writeFileSync(rawPath, JSON.stringify(responses, null, 2));
-    fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
-
-    return {
-        rawPath,
-        snapshotPath,
-        snapshot,
-        adminToken: adminContext.token,
-        slug: adminContext.slug || DEFAULT_SLUG,
-    };
-}
-
-async function apiRequest(url, token, options = {}) {
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            ...(options.headers || {}),
-        },
-    });
-
-    const text = await response.text();
-    let body = null;
-    try {
-        body = text ? JSON.parse(text) : null;
-    } catch {
-        body = text;
-    }
-
-    if (!response.ok) {
-        throw new Error(`${response.status} ${url} -> ${typeof body === 'string' ? body : JSON.stringify(body)}`);
-    }
-
-    return body;
-}
-
-async function importSnapshot(snapshot, adminToken, slug) {
-    const existingMenu = await apiRequest(`${DEFAULT_API_URL}/api/admin/menu?slug=${encodeURIComponent(slug)}`, adminToken, { method: 'GET' });
-    if (Array.isArray(existingMenu) && existingMenu.length > 0 && process.env.IFOOD_IMPORT_ALLOW_EXISTING !== '1') {
-        throw new Error('O menu de producao nao esta vazio. Defina IFOOD_IMPORT_ALLOW_EXISTING=1 apenas se quiser arriscar uma importacao sobre menu existente.');
-    }
-
-    for (const item of snapshot.items) {
-        const created = await apiRequest(`${DEFAULT_API_URL}/api/admin/menu?slug=${encodeURIComponent(slug)}`, adminToken, {
-            method: 'POST',
-            body: JSON.stringify({
+            // 1. Criar o produto
+            const created = await apiPost('/admin/menu', {
                 name: item.name,
                 description: item.description,
                 price_cents: item.price_cents,
                 category: item.category,
-                sort_order: item.sort_order,
-                available: true,
                 image_url: item.image_url,
+                available: item.available,
+                sort_order: item.sort_order,
                 tags: [],
-            }),
-        });
-
-        const itemId = created?.id;
-        if (!itemId) {
-            throw new Error(`Falha ao criar item "${item.name}": resposta sem id`);
-        }
-
-        for (const group of item.option_groups || []) {
-            const createdGroup = await apiRequest(`${DEFAULT_API_URL}/api/admin/menu/${itemId}/options/groups?slug=${encodeURIComponent(slug)}`, adminToken, {
-                method: 'POST',
-                body: JSON.stringify({
-                    name: group.name,
-                    required: group.required,
-                    min_select: group.min_select,
-                    max_select: group.max_select,
-                    sort_order: group.sort_order,
-                }),
             });
 
-            const groupId = createdGroup?.id;
-            if (!groupId) {
-                throw new Error(`Falha ao criar grupo "${group.name}" do item "${item.name}"`);
+            const menuItemId = created.id;
+            if (!menuItemId) throw new Error('API não retornou `id` do produto');
+
+            // 2. Criar option_groups e seus itens
+            for (const group of item.option_groups) {
+                let groupRes;
+                try {
+                    groupRes = await apiPost(`/admin/menu/${menuItemId}/options/groups`, {
+                        name: group.name,
+                        min_select: group.min_select,
+                        max_select: group.max_select,
+                        required: group.required,
+                        sort_order: group.sort_order,
+                    });
+                } catch (e) {
+                    console.warn(`\n    ⚠️  Falha ao criar grupo "${group.name}": ${e.message}`);
+                    continue;
+                }
+
+                const groupId = groupRes.id;
+                if (!groupId) {
+                    console.warn(`\n    ⚠️  Grupo "${group.name}" não retornou id, pulando opções`);
+                    continue;
+                }
+
+                for (const opt of group.options) {
+                    try {
+                        await apiPost(`/admin/menu/${menuItemId}/options/groups/${groupId}/items`, {
+                            name: opt.name,
+                            price_cents: opt.price_cents,
+                            sort_order: opt.sort_order,
+                            available: opt.available,
+                        });
+                    } catch (e) {
+                        console.warn(`\n    ⚠️  Falha ao criar opção "${opt.name}": ${e.message}`);
+                    }
+                }
             }
 
-            for (const option of group.options || []) {
-                await apiRequest(`${DEFAULT_API_URL}/api/admin/menu/options/groups/${groupId}/items?slug=${encodeURIComponent(slug)}`, adminToken, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        name: option.name,
-                        price_cents: option.price_cents || 0,
-                        sort_order: option.sort_order || 0,
-                        available: option.available !== false,
-                    }),
-                });
-            }
+            results.created.push({ id: menuItemId, name: item.name });
+            console.log(` ✅ (id: ${menuItemId})`);
+        } catch (e) {
+            results.failed.push({ name: item.name, error: e.message });
+            console.log(` ❌ ${e.message}`);
+        }
+    }
+
+    console.log('\n─── RESULTADO DA ESCRITA ───────────────────────────────────────');
+    console.log(`  ✅ Criados com sucesso : ${results.created.length}`);
+    console.log(`  ❌ Falhas              : ${results.failed.length}`);
+
+    if (results.failed.length > 0) {
+        console.log('\n  ITENS COM FALHA:');
+        results.failed.forEach(f => console.log(`    - ${f.name}: ${f.error}`));
+    }
+
+    return results;
+}
+
+// ─── Ponto de entrada ────────────────────────────────────────────────────────
+
+async function main() {
+    console.log('═══════════════════════════════════════════════════════════════');
+    console.log('  X-Açaí — Importador de Cardápio iFood');
+    console.log(`  Fase: ${PHASE.toUpperCase()} | Alvo: ${API_URL} | Slug: ${SLUG}`);
+    if (DRY_RUN) console.log('  ⚠️  DRY RUN ativo — nada será gravado em produção');
+    console.log('═══════════════════════════════════════════════════════════════');
+
+    // Carregar snapshot
+    if (!fs.existsSync(SNAPSHOT_PATH)) {
+        console.error(`\n❌ Snapshot não encontrado: ${SNAPSHOT_PATH}`);
+        console.error('\nInstruções para capturar o snapshot do iFood:');
+        console.error('  1. Abra o iFood e faça login com a conta da loja');
+        console.error('  2. Abra o cardápio completo da loja no navegador');
+        console.error('  3. Abra o DevTools (F12) → Console');
+        console.error('  4. Cole e execute o bookmarklet abaixo:');
+        console.error('\n--- BOOKMARKLET ---');
+        console.error(`
+(async () => {
+  // Tenta capturar o catálogo via API interna do iFood
+  const snap = window.__NUXT__ || window.__NEXT_DATA__ || window.__data__;
+  let catalog;
+  
+  // Tenta rota de catálogo do restaurante aberto
+  const slug = location.pathname.split('/').filter(Boolean).pop();
+  try {
+    const r = await fetch(\`https://marketplace.ifood.com.br/v1/merchant/\${slug}/catalog\`, 
+      { credentials: 'include' });
+    if (r.ok) { catalog = await r.json(); }
+  } catch(e) {}
+  
+  if (!catalog) {
+    // Fallback: data injetada na página
+    catalog = snap?.data?.catalog || snap?.props?.pageProps?.catalog || snap;
+  }
+  
+  const blob = new Blob([JSON.stringify(catalog, null, 2)], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'ifood-snapshot.json';
+  a.click();
+  console.log('Download iniciado!');
+})();
+`);
+        console.error('  5. Salve o arquivo como: tmp/ifood-snapshot.json');
+        process.exit(1);
+    }
+
+    const raw = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf-8'));
+
+    // FASE 1: extract (sempre roda)
+    const extracted = extractAndValidate(raw);
+
+    if (PHASE === 'extract') {
+        console.log('\n✅ Fase extract concluída. Snapshot válido.');
+        return;
+    }
+
+    // FASE 2: normalize
+    const normalized = normalizeMenu(extracted);
+
+    // Salvar normalized
+    fs.mkdirSync(path.dirname(NORMALIZED_PATH), { recursive: true });
+    fs.writeFileSync(NORMALIZED_PATH, JSON.stringify(normalized, null, 2), 'utf-8');
+    console.log(`\n  📄 Snapshot normalizado salvo em: ${NORMALIZED_PATH}`);
+
+    if (PHASE === 'normalize') {
+        console.log('\n✅ Fase normalize concluída.');
+        console.log('   Verifique tmp/ifood-normalized.json antes de prosseguir para write.');
+        return;
+    }
+
+    // FASE 3: write
+    if (PHASE === 'write' || PHASE === 'all') {
+        const results = await writeToXacai(normalized);
+        const totalFailed = results.failed.length;
+
+        if (totalFailed > 0) {
+            console.log(`\n⚠️  Importação concluída com ${totalFailed} falha(s).`);
+            process.exit(1);
+        } else {
+            console.log('\n✅ Importação concluída com sucesso!');
         }
     }
 }
 
-async function main() {
-    const mode = process.argv[2] || 'help';
-
-    if (mode === 'open') {
-        launchBrowser();
-        await waitForDebugger(DEBUG_PORT);
-        console.log(`Chrome remoto aberto na porta ${DEBUG_PORT}.`);
-        console.log(`iFood: ${DEFAULT_IFOOD_URL}`);
-        console.log(`Admin: ${DEFAULT_ADMIN_URL}`);
-        console.log('Faça login no iFood e no admin do X-Acai nessa janela e deixe o menu da loja visivel.');
-        return;
-    }
-
-    if (mode === 'run') {
-        await waitForDebugger(DEBUG_PORT);
-        const { snapshot, snapshotPath, rawPath, adminToken, slug } = await captureSession();
-        console.log(`Snapshot salvo em: ${snapshotPath}`);
-        console.log(`Respostas cruas salvas em: ${rawPath}`);
-        console.log(`Itens capturados: ${snapshot.item_count}`);
-        console.log(`Categorias capturadas: ${snapshot.categories.join(' | ')}`);
-        await importSnapshot(snapshot, adminToken, slug);
-        console.log('Importacao concluida via rotas oficiais do admin.');
-        return;
-    }
-
-    console.log('Uso:');
-    console.log('  node scripts/import-ifood-menu.js open');
-    console.log('  node scripts/import-ifood-menu.js run');
-}
-
-main().catch(error => {
-    console.error(error.message);
+main().catch(e => {
+    console.error('\n❌ Erro fatal:', e.message);
     process.exit(1);
 });
