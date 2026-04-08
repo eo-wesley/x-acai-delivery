@@ -49,27 +49,80 @@ function extractAndValidate(raw) {
         throw new Error('Snapshot inválido: precisa ser um objeto JSON.');
     }
 
-    // O bookmarklet captura o formato do iFood API (catálogo completo)
-    // Suporta dois formatos: array de categorias ou objeto com campo "categories"
     let categories = [];
 
+    // ─── Formato 1: Array direto de categorias ─────────────────────────
     if (Array.isArray(raw)) {
         categories = raw;
-    } else if (Array.isArray(raw.categories)) {
+    }
+    // ─── Formato 2: Objeto simples com campo categories/catalog/data ───
+    else if (Array.isArray(raw.categories)) {
         categories = raw.categories;
     } else if (Array.isArray(raw.catalog)) {
         categories = raw.catalog;
     } else if (Array.isArray(raw.data)) {
         categories = raw.data;
-    } else {
+    }
+    // ─── Formato 3: __NEXT_DATA__ do iFood (captura de página) ────────
+    else if (raw.props && raw.props.initialState) {
+        const is = raw.props.initialState;
+
+        // Tenta restaurant.categories (página de loja aberta)
+        if (Array.isArray(is.restaurant?.categories) && is.restaurant.categories.length > 0) {
+            categories = is.restaurant.categories;
+            console.log('  [!] Extraído de: props.initialState.restaurant.categories');
+        }
+        // Tenta catalogCategory.items (página de categoria)
+        else if (Array.isArray(is.catalogCategory?.items) && is.catalogCategory.items.length > 0) {
+            categories = is.catalogCategory.items;
+            console.log('  [!] Extraído de: props.initialState.catalogCategory.items');
+        }
+        // Tenta restaurant.filteredCatalog ou menu
+        else if (Array.isArray(is.restaurant?.filteredCatalog) && is.restaurant.filteredCatalog.length > 0) {
+            categories = is.restaurant.filteredCatalog;
+            console.log('  [!] Extraído de: props.initialState.restaurant.filteredCatalog');
+        }
+        else {
+            // Diagnóstico para ajudar o usuário
+            const isPage = raw.page || '(desconhecida)';
+            const restaurantName = is.restaurant?.details?.name || '(vazio)';
+            throw new Error(
+                `Snapshot do iFood capturado mas sem cardápio.\n` +
+                `  Página capturada: ${isPage}\n` +
+                `  Restaurante nos dados: "${restaurantName}"\n\n` +
+                `  CAUSA: O bookmarklet foi executado na página errada ou antes do cardápio carregar.\n\n` +
+                `  SOLUÇÃO:\n` +
+                `  1. Acesse www.ifood.com.br e busque a loja pelo nome\n` +
+                `  2. Clique na loja e aguarde o cardápio COMPLETO carregar (role até o fim)\n` +
+                `  3. A URL deve conter o UUID da loja, ex: /delivery/sao-paulo-sp/x-acai-.../UUID\n` +
+                `  4. Só então execute o bookmarklet no Console (F12)\n` +
+                `  5. Salve o arquivo como: tmp/ifood-snapshot.json`
+            );
+        }
+    }
+    // ─── Formato 4: Resposta direta da API /v2/home/catalog ──────────
+    else if (raw.merchantId && Array.isArray(raw.sections)) {
+        // Converte formato de sections para categories
+        categories = raw.sections.map(s => ({
+            name: s.title || s.name || 'Categoria',
+            items: (s.items || s.cards || []).map(card => card.item || card)
+        })).filter(c => c.items.length > 0);
+        console.log('  [!] Extraído de: formato API v2/home/catalog');
+    }
+    else {
         throw new Error(
-            'Snapshot iFood não reconhecido. Esperado: array de categorias, ou objeto com campo "categories", "catalog" ou "data".\n' +
-            'Chaves encontradas: ' + Object.keys(raw).join(', ')
+            `Snapshot iFood não reconhecido.\n` +
+            `Chaves encontradas: ${Object.keys(raw).join(', ')}\n\n` +
+            `Formatos aceitos:\n` +
+            `  - Array direto de categorias\n` +
+            `  - Objeto com campo "categories", "catalog" ou "data"\n` +
+            `  - __NEXT_DATA__ com props.initialState.restaurant.categories\n` +
+            `  - Resposta da API com merchantId + sections`
         );
     }
 
     if (categories.length === 0) {
-        throw new Error('Snapshot sem categorias. Verifique se o cardápio está visível no iFood antes de capturar.');
+        throw new Error('Snapshot sem categorias. Verifique se o cardápio estava visível antes de capturar.');
     }
 
     let totalItems = 0;
@@ -77,15 +130,16 @@ function extractAndValidate(raw) {
     let totalOptions = 0;
 
     for (const cat of categories) {
-        if (!cat.name && !cat.category) {
-            throw new Error('Categoria sem nome encontrada no snapshot.');
+        if (!cat.name && !cat.category && !cat.title) {
+            console.warn(`  ⚠️  Categoria sem nome, será nomeada automaticamente.`);
         }
-        totalItems += (cat.items || cat.products || []).length;
-        for (const item of (cat.items || cat.products || [])) {
-            const groups = item.optionGroups || item.option_groups || item.choices || [];
+        const items = cat.items || cat.products || cat.itens || [];
+        totalItems += items.length;
+        for (const item of items) {
+            const groups = item.optionGroups || item.option_groups || item.choices || item.complementsCategories || [];
             totalGroups += groups.length;
             for (const g of groups) {
-                totalOptions += (g.options || g.optionItems || g.items || []).length;
+                totalOptions += (g.options || g.optionItems || g.items || g.complements || []).length;
             }
         }
     }
