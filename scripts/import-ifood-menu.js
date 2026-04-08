@@ -296,7 +296,8 @@ async function writeToXacai(normalizedItems) {
 
     // Helper para fazer fetch com retry simples
     async function apiPost(path, body) {
-        const url = `${API_URL}/api/${SLUG}${path}`;
+        // admin router is mounted directly at /api/admin/..., and reads slug from query or body
+        const url = `${API_URL}/api${path}?slug=${SLUG}`;
         const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
         if (!res.ok) {
             const text = await res.text().catch(() => '');
