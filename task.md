@@ -4,7 +4,7 @@ Data: 2026-04-01
 
 ## Missao ativa
 
-Concluir a validacao real do backend de producao no Render, tirando o Pix do fallback mock e fechando o smoke autenticado do admin antes de avancar para o frontend de producao.
+Destravar a validacao real do Pix em producao populando o catalogo do app com o cardapio do iFood, na ordem exata, usando sessao autenticada do navegador e escrita via rotas oficiais do admin.
 
 ## Contexto confirmado
 
@@ -21,11 +21,11 @@ Concluir a validacao real do backend de producao no Render, tirando o Pix do fal
 
 ## Problema concreto atacado nesta etapa
 
-O backend de producao ja esta online e conectado ao banco Neon, mas o fluxo de Pix ainda cai em `mock_...` e o smoke autenticado do admin ainda depende de um Firebase ID token valido do projeto de producao.
+O frontend publico e o backend de producao ja estao online, mas o menu de producao segue vazio. Sem produtos cadastrados, nao da para concluir pedido real e validar o Pix ponta a ponta no app publico.
 
 ## Resultado esperado
 
-- backend de producao respondendo com Pix real
-- contrato de variaveis do Render confirmado em producao
-- rota admin protegida validada com token Firebase real
-- trilha do rollout permanecendo salva no repo e no GitHub
+- catalogo de producao preenchido com os itens do iFood na ordem correta
+- grupos de opcoes/adicionais importados pelo caminho oficial do admin
+- primeiro checkout real destravado no frontend publico
+- trilha da importacao e do rollout permanecendo salva no repo e no GitHub

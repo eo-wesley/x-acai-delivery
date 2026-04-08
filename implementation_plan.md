@@ -54,3 +54,13 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 - ativar Evolution real em staging sem endpoint publico confirmado
 - publicar producao final sem as credenciais reais
 - refatorar warnings legados de metadata do Next 16 que nao bloqueiam build
+
+## Atualizacao - importacao iFood em producao
+
+1. Fechar `sort_order` no backend e no admin/menu para garantir ordem exata do catalogo.
+2. Criar um importador one-off com duas fases:
+   - `open`: abrir Chrome/Edge com perfil dedicado, iFood e admin do X-Acai
+   - `run`: capturar o catalogo do iFood pela sessao autenticada e importar via API admin
+3. Usar captura de rede do navegador via CDP para evitar depender do HTML publico vazio do iFood.
+4. Normalizar produtos, categorias, imagens e grupos de opcoes antes da escrita.
+5. Gravar direto na producao apenas se o menu continuar vazio, evitando duplicacao acidental.

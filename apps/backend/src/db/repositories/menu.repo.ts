@@ -8,6 +8,7 @@ export interface MenuItem {
     description: string | null;
     price_cents: number;
     category: string | null;
+    sort_order?: number;
     tags: string[];
     available: boolean;
     image_url: string | null;
@@ -22,7 +23,8 @@ export class MenuRepo {
     private mapToModel(row: any): MenuItem {
         return {
             ...row,
-            available: row.available === 1,
+            available: row.available === 1 || row.available === true,
+            sort_order: Number(row.sort_order ?? 0),
             tags: row.tags ? JSON.parse(row.tags) : []
         };
     }
@@ -34,8 +36,10 @@ export class MenuRepo {
 
         const db = await getDb();
         const query = availableOnly
-            ? 'SELECT * FROM menu_items WHERE restaurant_id = ? AND available = 1'
-            : 'SELECT * FROM menu_items WHERE restaurant_id = ?';
+            ? `SELECT * FROM menu_items WHERE restaurant_id = ? AND available = 1
+               ORDER BY sort_order ASC, CASE WHEN category IS NULL THEN 1 ELSE 0 END ASC, category ASC, LOWER(name) ASC, id ASC`
+            : `SELECT * FROM menu_items WHERE restaurant_id = ?
+               ORDER BY sort_order ASC, CASE WHEN category IS NULL THEN 1 ELSE 0 END ASC, category ASC, LOWER(name) ASC, id ASC`;
 
         const rows = await db.all(query, [restaurantId]);
         const result = rows.map(this.mapToModel);
@@ -51,7 +55,9 @@ export class MenuRepo {
 
         // Very basic wildcard search 
         const rows = await db.all(
-            `SELECT * FROM menu_items WHERE restaurant_id = ? AND available = 1 AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)`,
+            `SELECT * FROM menu_items
+             WHERE restaurant_id = ? AND available = 1 AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)
+             ORDER BY sort_order ASC, CASE WHEN category IS NULL THEN 1 ELSE 0 END ASC, category ASC, LOWER(name) ASC, id ASC`,
             [restaurantId, searchTerm, searchTerm]
         );
         return rows.map(this.mapToModel);
@@ -74,7 +80,12 @@ export class MenuRepo {
     async getMenuByCategory(restaurantId: string, category: string, availableOnly: boolean = true): Promise<MenuItem[]> {
         const db = await getDb();
         const availableClause = availableOnly ? 'AND available = 1' : '';
-        const rows = await db.all(`SELECT * FROM menu_items WHERE restaurant_id = ? AND category = ? ${availableClause}`, [restaurantId, category]);
+        const rows = await db.all(
+            `SELECT * FROM menu_items
+             WHERE restaurant_id = ? AND category = ? ${availableClause}
+             ORDER BY sort_order ASC, LOWER(name) ASC, id ASC`,
+            [restaurantId, category]
+        );
         return rows.map(this.mapToModel);
     }
 
@@ -84,9 +95,9 @@ export class MenuRepo {
         const tagsJson = JSON.stringify(data.tags || []);
 
         await db.run(
-            `INSERT INTO menu_items (id, name, description, price_cents, category, tags, available, image_url, restaurant_id, created_at, updated_at) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-            [id, data.name, data.description || null, data.price_cents, data.category || null, tagsJson, data.available ? 1 : 0, data.image_url || null, data.restaurant_id || 'default_tenant']
+            `INSERT INTO menu_items (id, name, description, price_cents, category, tags, available, image_url, restaurant_id, sort_order, created_at, updated_at) 
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+            [id, data.name, data.description || null, data.price_cents, data.category || null, tagsJson, data.available ? 1 : 0, data.image_url || null, data.restaurant_id || 'default_tenant', data.sort_order ?? 0]
         );
 
         // Invalidação de Cache
@@ -105,6 +116,7 @@ export class MenuRepo {
         if (data.description !== undefined) { fields.push('description = ?'); values.push(data.description); }
         if (data.price_cents !== undefined) { fields.push('price_cents = ?'); values.push(data.price_cents); }
         if (data.category !== undefined) { fields.push('category = ?'); values.push(data.category); }
+        if (data.sort_order !== undefined) { fields.push('sort_order = ?'); values.push(data.sort_order); }
         if (data.tags !== undefined) { fields.push('tags = ?'); values.push(JSON.stringify(data.tags)); }
         if (data.available !== undefined) { fields.push('available = ?'); values.push(data.available ? 1 : 0); }
         if (data.image_url !== undefined) { fields.push('image_url = ?'); values.push(data.image_url); }

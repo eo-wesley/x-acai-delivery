@@ -8,6 +8,7 @@ type MenuItem = {
     description: string;
     price_cents: number;
     category: string;
+    sort_order: number;
     available: boolean;
     image_url: string;
 };
@@ -75,7 +76,8 @@ export default function AdminMenu() {
             // Ensure price is integer cents
             const payload = {
                 ...formItem,
-                price_cents: Math.round(Number(formItem.price_cents))
+                price_cents: Math.round(Number(formItem.price_cents)),
+                sort_order: Math.max(0, Math.round(Number(formItem.sort_order ?? 0)))
             };
 
             const res = await fetch(url, {
@@ -106,7 +108,10 @@ export default function AdminMenu() {
 
     const openNew = () => {
         setIsEditing(null);
-        setFormItem({ name: '', description: '', price_cents: 0, category: '', available: true, image_url: '' });
+        const nextSortOrder = menu.length > 0
+            ? Math.max(...menu.map(item => Number(item.sort_order ?? 0))) + 1
+            : 0;
+        setFormItem({ name: '', description: '', price_cents: 0, category: '', sort_order: nextSortOrder, available: true, image_url: '' });
     };
 
     if (loading) return <div>Carregando cardápio...</div>;
@@ -137,6 +142,10 @@ export default function AdminMenu() {
                         <label className="flex flex-col text-sm text-gray-600">
                             Preço (em centavos, ex: 1500 = R$15) *
                             <input required type="number" value={formItem.price_cents || 0} onChange={e => setFormItem({ ...formItem, price_cents: parseInt(e.target.value) })} className="border p-2 rounded-md mt-1 outline-none focus:border-purple-500" />
+                        </label>
+                        <label className="flex flex-col text-sm text-gray-600">
+                            Ordem no cardapio
+                            <input type="number" min="0" value={formItem.sort_order ?? 0} onChange={e => setFormItem({ ...formItem, sort_order: parseInt(e.target.value) || 0 })} className="border p-2 rounded-md mt-1 outline-none focus:border-purple-500" />
                         </label>
                         <label className="flex flex-col text-sm text-gray-600">
                             Imagem URL
@@ -179,7 +188,10 @@ export default function AdminMenu() {
                                     {!item.available && <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full">Inativo</span>}
                                 </h3>
                                 <p className="text-sm font-semibold text-purple-600">R$ {(item.price_cents / 100).toFixed(2)}</p>
-                                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md mt-1 inline-block">{item.category || 'Sem Categoria'}</span>
+                                <div className="flex flex-wrap gap-2 mt-1">
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md inline-block">{item.category || 'Sem Categoria'}</span>
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-md inline-block">Ordem #{item.sort_order ?? 0}</span>
+                                </div>
                             </div>
                         </div>
                         <div className="flex gap-2 mt-auto pt-3 border-t">

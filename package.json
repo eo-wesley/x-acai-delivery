@@ -6,6 +6,7 @@
     "test:e2e:headless": "cypress run",
     "validate": "node scripts/validate.js",
     "validate:legacy": "node scripts/validate-all.js",
+    "ifood:import": "node scripts/import-ifood-menu.js",
     "test:flow": "node scripts/test-full-flow-v2.js",
     "test:onboarding": "node scripts/test-onboarding.js",
     "docker:up": "docker compose up -d --build",

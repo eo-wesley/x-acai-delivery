@@ -168,3 +168,19 @@ Concluido nesta continuidade:
 2. Obter um Firebase ID token valido do projeto de producao para smoke autenticado do admin.
 3. Publicar frontend em dominio HTTPS final.
 4. Rodar o smoke test final ponta a ponta.
+
+## Atualizacao desta continuidade - importacao do cardapio iFood
+
+- o menu de producao do X-Acai segue vazio, o que bloqueia a validacao real do Pix no frontend publico
+- a leitura do cardapio do iFood pelo HTML publico continua insuficiente: a pagina publica chega com `menu`, `categories` e `filteredCatalog` vazios no SSR
+- a ordem exata do cardapio no X-Acai agora tem suporte tecnico fechado na camada de menu:
+  - `sort_order` passou a ser lido e persistido pelo repositrio de menu
+  - o admin/menu passou a expor `sort_order` para cadastro e edicao
+  - a leitura do menu foi ajustada para respeitar `sort_order` com fallback estavel
+- foi criado o importador one-off `scripts/import-ifood-menu.js` para:
+  - abrir Chrome/Edge com sessao dedicada
+  - reutilizar login real no iFood e no admin do X-Acai
+  - capturar respostas JSON do iFood pela sessao autenticada
+  - normalizar o snapshot do catalogo
+  - gravar o cardapio na producao via rotas oficiais do admin
+- essa etapa ainda depende de um passo manual inevitavel: login no iFood e no admin dentro do navegador aberto pelo importador

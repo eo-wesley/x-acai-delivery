@@ -69,3 +69,17 @@ Data: 2026-04-01
 - `walkthrough.md` = trilha de leitura e evidencias
 - `docs/PRODUCTION_ENVIRONMENT.md` = contrato de variaveis
 - `docs/PRODUCTION_CHECKLIST.md` = sequencia final de rollout
+
+## Atualizacao - leitura do iFood e importacao de cardapio
+
+- o link publico do iFood identifica a loja correta, mas o HTML server-side chega com o menu vazio
+- a investigacao das bundles mostrou que o catalogo rico e carregado no cliente por funcoes como `getMerchantInfo` e `getItemDetails`
+- por isso o caminho viavel passou a ser sessao autenticada no navegador, e nao raspagem do HTML cru
+- o repositorio agora tem um importador one-off em `scripts/import-ifood-menu.js`
+- o importador:
+  - abre o navegador com DevTools remoto
+  - espera login manual inevitavel no iFood e no admin do X-Acai
+  - captura respostas JSON do iFood pela rede
+  - monta um snapshot normalizado
+  - importa produtos e grupos de opcoes pela API oficial do admin
+- a ordenacao exata do cardapio tambem foi fechada no X-Acai via `sort_order` no repositorio de menu e na tela admin/menu
