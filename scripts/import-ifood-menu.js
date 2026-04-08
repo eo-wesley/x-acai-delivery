@@ -63,6 +63,30 @@ function extractAndValidate(raw) {
     } else if (Array.isArray(raw.data)) {
         categories = raw.data;
     }
+    // ─── Formato 5: {code, data:{menu:[...]}} — API /v1/merchant/:uuid/catalog ──
+    // itens[] ao invés de items[], preço em reais (float), sem complementos embutidos
+    else if (raw.code !== undefined && raw.data && raw.data.menu) {
+        const menuEntries = Array.isArray(raw.data.menu)
+            ? raw.data.menu
+            : Object.values(raw.data.menu);
+        categories = menuEntries.map(cat => ({
+            name: cat.name || cat.code || 'Categoria',
+            items: (cat.itens || cat.items || []).map(it => ({
+                ...it,
+                name: it.description || it.name || '',
+                description: it.details || null,
+                price: it.unitPrice || it.unitMinPrice || 0,
+                image: it.logoUrl || null,
+                optionGroups: it.complementsCategories || [],
+            }))
+        }));
+        console.log('  [!] Extraído de: data.menu (formato /v1/merchant/catalog)');
+        if (categories.every(c => c.items.every(it => (it.optionGroups || []).length === 0))) {
+            console.log('  ⚠️  ATENÇÃO: Este snapshot NÃO contém adicionais/complementos.');
+            console.log('  ⚠️  Os produtos serão importados SEM grupos de opção.');
+            console.log('  ⚠️  Adicionais deverão ser cadastrados manualmente no admin após importação.');
+        }
+    }
     // ─── Formato 3: __NEXT_DATA__ do iFood (captura de página) ────────
     else if (raw.props && raw.props.initialState) {
         const is = raw.props.initialState;
