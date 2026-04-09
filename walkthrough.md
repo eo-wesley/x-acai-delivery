@@ -89,3 +89,20 @@ Data: 2026-04-01
 - a `origin/main` mais recente tinha voltado o fluxo do importador para snapshot/manual
 - a continuidade desta etapa recolocou o caminho autenticado `open` + `run` sobre a `main` atual, sem perder o fallback por snapshot
 - a principal mudanca tecnica foi forcar a abertura de cada item capturado no iFood para puxar payloads de detalhe/modificadores antes da escrita
+- os screenshots enviados pelo usuario vieram de `portal.ifood.br/menu-list`, confirmando o portal do parceiro como melhor fonte de auditoria de ordem/completude
+- a sessao remota do navegador nao se manteve estavel o tempo todo, entao o fluxo final combinou:
+  - importador preparado para portal autenticado
+  - snapshot normalizado rico ja existente no repo como fallback seguro
+- o token Firebase do admin de producao foi lido da sessao do frontend no navegador remoto e usado apenas para a escrita via API oficial
+- a importacao real foi executada com sucesso no backend de producao:
+  - 27 produtos
+  - 4 categorias
+  - 33 grupos
+  - 268 opcoes
+- a validacao pos-importacao confirmou:
+  - `GET /api/default/menu` nao vazio
+  - `GET /api/admin/menu` com os itens importados
+  - `GET /api/admin/menu/:id/options` com complementos no primeiro item
+- ponto aberto identificado na producao:
+  - o backend atualmente publicado ainda devolve `sort_order = 0` na API
+  - a ordem visivel ficou quase toda correta por sequencia de criacao, mas o backend precisa de redeploy atualizado antes da validacao final do checkout/Pix

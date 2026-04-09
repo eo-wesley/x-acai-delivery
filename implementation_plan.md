@@ -70,3 +70,7 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 6. Restaurar o caminho recomendado `open` + `run` no importador sobre a `main` atual.
 7. Enriquecer o snapshot abrindo cada item do catalogo autenticado para capturar complementos e modificadores.
 8. Preservar o fluxo por arquivo (`--phase extract|normalize|write|all`) como fallback operacional.
+9. Priorizar `portal.ifood.com.br/menu-list` como origem autenticada de captura, usando a loja publica apenas como fallback.
+10. Aceitar snapshot ja normalizado como entrada direta para escrita quando a sessao remota nao estiver disponivel.
+11. Executar a importacao real do catalogo em producao pela API oficial do admin.
+12. Registrar como follow-up obrigatorio o redeploy do backend de producao para refletir `sort_order` corretamente na API publica.

@@ -17,6 +17,7 @@ const PHASE = getArg('--phase') || (COMMAND === 'run' ? 'all' : 'normalize');
 const STORE_URL = process.env.IFOOD_STORE_URL
     || process.env.IFOOD_URL
     || 'https://www.ifood.com.br/delivery/sao-paulo-sp/x-acai-cidade-moncoes/79f3b413-0d12-4d26-a46c-42f65af3759b';
+const PORTAL_URL = process.env.IFOOD_PORTAL_URL || 'https://portal.ifood.com.br/menu-list';
 const FRONTEND_URL = process.env.XACAI_FRONTEND_URL || 'https://x-acai-delivery.vercel.app';
 const FRONTEND_HOST = new URL(FRONTEND_URL).host;
 const ADMIN_URL = process.env.XACAI_ADMIN_URL || `${FRONTEND_URL}/admin/menu?slug=default`;
@@ -32,6 +33,7 @@ const DETAILS_WAIT_MS = Number(process.env.IFOOD_IMPORT_DETAILS_WAIT_MS || 2500)
 const TARGET_WAIT_MS = Number(process.env.IFOOD_IMPORT_TARGET_WAIT_MS || 30000);
 const DRY_RUN = args.includes('--dry-run');
 const ALLOW_EXISTING_MENU = args.includes('--allow-existing') || process.env.IFOOD_IMPORT_ALLOW_EXISTING === '1';
+const ALLOW_MISSING_DETAILS = args.includes('--allow-missing-details') || process.env.IFOOD_IMPORT_ALLOW_MISSING_DETAILS === '1';
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -243,6 +245,7 @@ function launchBrowser() {
         `--user-data-dir=${PROFILE_DIR}`,
         '--no-first-run',
         '--new-window',
+        PORTAL_URL,
         STORE_URL,
         ADMIN_URL,
     ];
@@ -251,6 +254,41 @@ function launchBrowser() {
         detached: true,
         stdio: 'ignore',
     }).unref();
+}
+
+function isPortalTargetUrl(url) {
+    return typeof url === 'string' && url.includes('portal.ifood.com.br/menu-list');
+}
+
+function isStoreTargetUrl(url) {
+    return typeof url === 'string' && url.includes('ifood.com.br/delivery/');
+}
+
+function isAnyIfoodTargetUrl(url) {
+    return typeof url === 'string' && url.includes('ifood.com.br');
+}
+
+async function connectToBestIfoodTarget() {
+    const targets = await getTargets();
+    const target = targets.find(candidate => isPortalTargetUrl(candidate.url))
+        || targets.find(candidate => isStoreTargetUrl(candidate.url))
+        || targets.find(candidate => isAnyIfoodTargetUrl(candidate.url));
+
+    if (!target) {
+        throw new Error('Nao encontrei aba autenticada do iFood no Chrome remoto. Abra o portal.ifood.br/menu-list ou a loja publica antes de rodar a importacao.');
+    }
+
+    const client = new CdpClient(target.webSocketDebuggerUrl);
+    await client.connect();
+    await client.send('Page.enable');
+    await client.send('Runtime.enable');
+    await client.send('Network.enable');
+
+    return {
+        client,
+        targetUrl: target.url,
+        source: isPortalTargetUrl(target.url) ? 'portal' : (isStoreTargetUrl(target.url) ? 'storefront' : 'ifood'),
+    };
 }
 
 function normalizeNetworkOptionGroups(source) {
@@ -418,7 +456,7 @@ function extractCatalogCandidates(payload, responseUrl) {
     return candidates;
 }
 
-function buildBrowserSnapshot(responses) {
+function buildBrowserSnapshot(responses, metadata = {}) {
     const parsedResponses = responses
         .map(response => {
             try {
@@ -482,6 +520,8 @@ function buildBrowserSnapshot(responses) {
     return {
         generated_at: new Date().toISOString(),
         ifood_url: STORE_URL,
+        ifood_capture_url: metadata.targetUrl || null,
+        ifood_capture_source: metadata.source || null,
         raw_response_count: responses.length,
         categories: Array.from(categoryMap.entries()).map(([name, categoryItems]) => ({
             name,
@@ -736,7 +776,8 @@ async function captureMenuItemDetails(client, items) {
 }
 
 async function captureBrowserSnapshot() {
-    const ifoodClient = await connectToTarget(target => (target.url || '').includes('ifood.com.br'));
+    const ifoodTarget = await connectToBestIfoodTarget();
+    const ifoodClient = ifoodTarget.client;
     const adminClient = await connectToTarget(target => (target.url || '').includes(FRONTEND_HOST));
 
     const adminContext = await evaluate(adminClient, () => ({
@@ -757,7 +798,7 @@ async function captureBrowserSnapshot() {
         throw new Error('Nenhuma resposta de rede relevante foi capturada do iFood. Garanta que o menu da loja esteja visivel no navegador.');
     }
 
-    const initialSnapshot = buildBrowserSnapshot(catalogResponses);
+    const initialSnapshot = buildBrowserSnapshot(catalogResponses, ifoodTarget);
     let detailStats = null;
     const detailResponses = await captureNetworkResponses(ifoodClient, async () => {
         detailStats = await captureMenuItemDetails(
@@ -766,7 +807,7 @@ async function captureBrowserSnapshot() {
         );
     }, 1500);
     const mergedResponses = [...catalogResponses, ...detailResponses];
-    const snapshot = buildBrowserSnapshot(mergedResponses);
+    const snapshot = buildBrowserSnapshot(mergedResponses, ifoodTarget);
 
     snapshot.admin = {
         slug: adminContext.slug || SLUG,
@@ -797,6 +838,59 @@ async function captureBrowserSnapshot() {
         adminToken: adminContext.token,
         slug: adminContext.slug || SLUG,
     };
+}
+
+function isNormalizedItemsArray(raw) {
+    return Array.isArray(raw)
+        && raw.length > 0
+        && raw.every(item => item && typeof item === 'object' && typeof item.name === 'string' && Object.prototype.hasOwnProperty.call(item, 'price_cents'));
+}
+
+function summarizeNormalizedMenu(normalizedItems) {
+    const categoryMap = new Map();
+    let totalGroups = 0;
+    let totalOptions = 0;
+
+    for (const item of normalizedItems) {
+        const category = item.category || 'Sem categoria';
+        categoryMap.set(category, (categoryMap.get(category) || 0) + 1);
+        const groups = Array.isArray(item.option_groups) ? item.option_groups : [];
+        totalGroups += groups.length;
+        totalOptions += groups.reduce((count, group) => count + ((group.options || []).length), 0);
+    }
+
+    console.log(`  OK Categorias encontradas : ${categoryMap.size}`);
+    console.log(`  OK Produtos encontrados   : ${normalizedItems.length}`);
+    console.log(`  OK Grupos de opcao        : ${totalGroups}`);
+    console.log(`  OK Itens de opcao         : ${totalOptions}`);
+
+    return {
+        totalItems: normalizedItems.length,
+        totalGroups,
+        totalOptions,
+        totalCategories: categoryMap.size,
+    };
+}
+
+function validateCaptureCompleteness(rawSnapshot, stats) {
+    if (!rawSnapshot || typeof rawSnapshot !== 'object') return;
+
+    const captureUrl = rawSnapshot.ifood_capture_url || rawSnapshot.ifood_url || '(desconhecida)';
+    const captureSource = rawSnapshot.ifood_capture_source || 'snapshot';
+    console.log(`  OK Origem capturada       : ${captureSource}`);
+    console.log(`  OK URL capturada          : ${captureUrl}`);
+
+    const details = rawSnapshot.detail_capture || null;
+    if (details) {
+        console.log(`  OK Detalhes clicados      : ${details.clicked}/${details.attempted}`);
+        if (!ALLOW_MISSING_DETAILS && Number(details.attempted) > 0 && Number(details.clicked) === 0) {
+            throw new Error('A captura nao abriu nenhum item de detalhe no iFood. Abortei a importacao para evitar menu sem complementos. Use --allow-missing-details apenas se tiver certeza do snapshot.');
+        }
+    }
+
+    if (!ALLOW_MISSING_DETAILS && stats.totalItems > 0 && stats.totalGroups === 0) {
+        throw new Error('O snapshot nao trouxe grupos de opcao/complementos. Abortei a importacao para evitar catalogo incompleto. Use --allow-missing-details apenas se esse cardapio realmente nao tiver adicionais.');
+    }
 }
 
 function extractAndValidate(raw) {
@@ -1131,9 +1225,10 @@ async function main() {
         launchBrowser();
         await waitForDebugger(DEBUG_PORT);
         console.log(`Chrome remoto aberto na porta ${DEBUG_PORT}.`);
+        console.log(`Portal iFood: ${PORTAL_URL}`);
         console.log(`iFood: ${STORE_URL}`);
         console.log(`Admin: ${ADMIN_URL}`);
-        console.log('Faca login no iFood e no admin do X-Acai nessas abas, deixe o cardapio da loja visivel e depois rode:');
+        console.log('Faca login no iFood e no admin do X-Acai nessas abas, deixe o portal/menu ou a loja visivel e depois rode:');
         console.log('  node scripts/import-ifood-menu.js run');
         return;
     }
@@ -1163,13 +1258,26 @@ async function main() {
         raw = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf8'));
     }
 
-    const extracted = extractAndValidate(raw);
-    if (PHASE === 'extract') {
-        console.log('\nOK Fase extract concluida. Snapshot valido.');
-        return;
+    let extracted = null;
+    let normalized = null;
+    let stats = null;
+
+    if (isNormalizedItemsArray(raw)) {
+        console.log('\n[FASE 1] Snapshot ja esta normalizado. Pulando extracao bruta...');
+        normalized = raw;
+        stats = summarizeNormalizedMenu(normalized);
+    } else {
+        extracted = extractAndValidate(raw);
+        stats = extracted.stats;
+        if (PHASE === 'extract') {
+            console.log('\nOK Fase extract concluida. Snapshot valido.');
+            return;
+        }
+        normalized = normalizeMenu(extracted);
     }
 
-    const normalized = normalizeMenu(extracted);
+    validateCaptureCompleteness(raw, stats);
+
     ensureDir(path.dirname(NORMALIZED_PATH));
     fs.writeFileSync(NORMALIZED_PATH, JSON.stringify(normalized, null, 2), 'utf8');
     console.log(`\nSnapshot normalizado salvo em: ${NORMALIZED_PATH}`);

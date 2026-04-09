@@ -4,7 +4,7 @@ Data: 2026-04-01
 
 ## Missao ativa
 
-Destravar a validacao real do Pix em producao populando o catalogo do app com o cardapio do iFood, na ordem exata, usando sessao autenticada do navegador e escrita via rotas oficiais do admin.
+Fechar o catalogo de producao apos a importacao do iFood e revalidar checkout/Pix com o menu real ja publicado.
 
 ## Contexto confirmado
 
@@ -21,17 +21,19 @@ Destravar a validacao real do Pix em producao populando o catalogo do app com o 
 
 ## Problema concreto atacado nesta etapa
 
-O frontend publico e o backend de producao ja estao online, mas o menu de producao segue vazio. Sem produtos cadastrados, nao da para concluir pedido real e validar o Pix ponta a ponta no app publico.
+O catalogo ja foi importado para producao, mas o backend publicado no Render ainda nao devolve `sort_order` corretamente. A ordem visual ficou majoritariamente preservada pela sequencia de criacao, porem ainda precisa ser revalidada apos o proximo redeploy do backend.
 
 ## Resultado esperado
 
-- catalogo de producao preenchido com os itens do iFood na ordem correta
-- grupos de opcoes/adicionais importados pelo caminho oficial do admin
-- primeiro checkout real destravado no frontend publico
+- catalogo de producao estabilizado com ordem publica correta
+- grupos de opcoes/adicionais preservados no frontend e no admin
+- checkout real ate Pix revalidado com o menu ja importado
 - trilha da importacao e do rollout permanecendo salva no repo e no GitHub
 
 ## Atualizacao desta entrega
 
 - o importador passou a ter caminho recomendado `open` + `run`, com login real no navegador
 - o gargalo dos complementos foi atacado abrindo cada item do iFood para forcar os payloads de detalhe
-- o proximo passo operacional agora e executar a importacao autenticada em producao
+- a captura passou a priorizar `portal.ifood.com.br/menu-list` e a aceitar fallback por snapshot normalizado
+- a importacao real em producao foi concluida com 27 produtos, 4 categorias, 33 grupos e 268 opcoes
+- o proximo passo operacional agora e redeployar o backend de producao na `main` mais recente e revalidar a ordem publica antes do checkout Pix final

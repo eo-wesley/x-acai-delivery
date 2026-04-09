@@ -173,3 +173,35 @@ Rotas usadas (API oficial, nunca banco direto):
   - para sobrescrever deliberadamente, e preciso `--allow-existing` ou `IFOOD_IMPORT_ALLOW_EXISTING=1`
 - proximo passo operacional ficou reduzido a login no iFood e no admin nas abas abertas pelo `open`, seguido do `run`
 5. Validar menu público, admin e fluxo de checkout até Pix
+
+## Fechamento da importacao iFood em producao - 2026-04-09
+
+Foco executado: concluir a importacao completa do cardapio do iFood para producao, mantendo fotos, descricoes, bebidas e complementos pelo caminho oficial do admin.
+
+Concluido nesta entrega:
+
+- `scripts/import-ifood-menu.js` passou a priorizar `portal.ifood.com.br/menu-list` na captura autenticada
+- o importador agora aceita snapshot ja normalizado como fallback operacional seguro
+- a validacao da captura ficou mais forte:
+  - registra URL e origem da aba capturada
+  - confere quantidade de categorias, produtos e detalhes clicados
+  - bloqueia escrita sem complementos/detalhes, salvo override explicito
+- a importacao real em producao foi executada via API oficial do admin, nunca por escrita direta no banco
+- o catalogo de producao deixou de ficar vazio e recebeu:
+  - 27 produtos
+  - 4 categorias
+  - 33 grupos de opcoes
+  - 268 itens de opcao
+
+Validacao confirmada:
+
+- `GET /api/default/menu` deixou de retornar vazio
+- `GET /api/admin/menu?slug=default` confirmou os produtos importados em producao
+- `GET /api/admin/menu/:id/options?slug=default` confirmou grupos e opcoes do primeiro item
+- imagens, descricoes e precos do snapshot rico foram preservados na importacao
+
+Ponto de atencao remanescente:
+
+- o backend atualmente em producao ainda devolve `sort_order = 0` nos itens importados
+- na pratica, a maior parte da ordem visual foi preservada pela sequencia de criacao, mas a API publica ainda nao reflete `sort_order` corretamente
+- antes de considerar o catalogo 100% finalizado, o backend de producao deve ser redeployado com a `main` mais recente e a ordem publica precisa ser revalidada
