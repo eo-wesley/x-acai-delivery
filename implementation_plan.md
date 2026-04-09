@@ -64,3 +64,9 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 3. Usar captura de rede do navegador via CDP para evitar depender do HTML publico vazio do iFood.
 4. Normalizar produtos, categorias, imagens e grupos de opcoes antes da escrita.
 5. Gravar direto na producao apenas se o menu continuar vazio, evitando duplicacao acidental.
+
+## Atualizacao desta entrega
+
+6. Restaurar o caminho recomendado `open` + `run` no importador sobre a `main` atual.
+7. Enriquecer o snapshot abrindo cada item do catalogo autenticado para capturar complementos e modificadores.
+8. Preservar o fluxo por arquivo (`--phase extract|normalize|write|all`) como fallback operacional.

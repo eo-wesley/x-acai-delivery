@@ -157,4 +157,19 @@ Rotas usadas (API oficial, nunca banco direto):
    XACAI_SLUG=default \
    node scripts/import-ifood-menu.js --phase write
    ```
+
+## Atualizacao do importador iFood - 2026-04-09
+
+- o caminho recomendado de importacao agora e autenticado no navegador, sem depender so do bookmarklet/manual
+- `scripts/import-ifood-menu.js` voltou a suportar:
+  - `open` para abrir iFood + admin com DevTools remoto
+  - `run` para capturar o catalogo autenticado, abrir cada item e importar via API oficial
+- a captura foi endurecida para puxar complementos/adicionais:
+  - percorre os itens na ordem do catalogo encontrado
+  - abre cada produto para disparar payloads de detalhe/modificadores
+  - mistura as respostas ricas ao snapshot antes da normalizacao e da escrita
+- a escrita em producao continua protegida contra duplicacao acidental:
+  - se o menu nao estiver vazio, o script aborta
+  - para sobrescrever deliberadamente, e preciso `--allow-existing` ou `IFOOD_IMPORT_ALLOW_EXISTING=1`
+- proximo passo operacional ficou reduzido a login no iFood e no admin nas abas abertas pelo `open`, seguido do `run`
 5. Validar menu público, admin e fluxo de checkout até Pix

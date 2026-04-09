@@ -29,3 +29,9 @@ O frontend publico e o backend de producao ja estao online, mas o menu de produc
 - grupos de opcoes/adicionais importados pelo caminho oficial do admin
 - primeiro checkout real destravado no frontend publico
 - trilha da importacao e do rollout permanecendo salva no repo e no GitHub
+
+## Atualizacao desta entrega
+
+- o importador passou a ter caminho recomendado `open` + `run`, com login real no navegador
+- o gargalo dos complementos foi atacado abrindo cada item do iFood para forcar os payloads de detalhe
+- o proximo passo operacional agora e executar a importacao autenticada em producao

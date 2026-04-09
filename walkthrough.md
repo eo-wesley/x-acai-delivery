@@ -83,3 +83,9 @@ Data: 2026-04-01
   - monta um snapshot normalizado
   - importa produtos e grupos de opcoes pela API oficial do admin
 - a ordenacao exata do cardapio tambem foi fechada no X-Acai via `sort_order` no repositorio de menu e na tela admin/menu
+
+## Atualizacao desta entrega
+
+- a `origin/main` mais recente tinha voltado o fluxo do importador para snapshot/manual
+- a continuidade desta etapa recolocou o caminho autenticado `open` + `run` sobre a `main` atual, sem perder o fallback por snapshot
+- a principal mudanca tecnica foi forcar a abertura de cada item capturado no iFood para puxar payloads de detalhe/modificadores antes da escrita
