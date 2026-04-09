@@ -80,6 +80,6 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 
 ## Proximo passo minimo
 
-1. Aprovar um pagamento Pix real de producao para comprovar transicao final para `paid` / `confirmed`.
-2. Revalidar webhook/status do pedido apos a aprovacao real.
-3. Se necessario, registrar a ultima validacao no `PROJECT_STATUS.md` e encerrar a fase de rollout.
+1. Publicar o ajuste do frontend que remove o wizard do produto.
+2. Revalidar visualmente os itens de `Acai Monte O Seu` com todos os grupos na mesma tela.
+3. Retomar a aprovacao final do Pix real para comprovar transicao para `paid` / `confirmed`.

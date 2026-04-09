@@ -237,3 +237,21 @@ Estado atual confirmado:
 - complementos visiveis no endpoint publico de detalhe do produto
 - checkout gera Pix real em producao
 - falta apenas a aprovacao/pagamento real para fechar a prova final de `paid/confirmed` em producao
+
+## Correcao de UX do Monte O Seu - 2026-04-09
+
+Foco executado: remover o wizard da tela publica do produto e mostrar todos os complementos/adicionais na mesma tela para os itens de `Acai Monte O Seu`.
+
+Concluido nesta entrega:
+
+- confirmacao tecnica de que o backend de producao ja tinha os grupos/opcoes corretos para os 10 itens de `Acai Monte O Seu`
+- a tela `product/[id]` saiu do fluxo `Comecar Montagem` -> `Proximo Passo`
+- os grupos agora ficam todos visiveis em lista continua na mesma pagina
+- a validacao de obrigatorios continua ativa no CTA final
+- o contrato do carrinho e do checkout foi preservado, incluindo `selected_options`
+
+Resultado esperado apos o deploy do frontend:
+
+- `Acompanhamentos` e `Adicionais Extras Premium` aparecem juntos no produto
+- o cliente consegue selecionar tudo sem navegar por etapas
+- o item entra no carrinho com os complementos escolhidos

@@ -118,3 +118,12 @@ Data: 2026-04-01
 - o catalogo de producao esta publicado e consistente
 - a importacao do iFood ja nao e mais o gargalo
 - o unico passo operacional restante para fechar a prova completa em producao e aprovar um Pix real para observar `paid/confirmed`
+
+## Atualizacao - Monte O Seu no frontend publico
+
+- a verificacao em producao mostrou que o problema nao era de importacao:
+  - os 10 itens de `Acai Monte O Seu` ja possuem 2 grupos e 18 opcoes no endpoint publico de detalhe
+  - os grupos batem com o snapshot normalizado do iFood: `Acompanhamentos (Escolha N)` + `Adicionais Extras Premium`
+- o gargalo estava na UX da pagina do produto, que escondia os complementos atras de um wizard com `Comecar Montagem` e `Proximo Passo`
+- a correcao aplicada foi remover o fluxo em etapas e renderizar todos os grupos na mesma tela
+- o contrato com carrinho/checkout foi mantido, incluindo `selected_options`
