@@ -1,0 +1,1074 @@
+{
+  "props": {
+    "isServer": true,
+    "initialState": {
+      "account": {
+        "requestStatus": "initial",
+        "orderAttributes": {},
+        "merchants": {},
+        "userFavorites": [],
+        "contactMethods": [],
+        "credentialMethods": {}
+      },
+      "accountUpdate": {
+        "isLoading": false
+      },
+      "address": {
+        "location": {
+          "initialLoad": true
+        },
+        "country": "BR",
+        "coords": {},
+        "isLoading": false
+      },
+      "addressModal": {
+        "open": false,
+        "keepCurrentPageAfterSelect": false
+      },
+      "addressSearch": {
+        "search": {
+          "isLoading": false,
+          "isLoadingSelected": false,
+          "isLoadingEditing": false,
+          "results": [],
+          "coords": {},
+          "isEditing": false
+        },
+        "customer": {
+          "isLoading": false,
+          "addresses": []
+        },
+        "states": {
+          "options": [],
+          "cities": {},
+          "isLoadingStates": false
+        },
+        "addressSetForConfirmation": null,
+        "geolocation": null,
+        "form": {
+          "values": {},
+          "isUsingForm": false
+        },
+        "modalAddressNotFound": {
+          "isOpen": false
+        }
+      },
+      "chat": {
+        "isChatSupportSlaEnable": false,
+        "chatSupportSlaTimeoutInMinutes": {},
+        "finishChatSupportButtonConfig": false,
+        "isEndServiceDialogOpen": false,
+        "finishChatSupportComponentTimeInMinutes": {},
+        "chatStoreScreeningContactReasonEnabledConfig": false,
+        "sendbirdAuthenticationEnabled": false,
+        "chatStoreScreeningContactReasonListConfig": [],
+        "isChatOffline": false,
+        "chatStoreRedirectToSupport": {},
+        "isChatInboxV2Enabled": false
+      },
+      "checkout": {},
+      "configs": {
+        "pwa": {
+          "tableauProduct": "webapp"
+        },
+        "restaurant": {},
+        "testUser": {},
+        "experience": {
+          "marketHintView": false,
+          "multiCategoriesHintView": false,
+          "handshakeOrders": [],
+          "handshakeOnboardingDismissed": false,
+          "expressOnboardingModalDismissed": false
+        }
+      },
+      "contextCard": {
+        "address": {
+          "isOpened": false
+        },
+        "checkout": {
+          "isOpened": false
+        }
+      },
+      "customerPlaces": {
+        "places": [],
+        "isLoading": false,
+        "loadingPlaces": []
+      },
+      "dishModal": {
+        "isOpen": false,
+        "restaurantSlug": {}
+      },
+      "downloadAppModal": {
+        "isOpen": false
+      },
+      "group": {
+        "isLoading": false,
+        "addressOutOfRange": false
+      },
+      "lastRestaurants": {
+        "list": [],
+        "requestStatus": "initial"
+      },
+      "loyalty": {
+        "cards": [],
+        "requestStatus": "initial"
+      },
+      "loyaltyNotification": {
+        "loyaltyCard": [],
+        "requestStatus": "initial"
+      },
+      "orderCheckout": {
+        "orderCheckout": {},
+        "isLoading": false
+      },
+      "orders": {
+        "requestStatus": "initial",
+        "requestStatusOrderDetails": "initial",
+        "hasMore": true,
+        "page": 0,
+        "ordersList": [],
+        "withDetails": false
+      },
+      "statuses": {
+        "ordersStatuses": {},
+        "requestStatus": "initial"
+      },
+      "overviewOrders": {
+        "hasOnGoingOrders": 0
+      },
+      "promotion": {
+        "isPromotion": {},
+        "violation": {
+          "violationCodes": [],
+          "restaurantOrder": {}
+        }
+      },
+      "promotions": {
+        "tags": {
+          "requestStatus": "initial",
+          "hasError": false,
+          "tagsInfo": []
+        },
+        "takeXPayY": {
+          "requestStatus": "initial",
+          "hasError": false,
+          "items": []
+        },
+        "benefits": {
+          "requestStatus": "initial"
+        }
+      },
+      "restaurant": {
+        "menu": [],
+        "reorderItems": [],
+        "uuid": "79f3b413-0d12-4d26-a46c-42f65af3759b",
+        "pixelUuid": null,
+        "evaluations": {
+          "ratings": [],
+          "page": 0,
+          "hasNextPage": false
+        },
+        "details": {
+          "address": {
+            "city": "SAO PAULO",
+            "country": "BR",
+            "district": "Cidade Monções",
+            "latitude": -23.632049,
+            "longitude": -46.671335,
+            "state": "SP",
+            "streetName": "Avenida Jornalista Roberto Marinho",
+            "streetNumber": "3610",
+            "timezone": "Etc/GMT+3",
+            "zipCode": "04576000"
+          },
+          "categories": [],
+          "companyCode": "IFO",
+          "configs": {
+            "bagItemNoteLength": "",
+            "chargeDifferentToppingsMode": "GREATER",
+            "nationalIdentificationNumberRequired": false,
+            "orderNoteLength": "140"
+          },
+          "deliveryTime": 0,
+          "description": "Entre no mundo refrescante e irresistível do nosso paraíso roxo! \n\nNa X-Açaí, cada colherada é uma jornada tropical que desperta os sentidos e acende a paixão pelo sabor. \n\nImagine-se mergulhando em uma explosão de frescor, onde cada pedaço de fruta é uma promessa de indulgência saudável e energia renovada.\n\nNossa missão é levar você em uma viagem sensorial incomparável, onde a suavidade do açaí se funde com a intensidade dos toppings frescos, criando uma sinfonia de sabores que deixam um sorriso em cada colherada. \n\nCada copo é uma obra-prima personalizada, onde você é o arquiteto do seu próprio deleite.\n\nDo clássico açaí puro à extravagância dos nossos combos gourmet, cada opção é cuidadosamente preparada para satisfazer até os paladares mais exigentes. \n\nE não paramos por aí! \n\nNossa variedade de acompanhamentos premium, desde frutas frescas a granolas crocantes e deliciosas coberturas, transformam cada copo em uma experiência única e inesquecível.\n\nE não se preocupe com compromissos saudáveis! \n\nAqui na X-Açaí, priorizamos ingredientes frescos e naturais, garantindo que cada mordida seja um passo em direção ao bem-estar.\n\nCombinamos o melhor da natureza com a inovação culinária para criar um verdadeiro deleite para o corpo e para a alma.\n\nEntão, venha se deliciar conosco e descubra por que somos o destino preferido dos amantes de açaí. \n\nEntre, explore e deixe-se levar pela magia do nosso universo roxo. \nSua jornada de sabor começa aqui na X-Açaí, onde cada copo é mais do que uma refeição, é uma experiência inigualável de prazer e vitalidade. \n\nSeu paladar merece essa aventura!\n\n.\n\n\n.\n\n\n.\n\nAçaí, Açaí puro, Açaí saudavel, Açaí gourmet, Açaí artesanal, cupuaçu, creme de morango, Açaí fit, creme de maracuja, casadinho de açaí e cupuaçu, sorvete, gelador, acai, sobremesa, promoções, entrega rapida e grátis, promoção, brasileira, acaí, acai, ACAI, nutella, cremes, picole,",
+          "documents": {
+            "CNPJ": {
+              "type": "CNPJ",
+              "value": "55113941000123"
+            },
+            "MCC": {
+              "type": "MCC",
+              "value": "5499"
+            }
+          },
+          "enabled": true,
+          "features": [
+            "DELIVERY",
+            "SCHEDULING",
+            "TAKEOUT",
+            "CANCELABLE",
+            "CHAT_CONSUMER_ENABLED",
+            "USES_IFOOD_LOGISTICS"
+          ],
+          "groups": [
+            {
+              "externalId": "IFO",
+              "id": "d107726d-f66f-4c25-bd82-edca0bbacbd2",
+              "name": "IFOOD",
+              "type": "COMPANY"
+            },
+            {
+              "externalId": "RESTAURANT",
+              "id": "2b69a2f0-6ac8-4eda-b4b2-9d9d5f578054",
+              "name": "RESTAURANT",
+              "type": "STORE_TYPE"
+            },
+            {
+              "externalId": "3841c245-fac1-40a6-8b8f-8d6876447a6d",
+              "id": "cf7acafc-3fa1-43ee-9183-6d8654906dc2",
+              "name": "Sao Paulo",
+              "type": "REGION"
+            },
+            {
+              "externalId": "HYBRID_REGION",
+              "id": "820474aa-1b61-4686-b706-02988cf60d21",
+              "name": "Entrega+",
+              "type": "BUSINESS_MODEL"
+            }
+          ],
+          "id": "79f3b413-0d12-4d26-a46c-42f65af3759b",
+          "locale": "pt_BR",
+          "mainCategory": {
+            "code": "AC1",
+            "description": "Açaí",
+            "friendlyName": "Açaí"
+          },
+          "merchantChain": {
+            "externalId": "",
+            "id": "",
+            "name": ""
+          },
+          "metadata": {
+            "ifoodClub": {
+              "banner": {
+                "action": "webmiddleware?page=https%3A%2F%2Fwebmiddleware.ifood.com.br%2Fmarketplace%2Fclub%3Fref%3Dlingueta",
+                "image": "https://static-images.ifood.com.br/image/upload/:resolution/ifood-club/ClubiFoodVoucher.png",
+                "priority": "voucher_light",
+                "title": "Economize até 70% com o Clube iFood"
+              }
+            }
+          },
+          "minimumOrderValue": 25,
+          "name": "X-açaí",
+          "phoneIf": "987470862",
+          "priceRange": "CHEAPEST",
+          "resources": [
+            {
+              "fileName": "79f3b413-0d12-4d26-a46c-42f65af3759b/202405152324_976T_i.jpg",
+              "type": "LOGO"
+            },
+            {
+              "fileName": "79f3b413-0d12-4d26-a46c-42f65af3759b/202405152325_cDzj_i.jpg",
+              "type": "COVER"
+            }
+          ],
+          "shifts": [
+            {
+              "dayOfWeek": "MONDAY",
+              "duration": 539,
+              "start": "12:00:00"
+            },
+            {
+              "dayOfWeek": "TUESDAY",
+              "duration": 718,
+              "start": "12:00:00"
+            },
+            {
+              "dayOfWeek": "WEDNESDAY",
+              "duration": 719,
+              "start": "12:00:00"
+            },
+            {
+              "dayOfWeek": "THURSDAY",
+              "duration": 719,
+              "start": "12:00:00"
+            },
+            {
+              "dayOfWeek": "FRIDAY",
+              "duration": 718,
+              "start": "12:00:00"
+            },
+            {
+              "dayOfWeek": "SATURDAY",
+              "duration": 719,
+              "start": "12:00:00"
+            },
+            {
+              "dayOfWeek": "SUNDAY",
+              "duration": 540,
+              "start": "12:00:00"
+            }
+          ],
+          "shortId": 2617311,
+          "tags": [
+            "CART::MCHT::FD_DESENTR_89A8F",
+            "null",
+            "CART::MCHT::FD_DESENTR_E1865",
+            "CART::MCHT::FD_DESPENT_5E5F7",
+            "CART::MCHT::FD_DESENTR_F5BFD",
+            "CART::MCHT::FD_DESENTR_E0525",
+            "CART::MCHT::FD_DESENTR_0F322",
+            "MOEDASIFOOD2",
+            "CART::MCHT::FD_DESENTR_BBB93",
+            "CART::MCHT::FD_DESENTR_C53FB",
+            "CART::MCHT::FD_DESENTR_3183A",
+            "MOEDASMISSAOSORVETE2",
+            "CART::MCHT::FD_DESENTR_3954E",
+            "ENABLE_INSTALLMENT_INTEREST",
+            "CART::MCHT::FD_DESENTR_4931B",
+            "CART::MCHT::FD_DESENTR_7F25A",
+            "SUPER_RESTAURANTES",
+            "COCA_PAIS_AGO25",
+            "RESTAURANTES_CLUBE",
+            "CART::MCHT::FD_DESENTR_09E8C",
+            "MOEDASMISSAOSORVETE",
+            "CART::MCHT::FD_DESENTR_59B3F",
+            "CART::MCHT::FD_DESENTR_9B40C",
+            "CART::MCHT::FD_DESENTR_8B8EA",
+            "CART::MCHT::FD_DESENTR_E3DA2",
+            "CART::MCHT::FD_DESPENT_559EF",
+            "CONTA_ESTRATEGICA",
+            "CLUBE_SOMENTE_RESTAURANTES",
+            "CART::MCHT::FD_DESENTR_68F5A",
+            "GUIDED_HELP_TYPE",
+            "CART::MCHT::FD_DESENTR_01382",
+            "CART::MCHT::FD_DESENTR_D4AB7",
+            "CART::MCHT::ENTREGA_GRATIS_8.99_ANY_USER",
+            "SMART_CAMPAIGN_INVENTORY",
+            "CART::MCHT::FD_DESENTR_AC865",
+            "CART::MCHT::FD_DESENTR_B59FE",
+            "CART::MCHT::FD_DESENTR_C8A04",
+            "CART::MCHT::FD_DESENTR_87D23",
+            "CART::MCHT::FD_DESENTR_2543A",
+            "CART::MCHT::FD_DESENTR_98883",
+            "ADDRESS_PREFORM_TYPE",
+            "CART::MCHT::FD_DESENTR_D80AB"
+          ],
+          "takeoutTime": 0,
+          "test": "NOT_APPLICABLE",
+          "type": "RESTAURANT",
+          "userRatingCount": 151,
+          "restaurantShortId": 2617311,
+          "wsv3Address": {
+            "streetNumber": "3610",
+            "location": {
+              "locationId": 0,
+              "zipCode": 4576000,
+              "address": "Avenida Jornalista Roberto Marinho",
+              "district": "Cidade Monções",
+              "city": "SAO PAULO",
+              "state": "SP",
+              "country": "BR",
+              "lat": -23.632049,
+              "lon": -46.671335
+            }
+          },
+          "telephone": "987470862",
+          "nextOpeningHour": {
+            "dayOfWeek": "QUI",
+            "openingTime": 1775746800000,
+            "closingTime": 1775789940000
+          },
+          "supportsSchedule": true,
+          "closed": false,
+          "evaluationAverage": 4.9,
+          "recent": false,
+          "charging": "MAIOR",
+          "isDocumentRequired": false,
+          "superRestaurant": false,
+          "timezone": "Etc/GMT+3",
+          "isLoop": false
+        },
+        "paymentTypes": [],
+        "deliveryFee": {},
+        "deliveryInfo": {
+          "deliversAtLocation": null
+        },
+        "isLoading": {
+          "menu": false,
+          "details": false,
+          "paymentTypes": false,
+          "deliveryInfo": false,
+          "evaluations": false,
+          "reorderItems": false,
+          "filteredCatalog": false,
+          "uuid": false
+        },
+        "errorStatusCode": {
+          "menu": null,
+          "details": null,
+          "paymentTypes": null,
+          "deliveryInfo": null,
+          "evaluations": 404,
+          "reorderItems": null,
+          "filteredCatalog": null,
+          "uuid": null
+        },
+        "cache": {
+          "79f3b413-0d12-4d26-a46c-42f65af3759b": {
+            "menu": [],
+            "reorderItems": [],
+            "uuid": "79f3b413-0d12-4d26-a46c-42f65af3759b",
+            "pixelUuid": null,
+            "evaluations": {
+              "ratings": [],
+              "page": 0,
+              "hasNextPage": false
+            },
+            "details": {
+              "address": {
+                "city": "SAO PAULO",
+                "country": "BR",
+                "district": "Cidade Monções",
+                "latitude": -23.632049,
+                "longitude": -46.671335,
+                "state": "SP",
+                "streetName": "Avenida Jornalista Roberto Marinho",
+                "streetNumber": "3610",
+                "timezone": "Etc/GMT+3",
+                "zipCode": "04576000"
+              },
+              "categories": [],
+              "companyCode": "IFO",
+              "configs": {
+                "bagItemNoteLength": "",
+                "chargeDifferentToppingsMode": "GREATER",
+                "nationalIdentificationNumberRequired": false,
+                "orderNoteLength": "140"
+              },
+              "deliveryTime": 0,
+              "description": "Entre no mundo refrescante e irresistível do nosso paraíso roxo! \n\nNa X-Açaí, cada colherada é uma jornada tropical que desperta os sentidos e acende a paixão pelo sabor. \n\nImagine-se mergulhando em uma explosão de frescor, onde cada pedaço de fruta é uma promessa de indulgência saudável e energia renovada.\n\nNossa missão é levar você em uma viagem sensorial incomparável, onde a suavidade do açaí se funde com a intensidade dos toppings frescos, criando uma sinfonia de sabores que deixam um sorriso em cada colherada. \n\nCada copo é uma obra-prima personalizada, onde você é o arquiteto do seu próprio deleite.\n\nDo clássico açaí puro à extravagância dos nossos combos gourmet, cada opção é cuidadosamente preparada para satisfazer até os paladares mais exigentes. \n\nE não paramos por aí! \n\nNossa variedade de acompanhamentos premium, desde frutas frescas a granolas crocantes e deliciosas coberturas, transformam cada copo em uma experiência única e inesquecível.\n\nE não se preocupe com compromissos saudáveis! \n\nAqui na X-Açaí, priorizamos ingredientes frescos e naturais, garantindo que cada mordida seja um passo em direção ao bem-estar.\n\nCombinamos o melhor da natureza com a inovação culinária para criar um verdadeiro deleite para o corpo e para a alma.\n\nEntão, venha se deliciar conosco e descubra por que somos o destino preferido dos amantes de açaí. \n\nEntre, explore e deixe-se levar pela magia do nosso universo roxo. \nSua jornada de sabor começa aqui na X-Açaí, onde cada copo é mais do que uma refeição, é uma experiência inigualável de prazer e vitalidade. \n\nSeu paladar merece essa aventura!\n\n.\n\n\n.\n\n\n.\n\nAçaí, Açaí puro, Açaí saudavel, Açaí gourmet, Açaí artesanal, cupuaçu, creme de morango, Açaí fit, creme de maracuja, casadinho de açaí e cupuaçu, sorvete, gelador, acai, sobremesa, promoções, entrega rapida e grátis, promoção, brasileira, acaí, acai, ACAI, nutella, cremes, picole,",
+              "documents": {
+                "CNPJ": {
+                  "type": "CNPJ",
+                  "value": "55113941000123"
+                },
+                "MCC": {
+                  "type": "MCC",
+                  "value": "5499"
+                }
+              },
+              "enabled": true,
+              "features": [
+                "DELIVERY",
+                "SCHEDULING",
+                "TAKEOUT",
+                "CANCELABLE",
+                "CHAT_CONSUMER_ENABLED",
+                "USES_IFOOD_LOGISTICS"
+              ],
+              "groups": [
+                {
+                  "externalId": "IFO",
+                  "id": "d107726d-f66f-4c25-bd82-edca0bbacbd2",
+                  "name": "IFOOD",
+                  "type": "COMPANY"
+                },
+                {
+                  "externalId": "RESTAURANT",
+                  "id": "2b69a2f0-6ac8-4eda-b4b2-9d9d5f578054",
+                  "name": "RESTAURANT",
+                  "type": "STORE_TYPE"
+                },
+                {
+                  "externalId": "3841c245-fac1-40a6-8b8f-8d6876447a6d",
+                  "id": "cf7acafc-3fa1-43ee-9183-6d8654906dc2",
+                  "name": "Sao Paulo",
+                  "type": "REGION"
+                },
+                {
+                  "externalId": "HYBRID_REGION",
+                  "id": "820474aa-1b61-4686-b706-02988cf60d21",
+                  "name": "Entrega+",
+                  "type": "BUSINESS_MODEL"
+                }
+              ],
+              "id": "79f3b413-0d12-4d26-a46c-42f65af3759b",
+              "locale": "pt_BR",
+              "mainCategory": {
+                "code": "AC1",
+                "description": "Açaí",
+                "friendlyName": "Açaí"
+              },
+              "merchantChain": {
+                "externalId": "",
+                "id": "",
+                "name": ""
+              },
+              "metadata": {
+                "ifoodClub": {
+                  "banner": {
+                    "action": "webmiddleware?page=https%3A%2F%2Fwebmiddleware.ifood.com.br%2Fmarketplace%2Fclub%3Fref%3Dlingueta",
+                    "image": "https://static-images.ifood.com.br/image/upload/:resolution/ifood-club/ClubiFoodVoucher.png",
+                    "priority": "voucher_light",
+                    "title": "Economize até 70% com o Clube iFood"
+                  }
+                }
+              },
+              "minimumOrderValue": 25,
+              "name": "X-açaí",
+              "phoneIf": "987470862",
+              "priceRange": "CHEAPEST",
+              "resources": [
+                {
+                  "fileName": "79f3b413-0d12-4d26-a46c-42f65af3759b/202405152324_976T_i.jpg",
+                  "type": "LOGO"
+                },
+                {
+                  "fileName": "79f3b413-0d12-4d26-a46c-42f65af3759b/202405152325_cDzj_i.jpg",
+                  "type": "COVER"
+                }
+              ],
+              "shifts": [
+                {
+                  "dayOfWeek": "MONDAY",
+                  "duration": 539,
+                  "start": "12:00:00"
+                },
+                {
+                  "dayOfWeek": "TUESDAY",
+                  "duration": 718,
+                  "start": "12:00:00"
+                },
+                {
+                  "dayOfWeek": "WEDNESDAY",
+                  "duration": 719,
+                  "start": "12:00:00"
+                },
+                {
+                  "dayOfWeek": "THURSDAY",
+                  "duration": 719,
+                  "start": "12:00:00"
+                },
+                {
+                  "dayOfWeek": "FRIDAY",
+                  "duration": 718,
+                  "start": "12:00:00"
+                },
+                {
+                  "dayOfWeek": "SATURDAY",
+                  "duration": 719,
+                  "start": "12:00:00"
+                },
+                {
+                  "dayOfWeek": "SUNDAY",
+                  "duration": 540,
+                  "start": "12:00:00"
+                }
+              ],
+              "shortId": 2617311,
+              "tags": [
+                "CART::MCHT::FD_DESENTR_89A8F",
+                "null",
+                "CART::MCHT::FD_DESENTR_E1865",
+                "CART::MCHT::FD_DESPENT_5E5F7",
+                "CART::MCHT::FD_DESENTR_F5BFD",
+                "CART::MCHT::FD_DESENTR_E0525",
+                "CART::MCHT::FD_DESENTR_0F322",
+                "MOEDASIFOOD2",
+                "CART::MCHT::FD_DESENTR_BBB93",
+                "CART::MCHT::FD_DESENTR_C53FB",
+                "CART::MCHT::FD_DESENTR_3183A",
+                "MOEDASMISSAOSORVETE2",
+                "CART::MCHT::FD_DESENTR_3954E",
+                "ENABLE_INSTALLMENT_INTEREST",
+                "CART::MCHT::FD_DESENTR_4931B",
+                "CART::MCHT::FD_DESENTR_7F25A",
+                "SUPER_RESTAURANTES",
+                "COCA_PAIS_AGO25",
+                "RESTAURANTES_CLUBE",
+                "CART::MCHT::FD_DESENTR_09E8C",
+                "MOEDASMISSAOSORVETE",
+                "CART::MCHT::FD_DESENTR_59B3F",
+                "CART::MCHT::FD_DESENTR_9B40C",
+                "CART::MCHT::FD_DESENTR_8B8EA",
+                "CART::MCHT::FD_DESENTR_E3DA2",
+                "CART::MCHT::FD_DESPENT_559EF",
+                "CONTA_ESTRATEGICA",
+                "CLUBE_SOMENTE_RESTAURANTES",
+                "CART::MCHT::FD_DESENTR_68F5A",
+                "GUIDED_HELP_TYPE",
+                "CART::MCHT::FD_DESENTR_01382",
+                "CART::MCHT::FD_DESENTR_D4AB7",
+                "CART::MCHT::ENTREGA_GRATIS_8.99_ANY_USER",
+                "SMART_CAMPAIGN_INVENTORY",
+                "CART::MCHT::FD_DESENTR_AC865",
+                "CART::MCHT::FD_DESENTR_B59FE",
+                "CART::MCHT::FD_DESENTR_C8A04",
+                "CART::MCHT::FD_DESENTR_87D23",
+                "CART::MCHT::FD_DESENTR_2543A",
+                "CART::MCHT::FD_DESENTR_98883",
+                "ADDRESS_PREFORM_TYPE",
+                "CART::MCHT::FD_DESENTR_D80AB"
+              ],
+              "takeoutTime": 0,
+              "test": "NOT_APPLICABLE",
+              "type": "RESTAURANT",
+              "userRatingCount": 151,
+              "restaurantShortId": 2617311,
+              "wsv3Address": {
+                "streetNumber": "3610",
+                "location": {
+                  "locationId": 0,
+                  "zipCode": 4576000,
+                  "address": "Avenida Jornalista Roberto Marinho",
+                  "district": "Cidade Monções",
+                  "city": "SAO PAULO",
+                  "state": "SP",
+                  "country": "BR",
+                  "lat": -23.632049,
+                  "lon": -46.671335
+                }
+              },
+              "telephone": "987470862",
+              "nextOpeningHour": {
+                "dayOfWeek": "QUI",
+                "openingTime": 1775746800000,
+                "closingTime": 1775789940000
+              },
+              "supportsSchedule": true,
+              "closed": false,
+              "evaluationAverage": 4.9,
+              "recent": false,
+              "charging": "MAIOR",
+              "isDocumentRequired": false,
+              "superRestaurant": false,
+              "timezone": "Etc/GMT+3",
+              "isLoop": false
+            },
+            "paymentTypes": [],
+            "deliveryFee": {},
+            "deliveryInfo": {
+              "deliversAtLocation": null
+            },
+            "isLoading": {
+              "menu": false,
+              "details": false,
+              "paymentTypes": false,
+              "deliveryInfo": false,
+              "evaluations": false,
+              "reorderItems": false,
+              "filteredCatalog": false,
+              "uuid": false
+            },
+            "errorStatusCode": {
+              "menu": null,
+              "details": null,
+              "paymentTypes": null,
+              "deliveryInfo": null,
+              "evaluations": 404,
+              "reorderItems": null,
+              "filteredCatalog": null,
+              "uuid": null
+            },
+            "cache": {},
+            "deliveryMethods": [],
+            "scheduling": {
+              "deliveryMethod": {}
+            },
+            "filteredCatalog": [],
+            "filteredCatalogAisle": [],
+            "categories": []
+          }
+        },
+        "deliveryMethods": [],
+        "scheduling": {
+          "deliveryMethod": {}
+        },
+        "filteredCatalog": [],
+        "filteredCatalogAisle": [],
+        "categories": []
+      },
+      "restaurantsByCity": {
+        "list": [],
+        "isLoading": false,
+        "hasMore": true
+      },
+      "restaurantsSearch": {
+        "isLoading": false,
+        "error": null,
+        "page": 0,
+        "restaurants": [],
+        "hasMore": true
+      },
+      "router": {
+        "previousRoute": "",
+        "nextChangeIsGoBack": false,
+        "listUrl": [],
+        "currentRoute": "",
+        "subHomeActiveRoute": "home-multicategory"
+      },
+      "search": {
+        "merchants": {
+          "isLoading": false,
+          "data": [],
+          "total": 0
+        },
+        "catalogItems": {
+          "isLoading": false,
+          "data": [],
+          "total": 0
+        },
+        "currentSearchValue": "",
+        "lastSearchValue": "",
+        "showSuggestion": false,
+        "elementIdFocus": -1,
+        "searchAutocompleteValue": [],
+        "searchTab": ""
+      },
+      "searchHistory": [],
+      "session": {},
+      "signIn": {
+        "signin": {
+          "user": {},
+          "signup": false
+        },
+        "isLoading": {
+          "createOtp": false,
+          "provider": false,
+          "signin": false
+        },
+        "otpToken": {
+          "isLoadingToken": false,
+          "isLoadingChallenge": false,
+          "isLoadingOtpKey": false,
+          "signup": false
+        },
+        "providers": {
+          "requestStatus": "initial",
+          "enabledProviders": {
+            "facebook": false,
+            "google": false,
+            "otpEmail": false,
+            "otpPhone": false
+          }
+        },
+        "hasCredentialPhoneNumber": {
+          "value": true,
+          "signInFulfilledData": {}
+        }
+      },
+      "signUp": {
+        "isLoading": false,
+        "error": null
+      },
+      "states": {
+        "list": {},
+        "isLoading": false
+      },
+      "toastr": {
+        "message": "",
+        "timeout": 3000,
+        "toastType": "error"
+      },
+      "userNotifications": {
+        "loyalty": {
+          "seen": [],
+          "unseen": []
+        },
+        "voucher": {
+          "seen": [],
+          "unseen": []
+        }
+      },
+      "wallet": {
+        "currentCard": {},
+        "currentCardToken": {},
+        "currentOnlinePaymentMethod": {},
+        "paymentCard": {
+          "cards": [],
+          "requestStatus": "initial"
+        },
+        "paymentMethods": {
+          "methods": [],
+          "requestStatus": "initial"
+        },
+        "deleteCard": {
+          "requestStatus": "initial"
+        },
+        "activeCard": {
+          "requestStatus": "initial"
+        },
+        "isCheckoutListOpen": false,
+        "walletAccounts": {
+          "accounts": [],
+          "requestStatus": "initial"
+        },
+        "splitPayments": {
+          "isMovilePayActive": false,
+          "movilePayWalletBalance": {}
+        },
+        "isWalletBalanceEnough": false
+      },
+      "voucherWallet": {
+        "error": "",
+        "isLoading": false,
+        "vouchers": [],
+        "active": {},
+        "inactive": {},
+        "isCheckoutListOpen": false
+      },
+      "floatingBox": {},
+      "oauth": {
+        "isLoading": false,
+        "hasError": false
+      },
+      "persistedPaymentMethods": {
+        "paymentMethods": []
+      },
+      "cartShuffleModal": {
+        "isOpen": false,
+        "newCart": {}
+      },
+      "inbox": {
+        "isOpen": false,
+        "status": "empty",
+        "summaryStatus": "initial",
+        "channels": [],
+        "isFabVisible": false
+      },
+      "channel": {
+        "current": null,
+        "metadata": null,
+        "messages": [],
+        "status": "initial",
+        "isOpen": false,
+        "ces": null,
+        "isCESReviewDialogOpen": false
+      },
+      "multiCategories": {
+        "category": "restaurant",
+        "isLoading": false,
+        "error": false,
+        "hasRequestFailed": false
+      },
+      "merchandise": {
+        "merchantUuid": null,
+        "code": null,
+        "isLoading": false,
+        "details": {},
+        "error": false
+      },
+      "newsFeature": {
+        "notificationsViewed": [],
+        "lastViewd": ""
+      },
+      "cart": {
+        "id": "",
+        "summary": {
+          "total": 0,
+          "subTotal": 0,
+          "deliveryFee": 0,
+          "feeTotal": 0,
+          "benefitsTotal": 0
+        },
+        "cartType": "",
+        "items": [],
+        "merchant": {
+          "id": "",
+          "name": "",
+          "deliveryMethods": []
+        },
+        "fees": {
+          "values": []
+        },
+        "voucher": {},
+        "paymentMethod": {},
+        "address": {
+          "coordinates": {}
+        },
+        "delivery": {
+          "schedule": {}
+        },
+        "deliveryMethod": {}
+      },
+      "cartResponseSigned": {
+        "cartResponse": {
+          "id": "",
+          "summary": {
+            "total": 0,
+            "subTotal": 0,
+            "grossSubTotal": 0,
+            "deliveryFee": 0,
+            "feeTotal": 0,
+            "benefitsTotal": 0,
+            "voucherTotal": 0,
+            "benefits": []
+          },
+          "cartType": "",
+          "items": [],
+          "fees": {
+            "values": []
+          },
+          "merchant": {
+            "id": "",
+            "name": "",
+            "type": "",
+            "deliveryMethods": [],
+            "tags": [],
+            "address": {
+              "name": "",
+              "number": "",
+              "complement": "",
+              "coordinates": {}
+            },
+            "logoFileName": "",
+            "zone": ""
+          },
+          "benefits": [],
+          "voucher": {},
+          "currency": {
+            "name": "",
+            "prefix": ""
+          },
+          "delivery": {
+            "id": "",
+            "pricingMode": "",
+            "title": "",
+            "subtitle": "",
+            "deliveredBy": "",
+            "zoneId": "",
+            "schedule": {
+              "timeSlots": [],
+              "selectedTimeSlot": {
+                "id": "",
+                "endTime": "",
+                "endDateTime": "",
+                "startDateTime": "",
+                "startTime": ""
+              }
+            },
+            "type": "",
+            "code": "",
+            "scope": [],
+            "state": "",
+            "scheduling": "",
+            "presetTimeSlot": {
+              "id": "",
+              "endTime": "",
+              "endDateTime": "",
+              "startDateTime": "",
+              "startTime": ""
+            },
+            "logisticProvider": ""
+          },
+          "paymentMethods": [],
+          "address": {
+            "id": "",
+            "dropPointId": "",
+            "streetName": "",
+            "streetNumber": "",
+            "neighborhood": "",
+            "establishment": "",
+            "complement": "",
+            "reference": "",
+            "state": "",
+            "city": "",
+            "country": "",
+            "zipCode": "",
+            "coordinates": {}
+          }
+        },
+        "signature": ""
+      },
+      "addressInvalidDialog": {
+        "open": false
+      },
+      "similarItems": {
+        "items": [],
+        "isLoading": false,
+        "error": null
+      },
+      "searchCatalogHistory": [],
+      "crossSell": {
+        "uuid": null,
+        "itemsUuid": [],
+        "items": [],
+        "isLoading": false
+      },
+      "catalogCategory": {
+        "uuid": null,
+        "code": null,
+        "isLoading": false,
+        "items": [],
+        "page": 0,
+        "completed": false,
+        "error": false
+      },
+      "aisleModal": {
+        "code": null,
+        "name": "",
+        "isOpen": false,
+        "items": []
+      },
+      "deliveryByContext": {
+        "currentMerchant": {
+          "route": "",
+          "params": {}
+        }
+      },
+      "topMerchants": {
+        "requestStatus": "initial",
+        "merchants": {}
+      },
+      "reorder": {
+        "requestStatus": "initial",
+        "merchants": {},
+        "merchantId": "",
+        "isMobile": false
+      },
+      "cardstackConfig": {
+        "loading": true,
+        "loadingFilter": false,
+        "error": {},
+        "data": {}
+      }
+    },
+    "initialProps": {
+      "pageProps": {
+        "uuid": "79f3b413-0d12-4d26-a46c-42f65af3759b",
+        "isEmbed": false,
+        "isGrocery": false,
+        "asPath": "/delivery/sao-paulo-sp/x-acai-cidade-moncoes/79f3b413-0d12-4d26-a46c-42f65af3759b",
+        "merchantData": {
+          "logo": "79f3b413-0d12-4d26-a46c-42f65af3759b/202405152324_976T_i.jpg",
+          "name": "X-açaí"
+        }
+      },
+      "query": {
+        "citySlug": "sao-paulo-sp",
+        "slug": "x-acai-cidade-moncoes",
+        "uuid": "79f3b413-0d12-4d26-a46c-42f65af3759b"
+      },
+      "currentUrl": "https://www.ifood.com.br/delivery/sao-paulo-sp/x-acai-cidade-moncoes/79f3b413-0d12-4d26-a46c-42f65af3759b"
+    }
+  },
+  "page": "/Merchant/Merchant",
+  "query": {
+    "citySlug": "sao-paulo-sp",
+    "slug": "x-acai-cidade-moncoes",
+    "uuid": "79f3b413-0d12-4d26-a46c-42f65af3759b"
+  },
+  "buildId": "6Hh5cxAAGmJv8EM9lUv9I",
+  "isFallback": false,
+  "dynamicIds": [
+    65086,
+    1356,
+    49194,
+    51777
+  ],
+  "customServer": true,
+  "gip": true,
+  "appGip": true,
+  "scriptLoader": []
+}

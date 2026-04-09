@@ -245,21 +245,33 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     };
 
     const handleAdd = () => {
-        if (!product || !isValid) return;
-        const selectedOptions = buildSelectedOptions();
-        const cartKey = buildCartKey(product.id, selectedOptions);
-        addToCart({
-            cartKey,
-            menuItemId: product.id,
-            name: product.name,
-            base_price_cents: product.price_cents,
-            price_cents: totalPerItem,
-            qty,
-            notes: notes.trim() || undefined,
-            selected_options: selectedOptions,
-        });
-        setAdded(true);
-        setTimeout(() => router.push('/'), 900);
+        console.log('handleAdd called!', { product, isValid });
+        if (!product || !isValid) {
+            console.error('handleAdd early return', { product, isValid });
+            return;
+        }
+        try {
+            const selectedOptions = buildSelectedOptions();
+            const cartKey = buildCartKey(product.id, selectedOptions);
+            console.log('Adding to cart:', cartKey);
+            addToCart({
+                cartKey,
+                menuItemId: product.id,
+                name: product.name,
+                base_price_cents: product.price_cents,
+                price_cents: totalPerItem,
+                qty,
+                notes: notes.trim() || undefined,
+                selected_options: selectedOptions,
+            });
+            setAdded(true);
+            console.log('Cart updated successfully, redirecting...');
+            setTimeout(() => {
+                router.push('/');
+            }, 900);
+        } catch (e) {
+            console.error('Error in handleAdd:', e);
+        }
     };
 
     if (loading) return (
@@ -369,6 +381,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
                         {currentStep < totalSteps - 1 ? (
                             <button
+                                id="next-step-btn"
                                 onClick={nextStep}
                                 disabled={!isStepValid(currentStep)}
                                 className={`flex-1 font-black py-4 rounded-2xl shadow-lg transition text-base flex justify-center items-center gap-2 ${isStepValid(currentStep) ? 'bg-purple-600 text-white shadow-purple-200' : 'bg-gray-100 text-gray-400'
@@ -379,10 +392,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                             </button>
                         ) : (
                             <button
+                                id="add-to-cart-btn"
                                 onClick={handleAdd}
                                 disabled={!isValid || added}
                                 className={`flex-1 font-black py-4 rounded-2xl shadow-lg transition text-base flex justify-between items-center px-6 ${added ? 'bg-green-500 text-white' : !isValid ? 'bg-gray-100 text-gray-400' : 'bg-purple-600 text-white'
-                                    }`}
+                                    } pointer-events-auto relative z-[60]`}
                             >
                                 {added ? '✓ Adicionado' : (
                                     <>

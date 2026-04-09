@@ -132,6 +132,10 @@ Foco executado: corrigir sort_order ponta-a-ponta + criar importador one-off de 
 Script em 3 fases estanques:
 - `--phase extract` — Valida snapshot cru do iFood (sem gravar nada)
 - `--phase normalize` — Valida + normaliza + salva `tmp/ifood-normalized.json`
+- [x] Phase 65: AI-Driven Dynamic Pricing & Revenue Yield
+- [x] Phase 66: Logistics AI & Advanced Dispatch
+- [x] Phase 67: Tracking Pixels & Marketing Integrations
+- [ ] Phase 68: SaaS Landing Page & Automated Onboarding (Plataforma White Label)
 - `--phase write` — normalize + escreve em produção via API oficial do admin
 - `--phase all` — tudo de uma vez
 - `--dry-run` — simula sem gravar

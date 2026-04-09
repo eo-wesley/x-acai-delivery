@@ -44,6 +44,30 @@ export default function PixelTracker() {
         loadConfig();
     }, [slug, ready, isExcluded]);
 
+    // Track page views on route changes (SPA navigation)
+    useEffect(() => {
+        if (!config || isExcluded || typeof window === 'undefined') return;
+
+        // Facebook
+        if ((window as any).fbq) {
+            // Prevent double firing on initial load if script just injected
+            // fbq handles dedup reasonably well but we call it anyway
+            (window as any).fbq('track', 'PageView');
+        }
+
+        // Google Analytics
+        if ((window as any).gtag && config.google_analytics_id) {
+            (window as any).gtag('config', config.google_analytics_id, {
+                page_path: pathname,
+            });
+        }
+
+        // TikTok
+        if ((window as any).ttq) {
+            (window as any).ttq.page();
+        }
+    }, [pathname, config, isExcluded]);
+
     if (!config || isExcluded) return null;
 
     return (

@@ -194,7 +194,7 @@ adminRouter.get('/admin/profile', adminAuthMiddleware, tenantMiddleware, async (
 adminRouter.patch('/admin/profile', adminAuthMiddleware, tenantMiddleware, async (req: any, res: any) => {
     try {
         const db = await getDb();
-        const fields = ['name', 'description', 'phone', 'address', 'whatsapp', 'logo_url', 'banner_url', 'prep_time_minutes', 'delivery_fee_cents', 'min_order_cents', 'max_orders_simultaneous', 'timezone', 'opening_hours', 'store_status', 'temp_close_reason'];
+        const fields = ['name', 'description', 'phone', 'address', 'whatsapp', 'logo_url', 'banner_url', 'prep_time_minutes', 'delivery_fee_cents', 'min_order_cents', 'max_orders_simultaneous', 'timezone', 'opening_hours', 'store_status', 'temp_close_reason', 'facebook_pixel_id', 'google_analytics_id', 'tiktok_pixel_id'];
         const updates: string[] = [];
         const values: any[] = [];
         for (const f of fields) {

@@ -90,9 +90,14 @@ export default function AdminSettings() {
         <div className="space-y-6 max-w-2xl">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-black text-gray-800">⚙️ Configurações da Loja</h1>
-                <Link href="/admin/settings/pricing" className="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-tight flex items-center gap-2 hover:bg-amber-200 transition">
-                    <Zap size={14} /> Inteligência de Preços
-                </Link>
+                <div className="flex items-center gap-2">
+                    <Link href="/admin/settings/pixels" className="bg-gray-100 text-gray-700 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-tight flex items-center gap-2 hover:bg-gray-200 transition">
+                        📊 Pixels & Integrações
+                    </Link>
+                    <Link href="/admin/settings/pricing" className="bg-amber-100 text-amber-700 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-tight flex items-center gap-2 hover:bg-amber-200 transition">
+                        <Zap size={14} /> Inteligência de Preços
+                    </Link>
+                </div>
             </div>
 
             {/* Store Status */}

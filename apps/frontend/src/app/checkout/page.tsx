@@ -163,6 +163,25 @@ export default function CheckoutPage() {
                     }
                 } catch (e) { console.error('Failed to save personalization data', e); }
 
+                // 🚀 Phase 67: Trigger Purchase Events for Marketing Pixels
+                if (typeof window !== 'undefined') {
+                    try {
+                        const revenue = (totalCents / 100).toFixed(2);
+                        if ((window as any).fbq) {
+                            (window as any).fbq('track', 'Purchase', { currency: 'BRL', value: revenue });
+                        }
+                        if ((window as any).gtag) {
+                            (window as any).gtag('event', 'purchase', { currency: 'BRL', value: revenue, transaction_id: data.id });
+                        }
+                        if ((window as any).ttq) {
+                            (window as any).ttq.track('CompletePayment', {
+                                contents: items.map(i => ({ content_id: i.menuItemId, content_name: i.name, quantity: i.qty, price: i.price_cents / 100 })),
+                                value: revenue, currency: 'BRL'
+                            });
+                        }
+                    } catch (e) { console.warn('Pixel tracking failed', e); }
+                }
+
                 // PIX: persist QR data in sessionStorage, then redirect to /pix/[id]
                 if (form.paymentMethod === 'pix' && (data.pix_qr_code || data.payment_reference)) {
                     const pixSession = {
