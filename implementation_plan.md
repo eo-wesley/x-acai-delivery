@@ -73,4 +73,13 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 9. Priorizar `portal.ifood.com.br/menu-list` como origem autenticada de captura, usando a loja publica apenas como fallback.
 10. Aceitar snapshot ja normalizado como entrada direta para escrita quando a sessao remota nao estiver disponivel.
 11. Executar a importacao real do catalogo em producao pela API oficial do admin.
-12. Registrar como follow-up obrigatorio o redeploy do backend de producao para refletir `sort_order` corretamente na API publica.
+12. Sincronizar `sort_order` no catalogo ja importado sem reimportar os itens.
+13. Revalidar o backend de producao apos o redeploy mais recente.
+14. Confirmar rota publica de detalhe do produto com complementos.
+15. Validar checkout Pix ate QR real e `payment-status` pendente em producao.
+
+## Proximo passo minimo
+
+1. Aprovar um pagamento Pix real de producao para comprovar transicao final para `paid` / `confirmed`.
+2. Revalidar webhook/status do pedido apos a aprovacao real.
+3. Se necessario, registrar a ultima validacao no `PROJECT_STATUS.md` e encerrar a fase de rollout.

@@ -4,7 +4,7 @@ Data: 2026-04-01
 
 ## Missao ativa
 
-Fechar o catalogo de producao apos a importacao do iFood e revalidar checkout/Pix com o menu real ja publicado.
+Fechar a ultima validacao manual de pagamento em producao e deixar o rollout final pronto com catalogo, Pix e operacao documentados.
 
 ## Contexto confirmado
 
@@ -21,13 +21,14 @@ Fechar o catalogo de producao apos a importacao do iFood e revalidar checkout/Pi
 
 ## Problema concreto atacado nesta etapa
 
-O catalogo ja foi importado para producao, mas o backend publicado no Render ainda nao devolve `sort_order` corretamente. A ordem visual ficou majoritariamente preservada pela sequencia de criacao, porem ainda precisa ser revalidada apos o proximo redeploy do backend.
+O catalogo ja foi importado para producao e o redeploy do backend ja refletiu `sort_order` corretamente. O ponto que sobra agora e so a prova final do pagamento aprovado em ambiente real de producao.
 
 ## Resultado esperado
 
 - catalogo de producao estabilizado com ordem publica correta
 - grupos de opcoes/adicionais preservados no frontend e no admin
-- checkout real ate Pix revalidado com o menu ja importado
+- checkout real ate a tela Pix ja revalidado com o menu importado
+- proximo passo manual minimo reduzido a aprovar um Pix real para comprovar `paid/confirmed` em producao
 - trilha da importacao e do rollout permanecendo salva no repo e no GitHub
 
 ## Atualizacao desta entrega
@@ -36,4 +37,6 @@ O catalogo ja foi importado para producao, mas o backend publicado no Render ain
 - o gargalo dos complementos foi atacado abrindo cada item do iFood para forcar os payloads de detalhe
 - a captura passou a priorizar `portal.ifood.com.br/menu-list` e a aceitar fallback por snapshot normalizado
 - a importacao real em producao foi concluida com 27 produtos, 4 categorias, 33 grupos e 268 opcoes
-- o proximo passo operacional agora e redeployar o backend de producao na `main` mais recente e revalidar a ordem publica antes do checkout Pix final
+- o backend de producao ja voltou a refletir `sort_order` corretamente nas rotas admin/publicas
+- o checkout de producao ja gerou um Pix real pendente com `payment_reference` valido
+- a proxima acao fica restrita a aprovar um pagamento real para fechar a prova final de webhook/status em producao

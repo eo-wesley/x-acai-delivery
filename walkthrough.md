@@ -103,6 +103,18 @@ Data: 2026-04-01
   - `GET /api/default/menu` nao vazio
   - `GET /api/admin/menu` com os itens importados
   - `GET /api/admin/menu/:id/options` com complementos no primeiro item
-- ponto aberto identificado na producao:
-  - o backend atualmente publicado ainda devolve `sort_order = 0` na API
-  - a ordem visivel ficou quase toda correta por sequencia de criacao, mas o backend precisa de redeploy atualizado antes da validacao final do checkout/Pix
+- fechamento confirmado apos o redeploy de producao:
+  - `GET /api/default/menu` e `GET /api/admin/menu` passaram a devolver `sort_order` corretamente
+  - a rota publica `GET /api/default/menu/item/:id` confirmou um item com complemento real importado
+  - as paginas publicas `/`, `/product/:id`, `/checkout` e `/pix/:id` responderam `200` no frontend da Vercel
+  - um pedido Pix real foi criado em producao com:
+    - pedido `75df02d7-0baa-424d-a5f5-58048ed29599`
+    - `payment_reference` real `153262562923`
+    - QR Pix retornado
+    - `payment-status` em `pending`
+
+## Estado operacional atual
+
+- o catalogo de producao esta publicado e consistente
+- a importacao do iFood ja nao e mais o gargalo
+- o unico passo operacional restante para fechar a prova completa em producao e aprovar um Pix real para observar `paid/confirmed`

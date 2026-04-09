@@ -205,3 +205,35 @@ Ponto de atencao remanescente:
 - o backend atualmente em producao ainda devolve `sort_order = 0` nos itens importados
 - na pratica, a maior parte da ordem visual foi preservada pela sequencia de criacao, mas a API publica ainda nao reflete `sort_order` corretamente
 - antes de considerar o catalogo 100% finalizado, o backend de producao deve ser redeployado com a `main` mais recente e a ordem publica precisa ser revalidada
+
+## Pos-redeploy do catalogo em producao - 2026-04-09
+
+Foco executado: confirmar o catalogo publicado apos o redeploy do backend e validar o checkout Pix real em producao sem reimportar o menu.
+
+Concluido nesta entrega:
+
+- o backend de producao voltou a responder `sort_order` corretamente na API admin e na API publica
+- `GET /api/default/menu` confirmou 27 itens em 4 categorias com ordem coerente por categoria
+- `GET /api/default/menu/item/:id` confirmou item com complemento em rota publica:
+  - item `Acai X-King Pacoca`
+  - 1 grupo de opcoes
+  - 8 opcoes no grupo `Turbine seu Acai com Extras Premium`
+- o frontend publico respondeu `200` nas rotas criticas:
+  - `/`
+  - `/product/:id`
+  - `/checkout`
+  - `/pix/:id`
+- um pedido Pix real de producao foi criado com sucesso para validar o fluxo minimo:
+  - pedido `75df02d7-0baa-424d-a5f5-58048ed29599`
+  - item `Agua Mineral Sem Gas 500ml`
+  - `payment_reference` real `153262562923`
+  - QR Pix retornado pelo backend
+  - `GET /api/default/orders/:id/payment-status` respondeu `pending`
+
+Estado atual confirmado:
+
+- catalogo de producao importado e publicado
+- sort_order refletido nas respostas da API
+- complementos visiveis no endpoint publico de detalhe do produto
+- checkout gera Pix real em producao
+- falta apenas a aprovacao/pagamento real para fechar a prova final de `paid/confirmed` em producao

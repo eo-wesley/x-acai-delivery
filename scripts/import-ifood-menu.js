@@ -1205,6 +1205,61 @@ async function writeToXacai(normalizedItems, runtimeToken, runtimeSlug) {
     return results;
 }
 
+function buildItemKey(item) {
+    return `${cleanText(item.category || 'Sem categoria')}|||${cleanText(item.name)}`.toLowerCase();
+}
+
+async function syncMenuSortOrder(normalizedItems, runtimeToken, runtimeSlug) {
+    console.log('\n[FASE 4] Sincronizando sort_order dos itens importados...');
+
+    if (!runtimeToken) {
+        throw new Error('XACAI_ADMIN_TOKEN nao definido para sincronizar sort_order.');
+    }
+
+    const currentMenu = await apiRequest('GET', '/admin/menu', runtimeToken, runtimeSlug);
+    if (!Array.isArray(currentMenu) || currentMenu.length === 0) {
+        throw new Error('Nao encontrei itens no menu atual para sincronizar sort_order.');
+    }
+
+    const desiredByKey = new Map(normalizedItems.map(item => [buildItemKey(item), item]));
+    const results = { updated: 0, skipped: 0, missing: [] };
+
+    for (const currentItem of currentMenu) {
+        const desired = desiredByKey.get(buildItemKey(currentItem));
+        if (!desired) {
+            results.missing.push({ id: currentItem.id, name: currentItem.name, category: currentItem.category });
+            continue;
+        }
+
+        const currentSort = Number(currentItem.sort_order ?? 0);
+        const desiredSort = Number(desired.sort_order ?? 0);
+        if (currentSort === desiredSort) {
+            results.skipped += 1;
+            continue;
+        }
+
+        if (!DRY_RUN) {
+            await apiRequest('PUT', `/admin/menu/${currentItem.id}`, runtimeToken, runtimeSlug, {
+                sort_order: desiredSort,
+            });
+        }
+
+        results.updated += 1;
+    }
+
+    console.log(`  OK Atualizados          : ${results.updated}`);
+    console.log(`  OK Ja corretos          : ${results.skipped}`);
+    console.log(`  OK Sem correspondencia  : ${results.missing.length}`);
+
+    if (results.missing.length > 0) {
+        results.missing.slice(0, 10).forEach(item => {
+            console.warn(`    [WARN] Item sem match no snapshot: ${item.category} / ${item.name}`);
+        });
+    }
+
+    return results;
+}
+
 function printSnapshotInstructions() {
     console.error(`\nSnapshot nao encontrado: ${SNAPSHOT_PATH}`);
     console.error('\nCaminhos disponiveis para capturar o catalogo do iFood:');
@@ -1282,6 +1337,12 @@ async function main() {
     fs.writeFileSync(NORMALIZED_PATH, JSON.stringify(normalized, null, 2), 'utf8');
     console.log(`\nSnapshot normalizado salvo em: ${NORMALIZED_PATH}`);
 
+    if (COMMAND === 'sync-sort-order') {
+        await syncMenuSortOrder(normalized, runtimeToken, runtimeSlug);
+        console.log('\nOK Sincronizacao de sort_order concluida com sucesso.');
+        return;
+    }
+
     if (PHASE === 'normalize') {
         console.log('\nOK Fase normalize concluida.');
         return;
@@ -1293,6 +1354,7 @@ async function main() {
             console.log(`\n[WARN] Importacao concluida com ${results.failed.length} falha(s).`);
             process.exit(1);
         }
+        await syncMenuSortOrder(normalized, runtimeToken, runtimeSlug);
         console.log('\nOK Importacao concluida com sucesso.');
         return;
     }
