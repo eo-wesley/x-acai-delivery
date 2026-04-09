@@ -26,6 +26,7 @@ const ADMIN_TOKEN = process.env.XACAI_ADMIN_TOKEN || getArg('--token') || '';
 const SLUG = process.env.XACAI_SLUG || process.env.XACAI_TENANT_SLUG || getArg('--slug') || 'default';
 const SNAPSHOT_PATH = process.env.IFOOD_SNAPSHOT || getArg('--snapshot') || path.join(__dirname, '../tmp/ifood-snapshot.json');
 const NORMALIZED_PATH = path.join(__dirname, '../tmp/ifood-normalized.json');
+const AUGMENTED_NORMALIZED_PATH = path.join(__dirname, '../apps/backend/ifood-normalized-augmented.json');
 const DEBUG_PORT = Number(process.env.IFOOD_IMPORT_DEBUG_PORT || 9222);
 const PROFILE_DIR = process.env.IFOOD_IMPORT_PROFILE_DIR || path.join(os.tmpdir(), 'xacai-ifood-import-profile');
 const CAPTURE_WAIT_MS = Number(process.env.IFOOD_IMPORT_CAPTURE_WAIT_MS || 15000);
@@ -34,6 +35,15 @@ const TARGET_WAIT_MS = Number(process.env.IFOOD_IMPORT_TARGET_WAIT_MS || 30000);
 const DRY_RUN = args.includes('--dry-run');
 const ALLOW_EXISTING_MENU = args.includes('--allow-existing') || process.env.IFOOD_IMPORT_ALLOW_EXISTING === '1';
 const ALLOW_MISSING_DETAILS = args.includes('--allow-missing-details') || process.env.IFOOD_IMPORT_ALLOW_MISSING_DETAILS === '1';
+const DEFAULT_RECONCILE_CATEGORIES = ['Açaí Monte O Seu', 'Açaí Copos da Promoção'];
+const CATEGORY_FILTERS = (() => {
+    const raw = process.env.IFOOD_IMPORT_CATEGORIES || getArg('--categories') || '';
+    if (!raw) return DEFAULT_RECONCILE_CATEGORIES;
+    return raw
+        .split(',')
+        .map(value => cleanText(value))
+        .filter(Boolean);
+})();
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -989,6 +999,43 @@ function normalizeName(raw) {
     return raw.trim();
 }
 
+function applyExactChoiceHeuristic(group) {
+    const groupName = normalizeName(group?.name || '');
+    const exactChoiceMatch = groupName.match(/escolha\s+(\d+)/i);
+    if (!exactChoiceMatch) {
+        return {
+            ...group,
+            min_select: Number(group?.min_select ?? 0),
+            max_select: Number(group?.max_select ?? 0),
+            required: Boolean(group?.required),
+        };
+    }
+
+    const exactCount = Number(exactChoiceMatch[1]);
+    if (!Number.isFinite(exactCount) || exactCount <= 0) {
+        return {
+            ...group,
+            min_select: Number(group?.min_select ?? 0),
+            max_select: Number(group?.max_select ?? 0),
+            required: Boolean(group?.required),
+        };
+    }
+
+    return {
+        ...group,
+        min_select: exactCount,
+        max_select: exactCount,
+        required: true,
+    };
+}
+
+function applySelectionHeuristics(normalizedItems) {
+    return normalizedItems.map(item => ({
+        ...item,
+        option_groups: (item.option_groups || []).map(group => applyExactChoiceHeuristic(group)),
+    }));
+}
+
 function normalizePrice(raw) {
     if (raw === null || raw === undefined) return 0;
     const numeric = Number(raw);
@@ -1134,6 +1181,7 @@ async function writeToXacai(normalizedItems, runtimeToken, runtimeSlug) {
         }
 
         try {
+            const itemFailures = [];
             const created = await apiRequest('POST', '/admin/menu', runtimeToken, runtimeSlug, {
                 name: item.name,
                 description: item.description,
@@ -1162,12 +1210,14 @@ async function writeToXacai(normalizedItems, runtimeToken, runtimeSlug) {
                     });
                 } catch (error) {
                     console.warn(`\n    [WARN] Falha ao criar grupo "${group.name}": ${error.message}`);
+                    itemFailures.push(`grupo ${group.name}: ${error.message}`);
                     continue;
                 }
 
                 const groupId = groupResponse?.id;
                 if (!groupId) {
                     console.warn(`\n    [WARN] Grupo "${group.name}" nao retornou id, pulando opcoes.`);
+                    itemFailures.push(`grupo ${group.name}: sem id retornado`);
                     continue;
                 }
 
@@ -1181,8 +1231,15 @@ async function writeToXacai(normalizedItems, runtimeToken, runtimeSlug) {
                         });
                     } catch (error) {
                         console.warn(`\n    [WARN] Falha ao criar opcao "${option.name}": ${error.message}`);
+                        itemFailures.push(`opcao ${option.name}: ${error.message}`);
                     }
                 }
+            }
+
+            if (itemFailures.length > 0) {
+                results.failed.push({ name: item.name, error: itemFailures.join(' | ') });
+                console.log(` WARN ${itemFailures.length} divergencia(s) detectada(s)`);
+                continue;
             }
 
             results.created.push({ id: menuItemId, name: item.name });
@@ -1207,6 +1264,297 @@ async function writeToXacai(normalizedItems, runtimeToken, runtimeSlug) {
 
 function buildItemKey(item) {
     return `${cleanText(item.category || 'Sem categoria')}|||${cleanText(item.name)}`.toLowerCase();
+}
+
+function buildGroupKey(group) {
+    return cleanText(group?.name || '').toLowerCase();
+}
+
+function buildOptionKey(option) {
+    return cleanText(option?.name || '').toLowerCase();
+}
+
+function isSelectedCategory(category, selectedCategories = CATEGORY_FILTERS) {
+    const normalizedCategory = cleanText(category);
+    return selectedCategories.some(entry => cleanText(entry) === normalizedCategory);
+}
+
+function filterNormalizedItemsByCategories(normalizedItems, selectedCategories = CATEGORY_FILTERS) {
+    return normalizedItems.filter(item => isSelectedCategory(item.category, selectedCategories));
+}
+
+function normalizeAvailability(value) {
+    return value === false || value === 0 ? 0 : 1;
+}
+
+function normalizeRequired(value) {
+    return value === true || value === 1 ? 1 : 0;
+}
+
+function summarizeGroup(group) {
+    const options = group.options || [];
+    return `${group.name}:${options.length}`;
+}
+
+function findBestGroupMatch(desiredGroup, currentGroups, matchedIds) {
+    const byName = currentGroups.find(group => !matchedIds.has(group.id) && buildGroupKey(group) === buildGroupKey(desiredGroup));
+    if (byName) return byName;
+    return currentGroups.find(group => !matchedIds.has(group.id) && Number(group.sort_order ?? -1) === Number(desiredGroup.sort_order ?? -2)) || null;
+}
+
+function findBestOptionMatch(desiredOption, currentOptions, matchedIds) {
+    const byName = currentOptions.find(option => !matchedIds.has(option.id) && buildOptionKey(option) === buildOptionKey(desiredOption));
+    if (byName) return byName;
+    return currentOptions.find(option => !matchedIds.has(option.id) && Number(option.sort_order ?? -1) === Number(desiredOption.sort_order ?? -2)) || null;
+}
+
+async function deleteGroupWithOptions(group, runtimeToken, runtimeSlug) {
+    const options = Array.isArray(group.options) ? group.options : [];
+    for (const option of options) {
+        await apiRequest('DELETE', `/admin/menu/options/items/${option.id}`, runtimeToken, runtimeSlug);
+    }
+    await apiRequest('DELETE', `/admin/menu/options/groups/${group.id}`, runtimeToken, runtimeSlug);
+}
+
+async function reconcileGroupOptions(currentGroup, desiredGroup, runtimeToken, runtimeSlug, stats) {
+    const currentOptions = Array.isArray(currentGroup.options) ? currentGroup.options : [];
+    const matchedOptionIds = new Set();
+
+    for (const desiredOption of desiredGroup.options || []) {
+        const existingOption = findBestOptionMatch(desiredOption, currentOptions, matchedOptionIds);
+
+        if (!existingOption) {
+            if (!DRY_RUN) {
+                await apiRequest('POST', `/admin/menu/options/groups/${currentGroup.id}/items`, runtimeToken, runtimeSlug, {
+                    name: desiredOption.name,
+                    price_cents: desiredOption.price_cents,
+                    sort_order: desiredOption.sort_order,
+                    available: desiredOption.available,
+                });
+            }
+            stats.createdOptions += 1;
+            continue;
+        }
+
+        matchedOptionIds.add(existingOption.id);
+        const needsUpdate =
+            cleanText(existingOption.name) !== cleanText(desiredOption.name)
+            || Number(existingOption.price_cents ?? 0) !== Number(desiredOption.price_cents ?? 0)
+            || Number(existingOption.sort_order ?? 0) !== Number(desiredOption.sort_order ?? 0)
+            || normalizeAvailability(existingOption.available) !== normalizeAvailability(desiredOption.available);
+
+        if (needsUpdate) {
+            if (!DRY_RUN) {
+                await apiRequest('PUT', `/admin/menu/options/items/${existingOption.id}`, runtimeToken, runtimeSlug, {
+                    name: desiredOption.name,
+                    price_cents: desiredOption.price_cents,
+                    sort_order: desiredOption.sort_order,
+                    available: desiredOption.available,
+                });
+            }
+            stats.updatedOptions += 1;
+        } else {
+            stats.skippedOptions += 1;
+        }
+    }
+
+    const extraOptions = currentOptions.filter(option => !matchedOptionIds.has(option.id));
+    for (const extraOption of extraOptions) {
+        if (!DRY_RUN) {
+            await apiRequest('DELETE', `/admin/menu/options/items/${extraOption.id}`, runtimeToken, runtimeSlug);
+        }
+        stats.deletedOptions += 1;
+    }
+}
+
+async function reconcileMenuOptions(normalizedItems, runtimeToken, runtimeSlug, selectedCategories = CATEGORY_FILTERS) {
+    console.log(`\n[FASE 5] Reconciliando grupos/opcoes em producao para: ${selectedCategories.join(' | ')}`);
+
+    if (!runtimeToken) {
+        throw new Error('XACAI_ADMIN_TOKEN nao definido para reconciliar grupos/opcoes.');
+    }
+
+    const targetItems = filterNormalizedItemsByCategories(normalizedItems, selectedCategories);
+    if (targetItems.length === 0) {
+        throw new Error('Nenhum item alvo encontrado no snapshot normalizado para reconciliacao.');
+    }
+
+    const currentMenu = await apiRequest('GET', '/admin/menu', runtimeToken, runtimeSlug);
+    const currentMenuByKey = new Map(currentMenu.map(item => [buildItemKey(item), item]));
+    const stats = {
+        createdGroups: 0,
+        updatedGroups: 0,
+        deletedGroups: 0,
+        skippedGroups: 0,
+        createdOptions: 0,
+        updatedOptions: 0,
+        deletedOptions: 0,
+        skippedOptions: 0,
+        missingItems: [],
+    };
+
+    for (const desiredItem of targetItems) {
+        const currentItem = currentMenuByKey.get(buildItemKey(desiredItem));
+        if (!currentItem) {
+            stats.missingItems.push(`${desiredItem.category} / ${desiredItem.name}`);
+            continue;
+        }
+
+        const currentGroups = await apiRequest('GET', `/admin/menu/${currentItem.id}/options`, runtimeToken, runtimeSlug);
+        const matchedGroupIds = new Set();
+
+        for (const desiredGroup of desiredItem.option_groups || []) {
+            const existingGroup = findBestGroupMatch(desiredGroup, currentGroups, matchedGroupIds);
+
+            if (!existingGroup) {
+                let groupId = null;
+                if (!DRY_RUN) {
+                    const createdGroup = await apiRequest('POST', `/admin/menu/${currentItem.id}/options/groups`, runtimeToken, runtimeSlug, {
+                        name: desiredGroup.name,
+                        min_select: desiredGroup.min_select,
+                        max_select: desiredGroup.max_select,
+                        required: desiredGroup.required,
+                        sort_order: desiredGroup.sort_order,
+                    });
+                    groupId = createdGroup?.id;
+                    if (!groupId) {
+                        throw new Error(`Falha ao criar grupo ${desiredGroup.name} para ${desiredItem.name}: sem id retornado.`);
+                    }
+                    for (const desiredOption of desiredGroup.options || []) {
+                        await apiRequest('POST', `/admin/menu/options/groups/${groupId}/items`, runtimeToken, runtimeSlug, {
+                            name: desiredOption.name,
+                            price_cents: desiredOption.price_cents,
+                            sort_order: desiredOption.sort_order,
+                            available: desiredOption.available,
+                        });
+                    }
+                }
+                stats.createdGroups += 1;
+                stats.createdOptions += (desiredGroup.options || []).length;
+                continue;
+            }
+
+            matchedGroupIds.add(existingGroup.id);
+            const needsGroupUpdate =
+                cleanText(existingGroup.name) !== cleanText(desiredGroup.name)
+                || Number(existingGroup.min_select ?? 0) !== Number(desiredGroup.min_select ?? 0)
+                || Number(existingGroup.max_select ?? 0) !== Number(desiredGroup.max_select ?? 0)
+                || Number(existingGroup.sort_order ?? 0) !== Number(desiredGroup.sort_order ?? 0)
+                || normalizeRequired(existingGroup.required) !== normalizeRequired(desiredGroup.required);
+
+            if (needsGroupUpdate) {
+                if (!DRY_RUN) {
+                    await apiRequest('PUT', `/admin/menu/options/groups/${existingGroup.id}`, runtimeToken, runtimeSlug, {
+                        name: desiredGroup.name,
+                        min_select: desiredGroup.min_select,
+                        max_select: desiredGroup.max_select,
+                        sort_order: desiredGroup.sort_order,
+                        required: desiredGroup.required,
+                    });
+                }
+                stats.updatedGroups += 1;
+            } else {
+                stats.skippedGroups += 1;
+            }
+
+            await reconcileGroupOptions(existingGroup, desiredGroup, runtimeToken, runtimeSlug, stats);
+        }
+
+        const extraGroups = currentGroups.filter(group => !matchedGroupIds.has(group.id));
+        for (const extraGroup of extraGroups) {
+            if (!DRY_RUN) {
+                await deleteGroupWithOptions(extraGroup, runtimeToken, runtimeSlug);
+            }
+            stats.deletedGroups += 1;
+            stats.deletedOptions += (extraGroup.options || []).length;
+        }
+    }
+
+    console.log(`  OK Grupos criados       : ${stats.createdGroups}`);
+    console.log(`  OK Grupos atualizados   : ${stats.updatedGroups}`);
+    console.log(`  OK Grupos removidos     : ${stats.deletedGroups}`);
+    console.log(`  OK Opcoes criadas       : ${stats.createdOptions}`);
+    console.log(`  OK Opcoes atualizadas   : ${stats.updatedOptions}`);
+    console.log(`  OK Opcoes removidas     : ${stats.deletedOptions}`);
+    console.log(`  OK Itens ausentes       : ${stats.missingItems.length}`);
+
+    if (stats.missingItems.length > 0) {
+        stats.missingItems.forEach(entry => console.warn(`    [WARN] Item ausente no menu atual: ${entry}`));
+    }
+
+    return stats;
+}
+
+async function verifyMenuOptions(normalizedItems, runtimeToken, runtimeSlug, selectedCategories = CATEGORY_FILTERS) {
+    console.log(`\n[FASE 6] Verificando diff final das categorias: ${selectedCategories.join(' | ')}`);
+
+    if (!runtimeToken) {
+        throw new Error('XACAI_ADMIN_TOKEN nao definido para verificar grupos/opcoes.');
+    }
+
+    const targetItems = filterNormalizedItemsByCategories(normalizedItems, selectedCategories);
+    const currentMenu = await apiRequest('GET', '/admin/menu', runtimeToken, runtimeSlug);
+    const currentMenuByKey = new Map(currentMenu.map(item => [buildItemKey(item), item]));
+    const mismatches = [];
+
+    for (const desiredItem of targetItems) {
+        const currentItem = currentMenuByKey.get(buildItemKey(desiredItem));
+        if (!currentItem) {
+            mismatches.push({
+                category: desiredItem.category,
+                name: desiredItem.name,
+                reason: 'item_missing',
+            });
+            continue;
+        }
+
+        const currentGroups = await apiRequest('GET', `/admin/menu/${currentItem.id}/options`, runtimeToken, runtimeSlug);
+        const normalizedCurrentGroups = (currentGroups || []).map(group => ({
+            name: cleanText(group.name),
+            min_select: Number(group.min_select ?? 0),
+            max_select: Number(group.max_select ?? 0),
+            required: normalizeRequired(group.required),
+            sort_order: Number(group.sort_order ?? 0),
+            options: (group.options || []).map(option => ({
+                name: cleanText(option.name),
+                price_cents: Number(option.price_cents ?? 0),
+                sort_order: Number(option.sort_order ?? 0),
+                available: normalizeAvailability(option.available),
+            })).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
+        })).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+
+        const normalizedDesiredGroups = (desiredItem.option_groups || []).map(group => ({
+            name: cleanText(group.name),
+            min_select: Number(group.min_select ?? 0),
+            max_select: Number(group.max_select ?? 0),
+            required: normalizeRequired(group.required),
+            sort_order: Number(group.sort_order ?? 0),
+            options: (group.options || []).map(option => ({
+                name: cleanText(option.name),
+                price_cents: Number(option.price_cents ?? 0),
+                sort_order: Number(option.sort_order ?? 0),
+                available: normalizeAvailability(option.available),
+            })).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)),
+        })).sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+
+        if (JSON.stringify(normalizedCurrentGroups) !== JSON.stringify(normalizedDesiredGroups)) {
+            mismatches.push({
+                category: desiredItem.category,
+                name: desiredItem.name,
+                current: normalizedCurrentGroups.map(summarizeGroup).join(' || '),
+                expected: normalizedDesiredGroups.map(summarizeGroup).join(' || '),
+            });
+        }
+    }
+
+    console.log(`  OK Mismatches finais    : ${mismatches.length}`);
+    mismatches.forEach(mismatch => {
+        console.warn(`    [WARN] ${mismatch.category} / ${mismatch.name}`);
+        console.warn(`           atual    : ${mismatch.current || mismatch.reason}`);
+        console.warn(`           esperado : ${mismatch.expected || mismatch.reason}`);
+    });
+
+    return { mismatches };
 }
 
 async function syncMenuSortOrder(normalizedItems, runtimeToken, runtimeSlug) {
@@ -1267,6 +1615,7 @@ function printSnapshotInstructions() {
     console.error('     - faca login no iFood e no admin do X-Acai');
     console.error('     - depois rode: node scripts/import-ifood-menu.js run');
     console.error('  2. Fallback manual: gerar tmp/ifood-snapshot.json e usar --phase normalize/write');
+    console.error(`  3. Reconciliacao em menu ja importado: node scripts/import-ifood-menu.js reconcile-options --snapshot "${AUGMENTED_NORMALIZED_PATH}"`);
 }
 
 async function main() {
@@ -1306,11 +1655,16 @@ async function main() {
         console.log(`Produtos capturados: ${(capture.snapshot.categories || []).reduce((total, category) => total + (category.items || []).length, 0)}`);
         console.log(`Detalhes clicados: ${capture.snapshot.detail_capture?.clicked || 0}/${capture.snapshot.detail_capture?.attempted || 0}`);
     } else {
-        if (!fs.existsSync(SNAPSHOT_PATH)) {
+        const fallbackSnapshotPath = COMMAND === 'reconcile-options' && fs.existsSync(AUGMENTED_NORMALIZED_PATH)
+            ? AUGMENTED_NORMALIZED_PATH
+            : null;
+        const resolvedSnapshotPath = fs.existsSync(SNAPSHOT_PATH) ? SNAPSHOT_PATH : fallbackSnapshotPath;
+
+        if (!resolvedSnapshotPath) {
             printSnapshotInstructions();
             process.exit(1);
         }
-        raw = JSON.parse(fs.readFileSync(SNAPSHOT_PATH, 'utf8'));
+        raw = JSON.parse(fs.readFileSync(resolvedSnapshotPath, 'utf8'));
     }
 
     let extracted = null;
@@ -1319,7 +1673,7 @@ async function main() {
 
     if (isNormalizedItemsArray(raw)) {
         console.log('\n[FASE 1] Snapshot ja esta normalizado. Pulando extracao bruta...');
-        normalized = raw;
+        normalized = applySelectionHeuristics(raw);
         stats = summarizeNormalizedMenu(normalized);
     } else {
         extracted = extractAndValidate(raw);
@@ -1328,7 +1682,7 @@ async function main() {
             console.log('\nOK Fase extract concluida. Snapshot valido.');
             return;
         }
-        normalized = normalizeMenu(extracted);
+        normalized = applySelectionHeuristics(normalizeMenu(extracted));
     }
 
     validateCaptureCompleteness(raw, stats);
@@ -1343,6 +1697,16 @@ async function main() {
         return;
     }
 
+    if (COMMAND === 'reconcile-options') {
+        await reconcileMenuOptions(normalized, runtimeToken, runtimeSlug, CATEGORY_FILTERS);
+        const verification = await verifyMenuOptions(normalized, runtimeToken, runtimeSlug, CATEGORY_FILTERS);
+        if (verification.mismatches.length > 0) {
+            throw new Error(`Reconciliacao concluida, mas ainda restaram ${verification.mismatches.length} mismatch(es).`);
+        }
+        console.log('\nOK Reconciliacao de grupos/opcoes concluida com sucesso.');
+        return;
+    }
+
     if (PHASE === 'normalize') {
         console.log('\nOK Fase normalize concluida.');
         return;
@@ -1350,11 +1714,13 @@ async function main() {
 
     if (PHASE === 'write' || PHASE === 'all') {
         const results = await writeToXacai(normalized, runtimeToken, runtimeSlug);
-        if (results.failed.length > 0) {
-            console.log(`\n[WARN] Importacao concluida com ${results.failed.length} falha(s).`);
+        await syncMenuSortOrder(normalized, runtimeToken, runtimeSlug);
+        await reconcileMenuOptions(normalized, runtimeToken, runtimeSlug, CATEGORY_FILTERS);
+        const verification = await verifyMenuOptions(normalized, runtimeToken, runtimeSlug, CATEGORY_FILTERS);
+        if (results.failed.length > 0 || verification.mismatches.length > 0) {
+            console.log(`\n[WARN] Importacao concluiu com ${results.failed.length} falha(s) de escrita e ${verification.mismatches.length} mismatch(es) finais.`);
             process.exit(1);
         }
-        await syncMenuSortOrder(normalized, runtimeToken, runtimeSlug);
         console.log('\nOK Importacao concluida com sucesso.');
         return;
     }

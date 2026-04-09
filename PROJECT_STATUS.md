@@ -255,3 +255,53 @@ Resultado esperado apos o deploy do frontend:
 - `Acompanhamentos` e `Adicionais Extras Premium` aparecem juntos no produto
 - o cliente consegue selecionar tudo sem navegar por etapas
 - o item entra no carrinho com os complementos escolhidos
+
+## Reconciliacao final dos complementos em producao - 2026-04-09
+
+Foco executado: corrigir definitivamente os grupos/opcoes divergentes de `Acaí Monte O Seu` e `Acaí Copos da Promocao` para deixar o catalogo igual ao snapshot normalizado do iFood.
+
+Concluido nesta entrega:
+
+- `scripts/import-ifood-menu.js` ganhou uma fase explicita de reconciliacao:
+  - `reconcile-options`
+  - filtra por categoria
+  - faz exact sync de grupos e opcoes via API oficial do admin
+  - cria faltantes, atualiza divergentes e remove extras
+- a escrita do importador deixou de engolir falhas de grupo/opcao apenas como warning:
+  - falhas entram no resultado do item
+  - `write` agora roda reconciliacao + verificacao final e falha se sobrar mismatch
+- o snapshot salvo em `apps/backend/ifood-normalized-augmented.json` foi corrigido para refletir selecao exata dos grupos `Acompanhamentos (Escolha N)`:
+  - `Escolha 3` => `min_select = 3` / `max_select = 3`
+  - `Escolha 4` => `min_select = 4` / `max_select = 4`
+  - `Escolha 6` => `min_select = 6` / `max_select = 6`
+  - `Escolha 7` => `min_select = 7` / `max_select = 7`
+- a reconciliacao em producao foi executada em duas passadas:
+  - 1a passada: criou 2 grupos e 18 opcoes faltantes
+  - 2a passada: atualizou 10 grupos de `Monte O Seu` para quantidade exata
+- a verificacao final caiu para `0 mismatches` nas categorias alvo
+
+Casos obrigatorios confirmados:
+
+- `Acaí X-King Pacoca`
+  - 1 grupo `Turbine seu Acaí com Extras Premium`
+  - 8 opcoes
+- `Acaí Marmitex 700ml Grátis 4 Complementos`
+  - `Acompanhamentos (Escolha 4)` com `min = 4`, `max = 4`, `10` opcoes
+  - `Adicionais Extras Premium` com `8` opcoes
+
+Validacao operacional confirmada:
+
+- pedido real criado para `Acaí X-King Pacoca`
+  - `selected_options` enviado: `1`
+  - `selected_options` persistido: `1`
+  - `payment_reference` real gerado em producao
+- pedido real criado para `Acaí Marmitex 700ml Grátis 4 Complementos`
+  - `selected_options` enviado: `4`
+  - `selected_options` persistido: `4`
+  - `payment_reference` real gerado em producao
+
+Estado atual confirmado:
+
+- backend e snapshot do repo agora concordam para `Monte O Seu` e `Copos da Promocao`
+- a quantidade gratis obrigatoria dos grupos `Escolha N` deixou de ficar em `min_select = 1`
+- o frontend publico usa esses mesmos campos para rotulo e validacao, entao a tela passa a refletir a quantidade correta sem novo ajuste de API

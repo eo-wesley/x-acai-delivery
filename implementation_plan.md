@@ -83,3 +83,26 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 1. Publicar o ajuste do frontend que remove o wizard do produto.
 2. Revalidar visualmente os itens de `Acai Monte O Seu` com todos os grupos na mesma tela.
 3. Retomar a aprovacao final do Pix real para comprovar transicao para `paid` / `confirmed`.
+
+## Atualizacao - reconciliacao exata de complementos em producao
+
+1. Usar `apps/backend/ifood-normalized-augmented.json` como fonte de verdade imediata do cardapio importado.
+2. Adicionar ao importador uma fase dedicada `reconcile-options` para menu ja publicado.
+3. Limitar a reconciliacao as categorias:
+   - `Acaí Monte O Seu`
+   - `Acaí Copos da Promocao`
+4. Rodar exact sync de grupos/opcoes via API oficial do admin:
+   - criar faltantes
+   - atualizar divergentes
+   - remover extras
+5. Endurecer o fluxo `write` para falhar se grupo/opcao nao for criado e se sobrar mismatch depois da verificacao final.
+6. Corrigir a regra de normalizacao para grupos `Acompanhamentos (Escolha N)`:
+   - `min_select = N`
+   - `max_select = N`
+   - `required = true`
+7. Reconciliar producao sem reimportar o catalogo inteiro.
+8. Validar os casos obrigatorios:
+   - `Acaí X-King Pacoca`
+   - `Acaí Marmitex 700ml Grátis 4 Complementos`
+9. Criar pedidos reais de prova para confirmar persistencia de `selected_options`.
+10. Voltar ao fluxo final de Pix aprovado em producao com o catalogo ja consistente.

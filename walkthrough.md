@@ -127,3 +127,35 @@ Data: 2026-04-01
 - o gargalo estava na UX da pagina do produto, que escondia os complementos atras de um wizard com `Comecar Montagem` e `Proximo Passo`
 - a correcao aplicada foi remover o fluxo em etapas e renderizar todos os grupos na mesma tela
 - o contrato com carrinho/checkout foi mantido, incluindo `selected_options`
+
+## Atualizacao - reconciliacao final dos complementos
+
+- a comparacao programatica entre producao e `apps/backend/ifood-normalized-augmented.json` mostrou que sobravam so 2 divergencias estruturais:
+  - `Acaí X-King Pacoca` sem grupo premium
+  - `Acaí Marmitex 700ml Grátis 4 Complementos` sem o grupo de acompanhamentos
+- a investigacao seguinte revelou um segundo bug de modelagem:
+  - os grupos `Acompanhamentos (Escolha N)` no snapshot estavam com `min_select = 1`
+  - o frontend usa `min_select` diretamente para validar, por isso a quantidade gratis ficava errada mesmo com o grupo visivel
+- a correcao foi feita em dois niveis:
+  - `scripts/import-ifood-menu.js` agora aplica heuristica de selecao exata para qualquer grupo `Escolha N`
+  - `apps/backend/ifood-normalized-augmented.json` foi alinhado com `min_select = max_select = N`
+- o importador ganhou a fase `reconcile-options`, que:
+  - busca o menu atual via API admin
+  - compara por `categoria + nome`
+  - faz exact sync de grupos e opcoes
+  - verifica o diff final e falha se restar mismatch
+- a primeira passada de reconciliacao em producao criou:
+  - 2 grupos
+  - 18 opcoes
+- a segunda passada atualizou:
+  - 10 grupos de `Monte O Seu` para quantidade exata
+- a verificacao final terminou com `0 mismatches`
+- validacao operacional adicional:
+  - pedido real criado para `Acaí X-King Pacoca` com 1 adicional premium persistido
+  - pedido real criado para `Acaí Marmitex 700ml Grátis 4 Complementos` com 4 acompanhamentos persistidos
+
+## Estado operacional atual
+
+- `Monte O Seu` e `Copos da Promocao` agora batem com o snapshot do iFood em producao
+- os grupos `Escolha N` passaram a exigir a quantidade correta no frontend publico, porque a API agora devolve `min_select = max_select = N`
+- o proximo passo volta a ser a aprovacao final do Pix real com o catalogo corrigido

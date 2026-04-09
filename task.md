@@ -4,7 +4,7 @@ Data: 2026-04-01
 
 ## Missao ativa
 
-Publicar e validar o frontend de producao com os complementos do `Monte O Seu` visiveis na mesma tela do produto, sem wizard por etapas.
+Fechar a consistencia final do catalogo de producao para `Monte O Seu` e `Copos da Promocao`, garantindo que grupos/opcoes e quantidades gratis batam com o iFood antes da aprovacao final do Pix real.
 
 ## Contexto confirmado
 
@@ -21,18 +21,24 @@ Publicar e validar o frontend de producao com os complementos do `Monte O Seu` v
 
 ## Problema concreto atacado nesta etapa
 
-Os complementos do `Monte O Seu` ja existiam no backend de producao, mas a UX do frontend escondia tudo atras de um fluxo em etapas, passando a impressao de que os adicionais nao tinham sido importados.
+Depois da correcao de UX do produto, ainda sobrava um desvio real no catalogo publicado:
+
+- `Acaí X-King Pacoca` estava sem o grupo premium
+- `Acaí Marmitex 700ml Grátis 4 Complementos` estava sem um dos grupos
+- todos os grupos `Acompanhamentos (Escolha N)` do `Monte O Seu` estavam com `min_select = 1`, o que liberava quantidade errada no frontend
 
 ## Resultado esperado
 
-- itens do `Monte O Seu` exibindo todos os grupos de opcoes na mesma tela
-- CTA final bloqueado somente enquanto faltarem selecoes obrigatorias
-- carrinho e checkout preservando `selected_options`
-- trilha do ajuste de frontend salva no repo e no GitHub
+- categorias `Acaí Monte O Seu` e `Acaí Copos da Promocao` exatamente iguais ao snapshot do iFood
+- grupos `Escolha N` exigindo a quantidade exata no frontend publico
+- checkout e persistencia de `selected_options` preservados
+- trilha da reconciliacao salva no repo e no GitHub
 
 ## Atualizacao desta entrega
 
-- foi confirmado que os 10 itens de `Acai Monte O Seu` ja tem 2 grupos e 18 opcoes no backend de producao
-- a tela `product/[id]` foi simplificada para renderizar todos os grupos em lista continua
-- o resumo do produto, quantidade, observacoes e CTA final agora convivem na mesma tela
-- o proximo passo operacional passa a ser o deploy automatico do frontend na Vercel e a revalidacao visual do fluxo publicado
+- o importador ganhou `reconcile-options` para exact sync de grupos/opcoes em menu ja publicado
+- os 2 mismatches restantes foram corrigidos em producao
+- os 10 grupos `Acompanhamentos (Escolha N)` do `Monte O Seu` foram atualizados para selecao exata
+- a verificacao final programatica chegou a `0 mismatches`
+- dois pedidos reais de prova confirmaram persistencia correta de `selected_options`
+- o proximo passo volta a ser a validacao final do Pix aprovado com o catalogo agora consistente
