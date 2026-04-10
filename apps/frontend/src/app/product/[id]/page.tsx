@@ -84,8 +84,12 @@ function GroupSelector({
     const selectionCount = selected.length;
     const limitReached = !allowUnlimited && maxSelect > 0 && selectionCount >= maxSelect;
     const isComplete = !required || selectionCount >= minSelect;
+    const selectedCounts = selected.reduce<Record<string, number>>((acc, optionId) => {
+        acc[optionId] = (acc[optionId] || 0) + 1;
+        return acc;
+    }, {});
 
-    const toggle = (optId: string) => {
+    const toggleSingle = (optId: string) => {
         if (isSingle) {
             if (selected.includes(optId) && !required && minSelect === 0) {
                 onChange([]);
@@ -104,6 +108,25 @@ function GroupSelector({
         if (!limitReached) {
             onChange([...selected, optId]);
         }
+    };
+
+    const incrementOption = (optId: string) => {
+        if (isSingle) {
+            toggleSingle(optId);
+            return;
+        }
+
+        if (!allowUnlimited && maxSelect > 0 && selectionCount >= maxSelect) return;
+        onChange([...selected, optId]);
+    };
+
+    const decrementOption = (optId: string) => {
+        const lastIndex = selected.lastIndexOf(optId);
+        if (lastIndex === -1) return;
+
+        const nextSelections = [...selected];
+        nextSelections.splice(lastIndex, 1);
+        onChange(nextSelections);
     };
 
     return (
@@ -145,51 +168,107 @@ function GroupSelector({
 
             <div className="divide-y divide-gray-50">
                 {group.options.map(opt => {
-                    const isSelected = selected.includes(opt.id);
+                    const optionCount = selectedCounts[opt.id] || 0;
+                    const isSelected = optionCount > 0;
                     const disabled = !isSelected && limitReached;
+                    const canIncrement = allowUnlimited || maxSelect <= 0 || selectionCount < maxSelect;
+
+                    if (isSingle) {
+                        return (
+                            <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => toggleSingle(opt.id)}
+                                disabled={disabled}
+                                className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition ${
+                                    isSelected
+                                        ? 'bg-purple-50'
+                                        : disabled
+                                            ? 'cursor-not-allowed bg-white opacity-40'
+                                            : 'bg-white hover:bg-gray-50'
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                                            isSelected ? 'border-purple-600 bg-purple-600' : 'border-gray-300 bg-white'
+                                        }`}
+                                    >
+                                        {isSelected ? <div className="h-2 w-2 rounded-full bg-white" /> : null}
+                                    </div>
+                                    <div>
+                                        <p className={`text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
+                                            {opt.name}
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className={`text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    {formatOptionPrice(opt.price_cents)}
+                                </span>
+                            </button>
+                        );
+                    }
 
                     return (
-                        <button
+                        <div
                             key={opt.id}
-                            type="button"
-                            onClick={() => toggle(opt.id)}
-                            disabled={disabled}
-                            className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition ${
-                                isSelected
-                                    ? 'bg-purple-50'
-                                    : disabled
-                                        ? 'cursor-not-allowed bg-white opacity-40'
-                                        : 'bg-white hover:bg-gray-50'
+                            className={`flex items-center justify-between gap-4 px-4 py-3 transition ${
+                                isSelected ? 'bg-purple-50' : disabled ? 'bg-white opacity-70' : 'bg-white'
                             }`}
                         >
-                            <div className="flex items-center gap-3">
-                                <div
-                                    className={`flex h-5 w-5 flex-shrink-0 items-center justify-center border-2 ${
-                                        isSingle ? 'rounded-full' : 'rounded-md'
-                                    } ${
-                                        isSelected ? 'border-purple-600 bg-purple-600' : 'border-gray-300 bg-white'
-                                    }`}
-                                >
-                                    {isSelected ? (
-                                        <div
-                                            className={`bg-white ${
-                                                isSingle ? 'h-2 w-2 rounded-full' : 'flex h-3 w-3 items-center justify-center text-[9px] font-black'
-                                            }`}
-                                        >
-                                            {isSingle ? '' : 'OK'}
-                                        </div>
-                                    ) : null}
-                                </div>
-                                <div>
-                                    <p className={`text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
-                                        {opt.name}
-                                    </p>
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className={`flex h-6 min-w-6 items-center justify-center rounded-md border-2 px-1 text-[11px] font-black ${
+                                            isSelected
+                                                ? 'border-purple-600 bg-purple-600 text-white'
+                                                : 'border-gray-300 bg-white text-gray-400'
+                                        }`}
+                                    >
+                                        {optionCount > 0 ? optionCount : '+'}
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className={`truncate text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
+                                            {opt.name}
+                                        </p>
+                                        {optionCount > 1 ? (
+                                            <p className="text-xs font-bold uppercase tracking-wide text-purple-500">
+                                                repetido {optionCount}x
+                                            </p>
+                                        ) : null}
+                                    </div>
                                 </div>
                             </div>
-                            <span className={`text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
-                                {formatOptionPrice(opt.price_cents)}
-                            </span>
-                        </button>
+
+                            <div className="flex flex-shrink-0 items-center gap-3">
+                                <span className={`text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    {formatOptionPrice(opt.price_cents)}
+                                </span>
+                                <div className="flex items-center rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => decrementOption(opt.id)}
+                                        disabled={optionCount === 0}
+                                        className="flex h-8 w-8 items-center justify-center rounded-xl text-lg font-black text-gray-500 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-35"
+                                        aria-label={`Diminuir ${opt.name}`}
+                                    >
+                                        -
+                                    </button>
+                                    <span className="w-7 text-center text-sm font-black text-gray-800">
+                                        {optionCount}
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={() => incrementOption(opt.id)}
+                                        disabled={!canIncrement}
+                                        className="flex h-8 w-8 items-center justify-center rounded-xl text-lg font-black text-purple-600 transition hover:bg-purple-50 disabled:cursor-not-allowed disabled:opacity-35"
+                                        aria-label={`Aumentar ${opt.name}`}
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
                     );
                 })}
             </div>
