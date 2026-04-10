@@ -42,3 +42,23 @@ Depois da correcao de UX do produto, ainda sobrava um desvio real no catalogo pu
 - a verificacao final programatica chegou a `0 mismatches`
 - dois pedidos reais de prova confirmaram persistencia correta de `selected_options`
 - o proximo passo volta a ser a validacao final do Pix aprovado com o catalogo agora consistente
+
+## Atualizacao adicional - Partner Portal como fonte real
+
+- o snapshot antigo do iFood foi descartado como fonte final porque divergias do `portal.ifood.com.br/menu/list`
+- o importador agora captura a ordem e o detalhe dos produtos diretamente do Partner Portal autenticado
+- a producao foi re-sincronizada nas 4 categorias contra essa fonte nova
+- o item faltante `Acai X-Tropical` foi criado
+- o catalogo publicado terminou com:
+  - `28` produtos
+  - `4` categorias
+  - `0 mismatches` na verificacao final
+
+## Proximo passo
+
+1. Revalidar visualmente no frontend publico os itens mais sensiveis:
+   - `Acai X-King Pacoca`
+   - `Acai X-Tropical`
+   - `Acai 300ml Gratis 3 Complementos`
+   - `Acai 300ml Escolha 2 opcoes`
+2. Retomar a validacao final do Pix aprovado em producao com o catalogo agora fiel ao portal.

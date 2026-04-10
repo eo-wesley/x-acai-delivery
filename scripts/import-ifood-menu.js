@@ -17,7 +17,8 @@ const PHASE = getArg('--phase') || (COMMAND === 'run' ? 'all' : 'normalize');
 const STORE_URL = process.env.IFOOD_STORE_URL
     || process.env.IFOOD_URL
     || 'https://www.ifood.com.br/delivery/sao-paulo-sp/x-acai-cidade-moncoes/79f3b413-0d12-4d26-a46c-42f65af3759b';
-const PORTAL_URL = process.env.IFOOD_PORTAL_URL || 'https://portal.ifood.com.br/menu-list';
+const PORTAL_URL = process.env.IFOOD_PORTAL_URL || 'https://portal.ifood.com.br/menu/list';
+const PORTAL_API_BASE = process.env.IFOOD_PORTAL_API_BASE || 'https://portal-api.ifood.com.br/partner-catalog-bff';
 const FRONTEND_URL = process.env.XACAI_FRONTEND_URL || 'https://x-acai-delivery.vercel.app';
 const FRONTEND_HOST = new URL(FRONTEND_URL).host;
 const ADMIN_URL = process.env.XACAI_ADMIN_URL || `${FRONTEND_URL}/admin/menu?slug=default`;
@@ -60,6 +61,22 @@ function timestamp() {
 function cleanText(value) {
     if (!value) return '';
     return String(value).replace(/\s+/g, ' ').trim();
+}
+
+function normalizeKey(value) {
+    return cleanText(value)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+}
+
+function extractUuid(value) {
+    const match = String(value || '').match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+    return match ? match[0] : null;
+}
+
+function parseOwnerIdFromStoreUrl() {
+    return extractUuid(STORE_URL);
 }
 
 function parseOptionalNumber(...values) {
@@ -209,6 +226,13 @@ async function getTargets() {
     return fetchJson(`http://127.0.0.1:${DEBUG_PORT}/json`);
 }
 
+async function connectToBrowserRoot() {
+    const version = await fetchJson(`http://127.0.0.1:${DEBUG_PORT}/json/version`);
+    const client = new CdpClient(version.webSocketDebuggerUrl);
+    await client.connect();
+    return client;
+}
+
 async function waitForTarget(predicate, timeoutMs = TARGET_WAIT_MS) {
     const startedAt = Date.now();
     while (Date.now() - startedAt < timeoutMs) {
@@ -267,7 +291,11 @@ function launchBrowser() {
 }
 
 function isPortalTargetUrl(url) {
-    return typeof url === 'string' && url.includes('portal.ifood.com.br/menu-list');
+    return typeof url === 'string' && url.includes('portal.ifood.com.br/menu/');
+}
+
+function isPortalListTargetUrl(url) {
+    return typeof url === 'string' && url.includes('portal.ifood.com.br/menu/list');
 }
 
 function isStoreTargetUrl(url) {
@@ -280,7 +308,8 @@ function isAnyIfoodTargetUrl(url) {
 
 async function connectToBestIfoodTarget() {
     const targets = await getTargets();
-    const target = targets.find(candidate => isPortalTargetUrl(candidate.url))
+    const target = targets.find(candidate => isPortalListTargetUrl(candidate.url))
+        || targets.find(candidate => isPortalTargetUrl(candidate.url))
         || targets.find(candidate => isStoreTargetUrl(candidate.url))
         || targets.find(candidate => isAnyIfoodTargetUrl(candidate.url));
 
@@ -298,6 +327,272 @@ async function connectToBestIfoodTarget() {
         client,
         targetUrl: target.url,
         source: isPortalTargetUrl(target.url) ? 'portal' : (isStoreTargetUrl(target.url) ? 'storefront' : 'ifood'),
+    };
+}
+
+function portalGroupRequired(group) {
+    return Number(group?.min ?? group?.min_select ?? 0) > 0;
+}
+
+function extractPortalOptionPrice(option) {
+    const extensionPayloads = Object.values(option?.extensions || {});
+    for (const extension of extensionPayloads) {
+        const parsed = parsePriceToCents(extension?.price);
+        if (parsed !== null) return parsed;
+    }
+
+    return parsePriceToCents(
+        option?.price
+        ?? option?.additionalPrice
+        ?? option?.product?.price
+        ?? option?.product?.unitPrice
+        ?? 0,
+    ) ?? 0;
+}
+
+function normalizePortalOption(option, optionIndex) {
+    const extensionPayloads = Object.values(option?.extensions || {});
+    const availabilitySource = extensionPayloads.find(Boolean) || option || {};
+    return {
+        name: cleanText(option?.product?.name || option?.name || option?.description || `Opcao ${optionIndex + 1}`),
+        price: extractPortalOptionPrice(option),
+        available: cleanText(availabilitySource.status || option?.status || 'AVAILABLE') !== 'UNAVAILABLE',
+        sort_order: parseOptionalNumber(option?.sequence, option?.sortOrder, option?.order, optionIndex) ?? optionIndex,
+    };
+}
+
+function normalizePortalGroup(group, groupIndex) {
+    const rawOptions = Array.isArray(group?.options) ? group.options : [];
+    return {
+        name: cleanText(group?.name || `Grupo ${groupIndex + 1}`),
+        min_select: parseOptionalNumber(group?.min, group?.min_select, 0) ?? 0,
+        max_select: parseOptionalNumber(group?.max, group?.max_select, rawOptions.length) ?? rawOptions.length,
+        required: portalGroupRequired(group),
+        sort_order: parseOptionalNumber(group?.sequence, group?.sortOrder, group?.order, groupIndex) ?? groupIndex,
+        options: rawOptions.map((option, optionIndex) => normalizePortalOption(option, optionIndex)),
+    };
+}
+
+function portalImageToUrl(imageResource) {
+    if (!imageResource) return null;
+    const direct = firstString(imageResource, ['url', 'imageUrl', 'path', 'uri']);
+    if (!direct) return null;
+    if (/^https?:\/\//i.test(direct)) return direct;
+    return `https://static.ifood-static.com.br/image/upload/t_high/${direct.replace(/^\/+/, '')}`;
+}
+
+function normalizePortalProduct(detail, listingItem) {
+    return {
+        source_code: cleanText(detail?.id || listingItem?.source_code || ''),
+        name: cleanText(detail?.name || listingItem?.name || ''),
+        description: cleanText(detail?.description || listingItem?.description || '') || null,
+        price: parsePriceToCents(detail?.price ?? detail?.unitPrice ?? listingItem?.price ?? 0) ?? 0,
+        category: listingItem?.category || null,
+        sort_order: Number(listingItem?.sort_order ?? 0),
+        image: portalImageToUrl(detail?.imageResource) || listingItem?.image || null,
+        optionGroups: (detail?.optionGroups || []).map((group, groupIndex) => normalizePortalGroup(group, groupIndex)),
+    };
+}
+
+async function extractPortalListing(client) {
+    const listing = await evaluate(client, async () => {
+        const sleepInPage = ms => new Promise(resolve => window.setTimeout(resolve, ms));
+        const normalize = value => String(value || '').replace(/\s+/g, ' ').trim();
+
+        let previousHeight = -1;
+        for (let attempt = 0; attempt < 12; attempt += 1) {
+            window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'auto' });
+            await sleepInPage(250);
+            const nextHeight = document.documentElement.scrollHeight;
+            if (Math.abs(nextHeight - previousHeight) < 4) break;
+            previousHeight = nextHeight;
+        }
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        await sleepInPage(150);
+
+        const headers = Array.from(document.querySelectorAll('button[aria-label="Edite o nome da categoria"]'));
+        const productLinks = Array.from(document.querySelectorAll('a[href*="/menu/catalog/product/"]'))
+            .map(link => ({
+                name: normalize(link.textContent || ''),
+                href: link.href,
+            }))
+            .filter(entry => entry.name && entry.href);
+
+        const sections = headers.map((header, index) => {
+            const rawText = normalize(header.textContent || '');
+            const countMatch = rawText.match(/\((\d+)\s*iten/i);
+            const count = countMatch ? Number(countMatch[1]) : null;
+            const name = normalize(rawText.replace(/\(\d+\s*iten.*$/i, ''));
+            return { index, name, count };
+        });
+
+        return {
+            pageUrl: window.location.href,
+            title: document.title,
+            sections,
+            productLinks,
+        };
+    });
+
+    if (!listing || !Array.isArray(listing.sections) || listing.sections.length === 0) {
+        throw new Error('Nao consegui ler as categorias do portal iFood aberto.');
+    }
+
+    if (!Array.isArray(listing.productLinks) || listing.productLinks.length === 0) {
+        throw new Error('Nao consegui ler os produtos do portal iFood aberto.');
+    }
+
+    const categories = [];
+    let cursor = 0;
+    let globalSort = 0;
+
+    for (const section of listing.sections) {
+        const count = Number(section.count || 0);
+        const slice = listing.productLinks.slice(cursor, cursor + count);
+        cursor += count;
+
+        categories.push({
+            name: section.name,
+            items: slice.map((entry, index) => ({
+                source_code: extractUuid(entry.href),
+                name: entry.name,
+                href: entry.href,
+                category: section.name,
+                category_sort_order: index,
+                sort_order: globalSort++,
+            })),
+        });
+    }
+
+    const extras = listing.productLinks.slice(cursor);
+    if (extras.length > 0) {
+        const fallbackName = 'Sem categoria';
+        categories.push({
+            name: fallbackName,
+            items: extras.map((entry, index) => ({
+                source_code: extractUuid(entry.href),
+                name: entry.name,
+                href: entry.href,
+                category: fallbackName,
+                category_sort_order: index,
+                sort_order: globalSort++,
+            })),
+        });
+    }
+
+    return {
+        targetUrl: listing.pageUrl,
+        categories,
+        totalProducts: categories.reduce((sum, category) => sum + category.items.length, 0),
+    };
+}
+
+async function capturePortalAuthorizationHeader(productUrl) {
+    const browser = await connectToBrowserRoot();
+    const { targetId } = await browser.send('Target.createTarget', { url: productUrl });
+
+    try {
+        const target = await waitForTarget(candidate => candidate.id === targetId, 10000);
+        const page = new CdpClient(target.webSocketDebuggerUrl);
+        await page.connect();
+        await page.send('Page.enable');
+        await page.send('Network.enable');
+
+        let authorization = null;
+        const removeListener = page.on('Network.requestWillBeSent', params => {
+            const requestUrl = String(params.request?.url || '');
+            const header = params.request?.headers?.Authorization;
+            if (!authorization && requestUrl.includes(`${PORTAL_API_BASE}/product/`) && header) {
+                authorization = header;
+            }
+        });
+
+        const startedAt = Date.now();
+        while (!authorization && Date.now() - startedAt < TARGET_WAIT_MS) {
+            await sleep(250);
+        }
+
+        removeListener();
+        page.ws.close();
+
+        if (!authorization) {
+            throw new Error('Nao consegui capturar o token de autorizacao do Partner Portal.');
+        }
+
+        return authorization;
+    } finally {
+        try {
+            await browser.send('Target.closeTarget', { targetId });
+        } catch {
+            // ignore close failures
+        }
+        browser.ws.close();
+    }
+}
+
+async function fetchPortalProductDetail(productId, ownerId, authorization) {
+    const response = await fetch(`${PORTAL_API_BASE}/product/${productId}?ownerId=${ownerId}`, {
+        headers: {
+            Authorization: authorization,
+            Accept: 'application/json, text/plain, */*',
+            Referer: 'https://portal.ifood.com.br/',
+        },
+    });
+
+    if (!response.ok) {
+        throw new Error(`Partner Portal respondeu ${response.status} para o produto ${productId}.`);
+    }
+
+    return response.json();
+}
+
+async function buildPortalSnapshot(ifoodClient, metadata = {}) {
+    const ownerId = parseOwnerIdFromStoreUrl();
+    if (!ownerId) {
+        throw new Error('Nao consegui identificar o ownerId da loja a partir da URL configurada.');
+    }
+
+    const listing = await extractPortalListing(ifoodClient);
+    const firstProduct = listing.categories.flatMap(category => category.items).find(item => item.source_code && item.href);
+    if (!firstProduct) {
+        throw new Error('Nenhum produto com link valido foi encontrado no portal.');
+    }
+
+    const authorization = await capturePortalAuthorizationHeader(firstProduct.href);
+    const rawProducts = [];
+    const categories = [];
+
+    for (const category of listing.categories) {
+        const items = [];
+        for (const listingItem of category.items) {
+            if (!listingItem.source_code) {
+                throw new Error(`Produto sem id no portal: ${listingItem.name}`);
+            }
+            const detail = await fetchPortalProductDetail(listingItem.source_code, ownerId, authorization);
+            rawProducts.push(detail);
+            items.push(normalizePortalProduct(detail, listingItem));
+        }
+        categories.push({ name: category.name, items });
+    }
+
+    return {
+        generated_at: new Date().toISOString(),
+        ifood_url: STORE_URL,
+        ifood_capture_url: listing.targetUrl || metadata.targetUrl || PORTAL_URL,
+        ifood_capture_source: 'portal',
+        raw_response_count: rawProducts.length,
+        categories,
+        detail_capture: {
+            attempted: listing.totalProducts,
+            clicked: listing.totalProducts,
+            missed: [],
+            portal_fetch_count: rawProducts.length,
+        },
+        portal: {
+            owner_id: ownerId,
+            source_url: listing.targetUrl || metadata.targetUrl || PORTAL_URL,
+        },
+        raw_products: rawProducts,
     };
 }
 
@@ -788,56 +1083,93 @@ async function captureMenuItemDetails(client, items) {
 async function captureBrowserSnapshot() {
     const ifoodTarget = await connectToBestIfoodTarget();
     const ifoodClient = ifoodTarget.client;
-    const adminClient = await connectToTarget(target => (target.url || '').includes(FRONTEND_HOST));
+    let adminContext = {
+        token: ADMIN_TOKEN || null,
+        slug: SLUG,
+        href: null,
+    };
 
-    const adminContext = await evaluate(adminClient, () => ({
-        token: window.localStorage.getItem('admin_token'),
-        slug: window.localStorage.getItem('admin_slug') || 'default',
-        href: window.location.href,
-    }));
+    try {
+        const adminClient = await connectToTarget(target => (target.url || '').includes(FRONTEND_HOST));
+        adminContext = await evaluate(adminClient, () => ({
+            token: window.localStorage.getItem('admin_token'),
+            slug: window.localStorage.getItem('admin_slug') || 'default',
+            href: window.location.href,
+        }));
+    } catch (error) {
+        if (!ADMIN_TOKEN) {
+            throw new Error(`Nao encontrei aba do admin do X-Acai no Chrome remoto e tambem nao recebi XACAI_ADMIN_TOKEN. ${error.message}`);
+        }
+        console.warn(`\n[WARN] Aba do admin nao encontrada no Chrome remoto. Vou usar o token fornecido por ambiente para continuar: ${error.message}`);
+    }
 
     if (!adminContext?.token) {
-        throw new Error('Nao encontrei admin_token no frontend. Faca login no admin do X-Acai antes de rodar a importacao.');
+        if (!ADMIN_TOKEN) {
+            throw new Error('Nao encontrei admin_token no frontend. Faca login no admin do X-Acai antes de rodar a importacao.');
+        }
+        adminContext = {
+            token: ADMIN_TOKEN,
+            slug: SLUG,
+            href: null,
+        };
     }
 
-    const catalogResponses = await captureNetworkResponses(ifoodClient, async () => {
-        await ifoodClient.send('Page.reload', { ignoreCache: true });
-    });
+    let snapshot = null;
+    let rawPath = null;
+    let archivedSnapshotPath = null;
 
-    if (catalogResponses.length === 0) {
-        throw new Error('Nenhuma resposta de rede relevante foi capturada do iFood. Garanta que o menu da loja esteja visivel no navegador.');
+    if (ifoodTarget.source === 'portal') {
+        snapshot = await buildPortalSnapshot(ifoodClient, ifoodTarget);
+    } else {
+        const catalogResponses = await captureNetworkResponses(ifoodClient, async () => {
+            await ifoodClient.send('Page.reload', { ignoreCache: true });
+        });
+
+        if (catalogResponses.length === 0) {
+            throw new Error('Nenhuma resposta de rede relevante foi capturada do iFood. Garanta que o menu da loja esteja visivel no navegador.');
+        }
+
+        const initialSnapshot = buildBrowserSnapshot(catalogResponses, ifoodTarget);
+        let detailStats = null;
+        const detailResponses = await captureNetworkResponses(ifoodClient, async () => {
+            detailStats = await captureMenuItemDetails(
+                ifoodClient,
+                initialSnapshot.categories.flatMap(category => category.items || []),
+            );
+        }, 1500);
+        const mergedResponses = [...catalogResponses, ...detailResponses];
+        snapshot = buildBrowserSnapshot(mergedResponses, ifoodTarget);
+        snapshot.detail_capture = {
+            attempted: detailStats.attempted,
+            clicked: detailStats.clicked,
+            missed: detailStats.missed,
+            initial_response_count: catalogResponses.length,
+            detail_response_count: detailResponses.length,
+            merged_response_count: mergedResponses.length,
+        };
+
+        const stamp = timestamp();
+        rawPath = path.join(path.dirname(SNAPSHOT_PATH), `ifood-browser-raw-${stamp}.json`);
+        archivedSnapshotPath = path.join(path.dirname(SNAPSHOT_PATH), `ifood-browser-snapshot-${stamp}.json`);
+        fs.writeFileSync(rawPath, JSON.stringify(mergedResponses, null, 2), 'utf8');
+        fs.writeFileSync(archivedSnapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
     }
-
-    const initialSnapshot = buildBrowserSnapshot(catalogResponses, ifoodTarget);
-    let detailStats = null;
-    const detailResponses = await captureNetworkResponses(ifoodClient, async () => {
-        detailStats = await captureMenuItemDetails(
-            ifoodClient,
-            initialSnapshot.categories.flatMap(category => category.items || []),
-        );
-    }, 1500);
-    const mergedResponses = [...catalogResponses, ...detailResponses];
-    const snapshot = buildBrowserSnapshot(mergedResponses, ifoodTarget);
 
     snapshot.admin = {
         slug: adminContext.slug || SLUG,
         href: adminContext.href,
     };
-    snapshot.detail_capture = {
-        attempted: detailStats.attempted,
-        clicked: detailStats.clicked,
-        missed: detailStats.missed,
-        initial_response_count: catalogResponses.length,
-        detail_response_count: detailResponses.length,
-        merged_response_count: mergedResponses.length,
-    };
 
     ensureDir(path.dirname(SNAPSHOT_PATH));
     const stamp = timestamp();
-    const rawPath = path.join(path.dirname(SNAPSHOT_PATH), `ifood-browser-raw-${stamp}.json`);
-    const archivedSnapshotPath = path.join(path.dirname(SNAPSHOT_PATH), `ifood-browser-snapshot-${stamp}.json`);
-    fs.writeFileSync(rawPath, JSON.stringify(mergedResponses, null, 2), 'utf8');
-    fs.writeFileSync(archivedSnapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
+    if (!rawPath) {
+        rawPath = path.join(path.dirname(SNAPSHOT_PATH), `ifood-browser-raw-${stamp}.json`);
+        fs.writeFileSync(rawPath, JSON.stringify(snapshot.raw_products || [], null, 2), 'utf8');
+    }
+    if (!archivedSnapshotPath) {
+        archivedSnapshotPath = path.join(path.dirname(SNAPSHOT_PATH), `ifood-browser-snapshot-${stamp}.json`);
+        fs.writeFileSync(archivedSnapshotPath, JSON.stringify(snapshot, null, 2), 'utf8');
+    }
     fs.writeFileSync(SNAPSHOT_PATH, JSON.stringify(snapshot, null, 2), 'utf8');
 
     return {
@@ -1040,7 +1372,9 @@ function normalizePrice(raw) {
     if (raw === null || raw === undefined) return 0;
     const numeric = Number(raw);
     if (Number.isNaN(numeric)) return 0;
-    return numeric < 500 ? Math.round(numeric * 100) : Math.round(numeric);
+    if (!Number.isInteger(numeric)) return Math.round(numeric * 100);
+    if (numeric >= 100) return Math.round(numeric);
+    return Math.round(numeric * 100);
 }
 
 function normalizeItem(rawItem, itemIndex) {
@@ -1460,7 +1794,17 @@ async function reconcileMenuOptions(normalizedItems, runtimeToken, runtimeSlug, 
             await reconcileGroupOptions(existingGroup, desiredGroup, runtimeToken, runtimeSlug, stats);
         }
 
-        const extraGroups = currentGroups.filter(group => !matchedGroupIds.has(group.id));
+        const refreshedGroups = await apiRequest('GET', `/admin/menu/${currentItem.id}/options`, runtimeToken, runtimeSlug);
+        const retainedGroupIds = new Set();
+
+        for (const desiredGroup of desiredItem.option_groups || []) {
+            const matchedGroup = findBestGroupMatch(desiredGroup, refreshedGroups, retainedGroupIds);
+            if (matchedGroup) {
+                retainedGroupIds.add(matchedGroup.id);
+            }
+        }
+
+        const extraGroups = refreshedGroups.filter(group => !retainedGroupIds.has(group.id));
         for (const extraGroup of extraGroups) {
             if (!DRY_RUN) {
                 await deleteGroupWithOptions(extraGroup, runtimeToken, runtimeSlug);

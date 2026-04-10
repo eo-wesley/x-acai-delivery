@@ -84,6 +84,18 @@ Fechar a preparacao do projeto para producao, consolidando o que foi validado em
 2. Revalidar visualmente os itens de `Acai Monte O Seu` com todos os grupos na mesma tela.
 3. Retomar a aprovacao final do Pix real para comprovar transicao para `paid` / `confirmed`.
 
+## Atualizacao - Partner Portal como fonte de verdade
+
+1. Trocar a deteccao do portal para `portal.ifood.com.br/menu/list`.
+2. Ler a ordem real do cardapio pela DOM autenticada do portal.
+3. Capturar um header valido de autorizacao do Partner Portal por CDP e usa-lo para buscar cada produto em `partner-catalog-bff/product/:id`.
+4. Normalizar o snapshot novo preservando grupos/opcoes do portal.
+5. Corrigir a normalizacao de precos para nao multiplicar valores que ja vierem em centavos.
+6. Reconciliar grupos/opcoes em exato sync sobre as 4 categorias publicadas.
+7. Criar item faltante em producao antes do sync final, quando o portal trouxer produto ausente no X-Acai.
+8. Regravar `apps/backend/ifood-normalized-augmented.json` com a captura autenticada nova + precos base atuais.
+9. Fechar a etapa somente quando o diff final cair para `0 mismatches`.
+
 ## Atualizacao - reconciliacao exata de complementos em producao
 
 1. Usar `apps/backend/ifood-normalized-augmented.json` como fonte de verdade imediata do cardapio importado.

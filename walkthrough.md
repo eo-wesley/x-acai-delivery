@@ -159,3 +159,26 @@ Data: 2026-04-01
 - `Monte O Seu` e `Copos da Promocao` agora batem com o snapshot do iFood em producao
 - os grupos `Escolha N` passaram a exigir a quantidade correta no frontend publico, porque a API agora devolve `min_select = max_select = N`
 - o proximo passo volta a ser a aprovacao final do Pix real com o catalogo corrigido
+
+## Atualizacao - sincronizacao exata via Partner Portal
+
+- o fluxo final parou de confiar no snapshot antigo e passou a usar o Partner Portal autenticado em `portal.ifood.com.br/menu/list`
+- a captura agora:
+  - le as categorias na ordem real do portal
+  - extrai os links dos 28 produtos
+  - captura um token de autorizacao real do portal por CDP
+  - consulta o detalhe de cada produto em `partner-catalog-bff/product/:id`
+- o primeiro rollout real encontrou 2 problemas adicionais:
+  - faltava o item `Acai X-Tropical` em producao
+  - a normalizacao de precos de alguns adicionais estava inflando `400` para `40000`
+- ambos foram corrigidos:
+  - `Acai X-Tropical` foi criado em producao
+  - a funcao `normalizePrice()` foi ajustada
+- a reconciliacao final sobre as 4 categorias terminou com `0 mismatches`
+- validacao publica confirmada:
+  - `28` produtos no menu
+  - `Acai X-King Pacoca` com `4` grupos
+  - `Acai X-Tropical` presente
+  - `Acai 300ml Gratis 3 Complementos` com `5` grupos
+  - `Acai 300ml Escolha 2 opcoes` com `3` grupos
+  - adicionais regravados em centavos corretos (`400`, `500`, `600`, `1000`)

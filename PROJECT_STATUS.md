@@ -305,3 +305,44 @@ Estado atual confirmado:
 - backend e snapshot do repo agora concordam para `Monte O Seu` e `Copos da Promocao`
 - a quantidade gratis obrigatoria dos grupos `Escolha N` deixou de ficar em `min_select = 1`
 - o frontend publico usa esses mesmos campos para rotulo e validacao, entao a tela passa a refletir a quantidade correta sem novo ajuste de API
+
+## Re-sincronizacao pelo Partner Portal - 2026-04-10
+
+Foco executado: substituir o snapshot antigo pela captura autenticada do `portal.ifood.com.br/menu/list` e deixar o catalogo de producao igual ao portal, inclusive nos grupos de adicionais/complementos.
+
+Concluido nesta entrega:
+
+- `scripts/import-ifood-menu.js` passou a reconhecer o portal atual em `portal.ifood.com.br/menu/list`
+- a captura autenticada do portal agora:
+  - le a ordem real das categorias/produtos pela DOM do portal
+  - captura o header real de autorizacao do Partner Portal
+  - busca o detalhe de cada produto via `partner-catalog-bff/product/:id`
+- a normalizacao de precos foi corrigida para nao inflar adicionais que ja vinham em centavos
+- a reconciliacao exata foi corrigida para remover grupos/opcoes duplicados apos criacao/atualizacao
+- o produto faltante `Acai X-Tropical` foi criado em producao antes da sincronizacao final
+- `apps/backend/ifood-normalized-augmented.json` foi regravado com a base nova do portal e os precos base atuais de producao
+
+Validacao final confirmada:
+
+- `GET /api/default/menu` retorna `28` produtos em `4` categorias
+- o reconciliador terminou com `0 mismatches`
+- exemplos confirmados no endpoint publico:
+  - `Acai X-King Pacoca`
+    - `Tamanho dos Copos` (`4`)
+    - `Turbinando o Acai` (`7`)
+    - `Vai uma Bebida ?` (`4`)
+    - `Colher` (`2`)
+  - `Acai X-Tropical`
+    - publicado em producao com os mesmos `4` grupos do portal
+  - `Acai 300ml Gratis 3 Complementos`
+    - `Onde vai?` (`2`)
+    - `Acompanhamentos` (`24`, `min=1`, `max=3`)
+    - `Adicionais` (`32`)
+    - `Vai uma Bebida ?` (`4`)
+    - `Colher` (`2`)
+  - `Acai 300ml Escolha 2 opcoes`
+    - `Copos` (`4`, `min=2`, `max=2`)
+    - `Vai uma Bebida ?` (`4`)
+    - `Colher` (`2`)
+- exemplo de preco revalidado apos a correcao:
+  - adicionais do `Acai 300ml Gratis 3 Complementos` em `400`, `500`, `600` e `1000` centavos, sem inflacao para `40000`
