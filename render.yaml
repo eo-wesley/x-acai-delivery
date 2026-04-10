@@ -1,3 +1,5 @@
+# Production backend blueprint for Render.
+# Frontend lives on Vercel. Final custom-domain cutover is tracked in docs/PRODUCTION_CHECKLIST.md.
 services:
   - type: web
     runtime: node

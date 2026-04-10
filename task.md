@@ -1,64 +1,41 @@
 # Task
 
-Data: 2026-04-01
+Data: 2026-04-10
 
 ## Missao ativa
 
-Fechar a consistencia final do catalogo de producao para `Monte O Seu` e `Copos da Promocao`, garantindo que grupos/opcoes e quantidades gratis batam com o iFood antes da aprovacao final do Pix real.
+Fechar a producao operacional do X-Acai e deixar o projeto pronto para o cutover final de dominio e URLs publicas.
 
 ## Contexto confirmado
 
-- staging backend online no Render
-- banco de staging em PostgreSQL no Neon
-- admin autenticando com Firebase
-- menu admin e menu publico funcionando
-- Pix sandbox real funcionando com webhook
-- pedido pago mudando para `paid` / `confirmed`
-- frontend pronto para deploy remoto separado do backend
-- staging mantido com `WHATSAPP_PROVIDER=mock` por falta de Evolution publica confirmada
-- WhatsApp real local validado com Evolution
-- banco de producao provisionado no Neon com migration aplicada
+- frontend publico publicado em `https://x-acai-delivery.vercel.app`
+- backend de producao publicado em `https://x-acai-production-backend.onrender.com`
+- banco de producao no Neon em uso pelo backend
+- autenticacao admin com Firebase validada em producao
+- catalogo importado do iFood publicado e reconciliado contra o Partner Portal
+- complementos e adicionais corrigidos no backend e na UX publica
+- repeticao do mesmo complemento com `+ / -` funcionando
+- Pix real em producao validado com QR real, pedido pendente e pedido pago/completed
+- WhatsApp de producao mantido em `WHATSAPP_PROVIDER=mock` por falta de Evolution publica
 
-## Problema concreto atacado nesta etapa
+## Foco desta etapa
 
-Depois da correcao de UX do produto, ainda sobrava um desvio real no catalogo publicado:
-
-- `Acaí X-King Pacoca` estava sem o grupo premium
-- `Acaí Marmitex 700ml Grátis 4 Complementos` estava sem um dos grupos
-- todos os grupos `Acompanhamentos (Escolha N)` do `Monte O Seu` estavam com `min_select = 1`, o que liberava quantidade errada no frontend
+- sincronizar os documentos de continuidade com o estado real da producao
+- registrar um smoke final objetivo de backend, frontend, pedido, Pix e admin
+- alinhar o contrato de ambiente de producao com as URLs publicas atuais
+- preparar o checklist de cutover de dominio sem abrir nova feature
 
 ## Resultado esperado
 
-- categorias `Acaí Monte O Seu` e `Acaí Copos da Promocao` exatamente iguais ao snapshot do iFood
-- grupos `Escolha N` exigindo a quantidade exata no frontend publico
-- checkout e persistencia de `selected_options` preservados
-- trilha da reconciliacao salva no repo e no GitHub
+- docs do repo refletindo a producao atual, nao mais o estado antigo de staging
+- contrato de variaveis de producao alinhado com:
+  - `https://x-acai-delivery.vercel.app`
+  - `https://x-acai-production-backend.onrender.com`
+  - `/api/payments/mercadopago/webhook/mercadopago`
+- checklist claro para trocar `vercel.app` e `onrender.com` pelo dominio final
 
-## Atualizacao desta entrega
+## Proximo passo minimo
 
-- o importador ganhou `reconcile-options` para exact sync de grupos/opcoes em menu ja publicado
-- os 2 mismatches restantes foram corrigidos em producao
-- os 10 grupos `Acompanhamentos (Escolha N)` do `Monte O Seu` foram atualizados para selecao exata
-- a verificacao final programatica chegou a `0 mismatches`
-- dois pedidos reais de prova confirmaram persistencia correta de `selected_options`
-- o proximo passo volta a ser a validacao final do Pix aprovado com o catalogo agora consistente
-
-## Atualizacao adicional - Partner Portal como fonte real
-
-- o snapshot antigo do iFood foi descartado como fonte final porque divergias do `portal.ifood.com.br/menu/list`
-- o importador agora captura a ordem e o detalhe dos produtos diretamente do Partner Portal autenticado
-- a producao foi re-sincronizada nas 4 categorias contra essa fonte nova
-- o item faltante `Acai X-Tropical` foi criado
-- o catalogo publicado terminou com:
-  - `28` produtos
-  - `4` categorias
-  - `0 mismatches` na verificacao final
-
-## Proximo passo
-
-1. Revalidar visualmente no frontend publico os itens mais sensiveis:
-   - `Acai X-King Pacoca`
-   - `Acai X-Tropical`
-   - `Acai 300ml Gratis 3 Complementos`
-   - `Acai 300ml Escolha 2 opcoes`
-2. Retomar a validacao final do Pix aprovado em producao com o catalogo agora fiel ao portal.
+1. Apontar dominio do frontend e subdominio do backend.
+2. Atualizar `NEXT_PUBLIC_API_URL`, `CORS_ORIGIN`, `MP_WEBHOOK_URL` e `Site` do Mercado Pago.
+3. Rodar um smoke curto apos o cutover final.

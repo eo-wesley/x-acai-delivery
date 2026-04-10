@@ -1,120 +1,52 @@
 # Implementation Plan
 
-Data: 2026-04-01
+Data: 2026-04-10
 
 ## Objetivo
 
-Fechar a preparacao do projeto para producao, consolidando o que foi validado em staging e transformando isso em um plano final de rollout.
+Fechar a producao operacional com o que ja esta funcionando e preparar o cutover final de dominio sem abrir novas frentes de produto.
 
 ## Plano executado nesta continuidade
 
-1. Registrar formalmente a decisao de manter `WHATSAPP_PROVIDER=mock` no staging.
-2. Corrigir o frontend para deploy remoto separado do backend.
-3. Atualizar variaveis publicas do frontend e a documentacao do webhook/ambiente.
-4. Remover bloqueios reais de build do frontend encontrados no checkout limpo.
-5. Consolidar um checklist final de producao com provedores, variaveis e smoke test.
-6. Atualizar os documentos de continuidade e subir tudo para `main`.
+1. Revalidar os endpoints publicos de producao:
+   - `https://x-acai-production-backend.onrender.com/health`
+   - `https://x-acai-delivery.vercel.app/`
+2. Revalidar o smoke publico do frontend:
+   - produto
+   - carrinho
+   - checkout
+   - pedido
+3. Revalidar autenticacao admin com Firebase e leitura autenticada do menu.
+4. Revalidar o fluxo Pix real em duas pontas:
+   - novo pedido com QR real e `pending_payment`
+   - pedido ja pago com `paid / completed`
+5. Registrar a decisao operacional atual:
+   - producao continua com `WHATSAPP_PROVIDER=mock`
+6. Atualizar a trilha do repo:
+   - `PROJECT_STATUS.md`
+   - `task.md`
+   - `implementation_plan.md`
+   - `walkthrough.md`
+7. Alinhar a documentacao e os templates de ambiente:
+   - `docs/PRODUCTION_ENVIRONMENT.md`
+   - `docs/PRODUCTION_CHECKLIST.md`
+   - `.env.production.example`
+8. Preparar o checklist final de cutover de dominio:
+   - frontend
+   - backend
+   - `NEXT_PUBLIC_API_URL`
+   - `CORS_ORIGIN`
+   - `MP_WEBHOOK_URL`
+   - `Site` do Mercado Pago
 
-## Atualizacao da fase de producao real
+## Fora de escopo desta etapa
 
-1. Revisar a camada de banco e a documentacao atual.
-2. Validar a `DATABASE_URL` real de producao no Neon.
-3. Aplicar `db:migrate` na base de producao.
-4. Confirmar schema pronto sem executar seed minima.
-5. Alinhar o `render.yaml` da raiz para o runtime Node com `preDeployCommand`.
-6. Publicar o backend de producao no Render.
-7. Validar `/health`, rotas admin protegidas, menu publico e criacao de pedido em producao.
-8. Corrigir o bloqueio de configuracao do Mercado Pago em producao antes de avancar para o frontend.
+- ativar WhatsApp real em producao sem Evolution publica pronta
+- reimportar catalogo
+- abrir nova feature antes do fechamento operacional
 
-## Escopo tecnico
+## Entregaveis desta etapa
 
-- Frontend:
-  - `apps/frontend/src/app/admin/finance/page.tsx`
-  - `apps/frontend/src/app/admin/logistics/page.tsx`
-  - `apps/frontend/src/app/admin/reports/page.tsx`
-  - `apps/frontend/src/app/criar-delivery/page.tsx`
-  - `apps/frontend/src/app/login/page.tsx`
-  - `apps/frontend/src/app/onboarding/welcome/page.tsx`
-  - `apps/frontend/src/app/order/[id]/page.tsx`
-  - `apps/frontend/src/app/pix/[id]/page.tsx`
-  - `apps/frontend/vercel.json`
-- Ambientes e docs:
-  - `.env.example`
-  - `.env.production.example`
-  - `docs/PRODUCTION_ENVIRONMENT.md`
-  - `docs/PRODUCTION_CHECKLIST.md`
-- Continuidade:
-  - `PROJECT_STATUS.md`
-  - `task.md`
-  - `implementation_plan.md`
-  - `walkthrough.md`
-
-## Fora de escopo
-
-- ativar Evolution real em staging sem endpoint publico confirmado
-- publicar producao final sem as credenciais reais
-- refatorar warnings legados de metadata do Next 16 que nao bloqueiam build
-
-## Atualizacao - importacao iFood em producao
-
-1. Fechar `sort_order` no backend e no admin/menu para garantir ordem exata do catalogo.
-2. Criar um importador one-off com duas fases:
-   - `open`: abrir Chrome/Edge com perfil dedicado, iFood e admin do X-Acai
-   - `run`: capturar o catalogo do iFood pela sessao autenticada e importar via API admin
-3. Usar captura de rede do navegador via CDP para evitar depender do HTML publico vazio do iFood.
-4. Normalizar produtos, categorias, imagens e grupos de opcoes antes da escrita.
-5. Gravar direto na producao apenas se o menu continuar vazio, evitando duplicacao acidental.
-
-## Atualizacao desta entrega
-
-6. Restaurar o caminho recomendado `open` + `run` no importador sobre a `main` atual.
-7. Enriquecer o snapshot abrindo cada item do catalogo autenticado para capturar complementos e modificadores.
-8. Preservar o fluxo por arquivo (`--phase extract|normalize|write|all`) como fallback operacional.
-9. Priorizar `portal.ifood.com.br/menu-list` como origem autenticada de captura, usando a loja publica apenas como fallback.
-10. Aceitar snapshot ja normalizado como entrada direta para escrita quando a sessao remota nao estiver disponivel.
-11. Executar a importacao real do catalogo em producao pela API oficial do admin.
-12. Sincronizar `sort_order` no catalogo ja importado sem reimportar os itens.
-13. Revalidar o backend de producao apos o redeploy mais recente.
-14. Confirmar rota publica de detalhe do produto com complementos.
-15. Validar checkout Pix ate QR real e `payment-status` pendente em producao.
-
-## Proximo passo minimo
-
-1. Publicar o ajuste do frontend que remove o wizard do produto.
-2. Revalidar visualmente os itens de `Acai Monte O Seu` com todos os grupos na mesma tela.
-3. Retomar a aprovacao final do Pix real para comprovar transicao para `paid` / `confirmed`.
-
-## Atualizacao - Partner Portal como fonte de verdade
-
-1. Trocar a deteccao do portal para `portal.ifood.com.br/menu/list`.
-2. Ler a ordem real do cardapio pela DOM autenticada do portal.
-3. Capturar um header valido de autorizacao do Partner Portal por CDP e usa-lo para buscar cada produto em `partner-catalog-bff/product/:id`.
-4. Normalizar o snapshot novo preservando grupos/opcoes do portal.
-5. Corrigir a normalizacao de precos para nao multiplicar valores que ja vierem em centavos.
-6. Reconciliar grupos/opcoes em exato sync sobre as 4 categorias publicadas.
-7. Criar item faltante em producao antes do sync final, quando o portal trouxer produto ausente no X-Acai.
-8. Regravar `apps/backend/ifood-normalized-augmented.json` com a captura autenticada nova + precos base atuais.
-9. Fechar a etapa somente quando o diff final cair para `0 mismatches`.
-
-## Atualizacao - reconciliacao exata de complementos em producao
-
-1. Usar `apps/backend/ifood-normalized-augmented.json` como fonte de verdade imediata do cardapio importado.
-2. Adicionar ao importador uma fase dedicada `reconcile-options` para menu ja publicado.
-3. Limitar a reconciliacao as categorias:
-   - `Acaí Monte O Seu`
-   - `Acaí Copos da Promocao`
-4. Rodar exact sync de grupos/opcoes via API oficial do admin:
-   - criar faltantes
-   - atualizar divergentes
-   - remover extras
-5. Endurecer o fluxo `write` para falhar se grupo/opcao nao for criado e se sobrar mismatch depois da verificacao final.
-6. Corrigir a regra de normalizacao para grupos `Acompanhamentos (Escolha N)`:
-   - `min_select = N`
-   - `max_select = N`
-   - `required = true`
-7. Reconciliar producao sem reimportar o catalogo inteiro.
-8. Validar os casos obrigatorios:
-   - `Acaí X-King Pacoca`
-   - `Acaí Marmitex 700ml Grátis 4 Complementos`
-9. Criar pedidos reais de prova para confirmar persistencia de `selected_options`.
-10. Voltar ao fluxo final de Pix aprovado em producao com o catalogo ja consistente.
+- fotografia fiel da producao atual salva no repo
+- smoke final documentado com evidencias reais
+- checklist objetivo para a troca das URLs publicas temporarias pelo dominio final

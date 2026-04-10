@@ -1,146 +1,77 @@
 # Production Checklist - X-Acai
 
-Data: 2026-04-01
+Data: 2026-04-10
 
-## O que ja esta pronto
+## Estado atual antes do cutover
 
-- backend de staging validado no Render com PostgreSQL no Neon
-- auth admin padronizada com Firebase
-- menu admin, menu publico e smoke do admin validados
-- frontend preparado para deploy remoto separado do backend
-- Pix sandbox real validado com webhook na rota correta
-- WhatsApp real validado localmente com Evolution
-- staging mantido em `WHATSAPP_PROVIDER=mock` por decisao tecnica correta
+- frontend publico live em `https://x-acai-delivery.vercel.app`
+- backend de producao live em `https://x-acai-production-backend.onrender.com`
+- banco de producao no Neon ativo
+- autenticacao admin com Firebase validada
+- catalogo importado do iFood publicado e reconciliado
+- Pix real validado em producao
+- WhatsApp de producao mantido em `mock`
 
-## O que ainda falta para ir a producao
+## Cutover final de dominio
 
-- criar o backend de producao no Render
-- publicar o frontend de producao no Vercel
-- configurar as credenciais reais de Firebase, Mercado Pago e Evolution
-- apontar dominio e subdominios HTTPS reais
-- rodar smoke test final em dominio publico
+### 1. Frontend
 
-## Sequencia final recomendada
+- apontar o dominio final do app na Vercel
+- confirmar HTTPS ativo
+- atualizar o campo `Site` do Mercado Pago para o dominio final
 
-### 1. Backend de producao
+### 2. Backend
 
-Criar um novo servico Node no Render para o backend de producao com o blueprint da raiz:
+- apontar o subdominio HTTPS real da API no Render
+- confirmar `/health` respondendo no dominio final
+- atualizar `MP_WEBHOOK_URL` para o dominio final
 
-- `Name`: `x-acai-production-backend`
-- `Root Directory`: `apps/backend`
-- `Build Command`: `npm ci --include=dev`
-- `Pre-Deploy Command`: `npm run db:migrate`
-- `Start Command`: `npx tsx src/server.ts`
-- `Health Check Path`: `/health`
-- `Auto Deploy`: `off`
-- `Plan`: `starter`
+### 3. Variaveis
 
-Variaveis minimas:
-
-- `DATABASE_URL`
-- `JWT_SECRET`
-- `FIREBASE_SERVICE_ACCOUNT_JSON`
-- `MP_ACCESS_TOKEN`
-- `MP_WEBHOOK_URL`
-- `WHATSAPP_PROVIDER=mock` inicialmente
-
-Variaveis para uma segunda passada, quando WhatsApp de producao estiver pronto:
+Atualizar:
 
 - `NEXT_PUBLIC_API_URL`
 - `CORS_ORIGIN`
-- `WHATSAPP_PROVIDER=evolution`
-- `WHATSAPP_BASE_URL`
-- `WHATSAPP_INSTANCE`
-- `WHATSAPP_API_KEY`
+- `MP_WEBHOOK_URL`
+- `BASE_DOMAIN`, se o roteamento por dominio for usado
 
-### 2. PostgreSQL de producao
+### 4. DNS / Proxy
 
-Banco Neon de producao ja provisionado e migrado. O backend de producao so precisa usar a `DATABASE_URL` real dessa base.
+- configurar DNS no provedor escolhido
+- manter frontend e backend em HTTPS
+- revisar qualquer regra de proxy ou redirecionamento
 
-Bootstrap recomendado:
+### 5. Mercado Pago
 
-1. deixar `preDeployCommand` rodar `npm run db:migrate`
-2. nao rodar `npm run db:seed:minimal` em producao sem decisao operacional explicita
-3. manter `DB_SEED_MINIMAL=false`
+- campo `Site` apontando para o frontend final
+- webhook apontando para:
+  - `/api/payments/mercadopago/webhook/mercadopago`
+- validar criacao de Pix sem fallback
+- validar mudanca para `paid / completed`
 
-### 3. Firebase
+### 6. WhatsApp
 
-Backend:
+- manter `WHATSAPP_PROVIDER=mock` ate existir Evolution publica valida
+- quando a Evolution estiver pronta:
+  - configurar `WHATSAPP_BASE_URL`
+  - configurar `WHATSAPP_INSTANCE`
+  - configurar `WHATSAPP_API_KEY`
+  - trocar `WHATSAPP_PROVIDER` para `evolution`
 
-- Render com `FIREBASE_SERVICE_ACCOUNT_JSON`
-
-Frontend:
-
-- `NEXT_PUBLIC_FIREBASE_API_KEY`
-- `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
-- `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
-- `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
-- `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
-- `NEXT_PUBLIC_FIREBASE_APP_ID`
-
-### 4. Mercado Pago
-
-Configurar credenciais reais de producao no backend:
-
-- `MP_ACCESS_TOKEN`
-- `MP_WEBHOOK_URL=https://api.seudominio.com/api/payments/mercadopago/webhook/mercadopago`
-
-Antes do go-live:
-
-- validar criacao de pagamento sem fallback mock
-- validar notificacao HTTPS real chegando no backend
-- confirmar pedido mudando para `paid` / `confirmed`
-
-### 5. WhatsApp
-
-Provisionar uma Evolution publica separada do local/staging.
-
-Checklist:
-
-- instancia conectada ao numero oficial
-- `WHATSAPP_PROVIDER=evolution`
-- `WHATSAPP_BASE_URL` publico
-- `WHATSAPP_INSTANCE` correta
-- `WHATSAPP_API_KEY` valida
-
-### 6. Frontend de producao
-
-Publicar no Vercel com:
-
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_FIREBASE_*`
-
-O frontend ja esta ajustado para deploy separado do backend.
-
-### 7. Dominio e HTTPS
-
-Recomendacao:
-
-- Cloudflare para DNS e proxy
-- `app.seudominio.com` -> frontend
-- `api.seudominio.com` -> backend
-- `wa.seudominio.com` -> Evolution, se fizer sentido operacionalmente
-
-### 8. Smoke test final obrigatorio
+## Smoke obrigatorio depois do cutover
 
 1. `GET /health`
-2. login admin
-3. cadastro/edicao de item
-4. menu publico refletindo mudanca
-5. criacao de pedido
-6. Pix com webhook HTTPS real
-7. pedido atualizando para `paid` / `confirmed`
-8. notificacao WhatsApp disparada
+2. home/menu publico
+3. produto com repeticao do mesmo complemento
+4. carrinho
+5. checkout
+6. pedido Pix com QR real
+7. `payment-status` mudando para `paid`
+8. pedido aparecendo no admin com o status correto
 
-## Bloqueios reais restantes
+## Evidencias atuais ja validadas
 
-- nao existe Evolution publica confirmada para staging/producao ainda
-- dominio final ainda nao esta apontado
-- credenciais de producao ainda nao foram aplicadas nos provedores
-
-## Proximo passo minimo quando for virar producao
-
-1. provisionar backend de producao no Render
-2. colar credenciais reais
-3. publicar frontend no Vercel
-4. validar smoke final
+- pedido pendente com QR real:
+  - `f4d7e02e-f5d6-47bc-a207-56558a4013e5`
+- pedido pago/completed:
+  - `75df02d7-0baa-424d-a5f5-58048ed29599`
