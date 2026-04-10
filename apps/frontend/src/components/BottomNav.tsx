@@ -8,8 +8,15 @@ export default function BottomNav() {
     const pathname = usePathname();
     const { cartCount, subtotalCents } = useCart();
 
-    // Hide bottom nav on admin pages
-    if (pathname?.startsWith('/admin')) return null;
+    const hideBottomNav = Boolean(
+        pathname?.startsWith('/admin') ||
+        pathname?.startsWith('/product/') ||
+        pathname === '/cart' ||
+        pathname === '/checkout' ||
+        pathname?.startsWith('/order/')
+    );
+
+    if (hideBottomNav) return null;
 
     const navItems = [
         { href: '/', label: 'Início', icon: '🏠' },
