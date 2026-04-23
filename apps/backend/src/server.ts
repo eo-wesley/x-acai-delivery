@@ -66,6 +66,18 @@ import { monitoringService } from './services/monitoring.service';
 
 const app = express();
 
+function logStartupError(scope: string, error: unknown) {
+  logger.error(`[Startup] ${scope} failed`, error);
+}
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (err) => {
+  logger.error('Uncaught Exception thrown:', err);
+});
+
 const allowedOrigins = env.CORS_ORIGIN
   .split(',')
   .map(origin => origin.trim())
@@ -89,12 +101,14 @@ if (process.env.NODE_ENV !== 'test') {
 
 // Set up subscribers only if not in test
 if (process.env.NODE_ENV !== 'test') {
+  try {
   setupEventSubscribers();
   marketingService.startAutomatedMarketing();
   console.log('✅ Event subscribers active.');
 
   // Funil de Carrinho Abandonado (Enterprise Automation)
   eventBus.on('order_created', async (data) => {
+    try {
     const { orderId, customerId, restaurantId } = data;
     await queueService.addJob('whatsapp-automation', 'abandoned_cart_check', {
       type: 'abandoned_cart',
@@ -102,7 +116,13 @@ if (process.env.NODE_ENV !== 'test') {
       customerId,
       restaurantId
     }, { delay: 1000 * 60 * 30 }); // 30 minutos de delay
+    } catch (error) {
+      logStartupError('Abandoned cart queue scheduling', error);
+    }
   });
+  } catch (error) {
+    logStartupError('Event subscribers startup', error);
+  }
 }
 
 app.use(cors({
@@ -169,9 +189,19 @@ app.use('/api/migration', migrationRouter);
 app.use('/api/dev', devRouter);
 
 // Database initialization
-setupDatabase().then(() => {
-  InventoryAlertService.start();
-  marketplaceSyncService.initialize();
+void setupDatabase().then(() => {
+  try {
+    InventoryAlertService.start();
+  } catch (error) {
+    logStartupError('Inventory alert service startup', error);
+  }
+
+  try {
+    marketplaceSyncService.initialize();
+  } catch (error) {
+    logStartupError('Marketplace sync startup', error);
+  }
+
   logger.info('Database initialized and synchronized');
 }).catch(err => {
   logger.error('Failed to initialize database', err);
@@ -181,16 +211,6 @@ setupDatabase().then(() => {
 monitoringService.setupErrorHandling(app);
 
 app.use(errorMiddleware);
-
-// Global Unhandled Rejection & Exception Catchers
-process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (err) => {
-  logger.error('Uncaught Exception thrown:', err);
-  // process.exit(1); // Optional: restart if critical
-});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

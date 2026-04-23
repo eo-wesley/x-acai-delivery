@@ -2,6 +2,19 @@
 
 Data: 2026-04-10
 
+## Retorno operacional - 2026-04-23
+
+- `https://x-acai-delivery.vercel.app/` respondeu `200`
+- `https://x-acai-delivery.vercel.app/product/0eefa328-3790-44f2-bcc6-cc41116da590` respondeu `200`
+- `https://x-acai-delivery.vercel.app/cart` respondeu `200`
+- `https://x-acai-delivery.vercel.app/checkout` respondeu `200`
+- `https://x-acai-production-backend.onrender.com/health` respondeu `502`
+- `https://x-acai-production-backend.onrender.com/api/default/menu` respondeu `502`
+- `agent-browser` nao estava disponivel no PATH, entao a validacao visual automatizada ficou limitada ao navegador aberto e checagens HTTP
+- sem token/CLI do Render no ambiente, os logs do boot continuam sendo o dado manual inevitavel para confirmar a causa raiz
+- smoke local do backend, com dependencias instaladas no worktree temporario e SQLite temporario, subiu e retornou `/health = 200`
+- hotfix aplicado no startup para registrar handlers globais de erro antes das automacoes e isolar falhas opcionais de inicializacao
+
 ## O que foi revisado para fechar a producao operacional
 
 - `PROJECT_STATUS.md`

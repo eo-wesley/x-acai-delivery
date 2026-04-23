@@ -4,7 +4,15 @@ Data: 2026-04-10
 
 ## Missao ativa
 
-Fechar a producao operacional do X-Acai e deixar o projeto pronto para o cutover final de dominio e URLs publicas.
+Recuperar o backend de producao no Render, que voltou a responder `502`, sem mexer no frontend ou no catalogo que continuam publicados.
+
+## Atualizacao - 2026-04-23
+
+- frontend publico respondeu `200`
+- backend de producao respondeu `502` em `/health`
+- nao ha Render CLI/API token disponivel no ambiente local para ler logs automaticamente
+- smoke local do backend em SQLite temporario subiu com `/health = 200`
+- hotfix atual: registrar handlers globais mais cedo e isolar falhas de automacoes opcionais no startup
 
 ## Contexto confirmado
 

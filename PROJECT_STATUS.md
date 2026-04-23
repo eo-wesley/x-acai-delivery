@@ -2,6 +2,14 @@
 
 Data: 2026-04-10
 
+## Retorno operacional - 2026-04-23
+
+- frontend publico ainda responde `200` em `https://x-acai-delivery.vercel.app`
+- backend de producao no Render respondeu `502` em `/health`, `/api/default/menu` e detalhe de produto
+- smoke local da `main` com SQLite temporario confirmou que o codigo sobe e `/health` responde `200` quando o ambiente esta integro
+- hotfix preparado para registrar handlers globais de erro mais cedo e impedir que automacoes opcionais derrubem o processo no boot
+- proximo passo operacional apos o push: redeploy do backend no Render e nova validacao de `/health`
+
 ## Estado atual validado
 
 - frontend publico em producao: `https://x-acai-delivery.vercel.app`
