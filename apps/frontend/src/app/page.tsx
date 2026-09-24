@@ -56,11 +56,31 @@ export default function Home() {
     const phone = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('customer_data') || '{}')?.phone : null;
 
     Promise.allSettled([
-      fetch(`${API}/api/${slug}/menu`).then(r => r.json()),
-      fetch(`${API}/api/${slug}/store`).then(r => r.json()).catch(() => null),
+      fetch(`${API}/api/${slug}/menu`)
+        .then(async r => {
+          if (!r.ok) throw new Error('API offline');
+          return r.json();
+        })
+        .catch(() => fetch('/default-menu.json').then(r => r.json())),
+      fetch(`${API}/api/${slug}/store`).then(r => r.json()).catch(() => ({
+        name: 'X-Açaí Delivery',
+        store_status: 'open',
+        description: 'O melhor açaí da região, cremoso e com entrega rápida!',
+        delivery_fee_cents: 500,
+        min_order_cents: 1000,
+        prep_time_minutes: 30,
+        can_accept_orders: true,
+      })),
       phone ? fetch(`${API}/api/${slug}/loyalty/me?phone=${phone}`).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]).then(([menuRes, storeRes, loyaltyRes]) => {
-      if (menuRes.status === 'fulfilled') setMenuItems(Array.isArray(menuRes.value) ? menuRes.value : []);
+      if (menuRes.status === 'fulfilled' && Array.isArray(menuRes.value) && menuRes.value.length > 0) {
+        setMenuItems(menuRes.value);
+      } else {
+        fetch('/default-menu.json')
+          .then(r => r.json())
+          .then(items => { if (Array.isArray(items)) setMenuItems(items); })
+          .catch(() => {});
+      }
       if (storeRes.status === 'fulfilled' && storeRes.value) setStore(storeRes.value);
       if (loyaltyRes.status === 'fulfilled' && loyaltyRes.value) {
         setCustomerPoints(loyaltyRes.value.points || 0);
