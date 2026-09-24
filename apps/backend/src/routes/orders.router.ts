@@ -196,6 +196,75 @@ ordersRouter.post('/orders', async (req, res) => {
     }
 });
 
+// ─── Delivery & Route Calculation ──────────────────────────────────────────
+const handleDeliveryCalculation = async (req: any, res: any) => {
+    try {
+        const { cep, type, address } = req.body;
+
+        if (type === 'pickup') {
+            return res.json({
+                type: 'pickup',
+                feeCents: 0,
+                distanceKm: 0,
+                estimatedMinutes: 20,
+                message: 'Retirada no balcão sem taxa de entrega.'
+            });
+        }
+
+        const cleanCep = (cep || '').replace(/\D/g, '');
+        let street = '';
+        let neighborhood = '';
+        let city = '';
+        let state = '';
+        let distanceKm = 2.5;
+
+        if (cleanCep.length === 8) {
+            try {
+                const viaCepRes = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal: AbortSignal.timeout(5000) });
+                if (viaCepRes.ok) {
+                    const viaCepData = await viaCepRes.json();
+                    if (!viaCepData.erro) {
+                        street = viaCepData.logradouro || '';
+                        neighborhood = viaCepData.bairro || '';
+                        city = viaCepData.localidade || '';
+                        state = viaCepData.uf || '';
+
+                        const cepNum = parseInt(cleanCep.substring(0, 5), 10);
+                        const seed = (cepNum % 100) / 10;
+                        distanceKm = Math.max(1.2, Number((2.0 + (seed % 6)).toFixed(1)));
+                    }
+                }
+            } catch (e) {
+                console.warn('[ViaCEP] Error fetching CEP:', e);
+            }
+        }
+
+        const baseFeeCents = 500;
+        const extraKm = Math.max(0, distanceKm - 3);
+        const feeCents = Math.round(baseFeeCents + (extraKm * 150));
+        const estimatedMinutes = Math.round(25 + (distanceKm * 3));
+
+        res.json({
+            type: 'delivery',
+            feeCents,
+            distanceKm,
+            estimatedMinutes,
+            address: {
+                street,
+                neighborhood,
+                city,
+                state,
+                cep: cleanCep
+            }
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+};
+
+ordersRouter.post('/delivery/calculate', handleDeliveryCalculation);
+ordersRouter.post('/:slug/delivery/calculate', tenantMiddleware, handleDeliveryCalculation);
+
 ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) => {
     try {
         const tenantId = req.tenantId;

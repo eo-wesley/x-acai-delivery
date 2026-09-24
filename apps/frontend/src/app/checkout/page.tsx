@@ -7,20 +7,27 @@ import { useCart } from '../../components/CartContext';
 import { useTenant, getApiBase } from '../../hooks/useTenant';
 
 const PAYMENT_METHODS = [
-    { value: 'pix', label: 'PIX', emoji: '💸', hint: 'Link de pagamento gerado após o pedido' },
-    { value: 'card', label: 'Cartão', emoji: '💳', hint: 'Pague na entrega com maquininha' },
-    { value: 'cash', label: 'Dinheiro', emoji: '💵', hint: 'Informe o valor para troco' },
+    { value: 'pix', label: 'PIX', emoji: '⚡', hint: 'QR Code instantâneo com confirmação na hora' },
+    { value: 'card', label: 'Cartão', emoji: '💳', hint: 'Cartão de crédito ou débito via Mercado Pago' },
+    { value: 'cash', label: 'Dinheiro', emoji: '💵', hint: 'Pague ao receber (informe troco se precisar)' },
 ];
 
 export default function CheckoutPage() {
     const router = useRouter();
-    const { items, subtotalCents, clearCart, coupon, applyCoupon, removeCoupon } = useCart();
+    const { items, subtotalCents, coupon, applyCoupon, removeCoupon, clearCart } = useCart();
     const { slug } = useTenant();
+
+    const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
 
     const [form, setForm] = useState({
         name: '',
         phone: '',
-        addressText: '',
+        cep: '',
+        street: '',
+        number: '',
+        neighborhood: '',
+        city: '',
+        complement: '',
         notes: '',
         paymentMethod: 'pix',
         changeFor: '',
@@ -28,10 +35,34 @@ export default function CheckoutPage() {
     });
 
     const [loading, setLoading] = useState(false);
+    const [cepLoading, setCepLoading] = useState(false);
+    const [deliveryInfo, setDeliveryInfo] = useState<{
+        feeCents: number;
+        distanceKm: number;
+        estimatedMinutes: number;
+    }>({
+        feeCents: 500,
+        distanceKm: 2.5,
+        estimatedMinutes: 30,
+    });
+
     const [error, setError] = useState('');
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
 
+    // Carregar dados salvos do cliente
     useEffect(() => {
+        try {
+            const savedName = localStorage.getItem('customer_name');
+            const savedData = JSON.parse(localStorage.getItem('customer_data') || '{}');
+            if (savedName || savedData.name) {
+                setForm(f => ({
+                    ...f,
+                    name: savedName || savedData.name || f.name,
+                    phone: savedData.phone || f.phone,
+                }));
+            }
+        } catch { }
+
         const token = localStorage.getItem('customer_token');
         if (token) {
             const phone = JSON.parse(localStorage.getItem('customer_data') || '{}')?.phone;
@@ -50,14 +81,51 @@ export default function CheckoutPage() {
         }
     }, [slug]);
 
+    // Buscar CEP e calcular rota/taxa
+    const handleCalculateDelivery = async (rawCep: string) => {
+        const cleanCep = rawCep.replace(/\D/g, '');
+        if (cleanCep.length !== 8) return;
+
+        setCepLoading(true);
+        setError('');
+        try {
+            const API = getApiBase();
+            const res = await fetch(`${API}/api/${slug}/delivery/calculate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cep: cleanCep, type: orderType }),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.address) {
+                    setForm(f => ({
+                        ...f,
+                        street: data.address.street || f.street,
+                        neighborhood: data.address.neighborhood || f.neighborhood,
+                        city: data.address.city || f.city,
+                    }));
+                }
+                setDeliveryInfo({
+                    feeCents: data.feeCents,
+                    distanceKm: data.distanceKm,
+                    estimatedMinutes: data.estimatedMinutes,
+                });
+            }
+        } catch (e) {
+            console.error('Falha ao calcular taxa:', e);
+        } finally {
+            setCepLoading(false);
+        }
+    };
+
     // Cupom global state helper
     const [couponInput, setCouponInput] = useState(coupon?.code || '');
     const [couponLoading, setCouponLoading] = useState(false);
     const [couponMsg, setCouponMsg] = useState('');
 
-    const deliveryFeeCents = 500;
+    const effectiveDeliveryFeeCents = orderType === 'pickup' ? 0 : deliveryInfo.feeCents;
     const discountCents = coupon?.discountCents || 0;
-    const totalCents = Math.max(0, subtotalCents + deliveryFeeCents - discountCents);
+    const totalCents = Math.max(0, subtotalCents + effectiveDeliveryFeeCents - discountCents);
 
     // --- Empty cart guard ---
     if (items.length === 0) {
@@ -112,7 +180,15 @@ export default function CheckoutPage() {
         // Validation
         if (!form.name.trim()) { setError('Informe seu nome.'); return; }
         if (!form.phone.trim() || form.phone.replace(/\D/g, '').length < 10) { setError('Informe um telefone válido com DDD.'); return; }
-        if (!form.addressText.trim()) { setError('Informe o endereço de entrega.'); return; }
+
+        let finalAddress = 'Retirada no Balcão (Loja)';
+        if (orderType === 'delivery') {
+            if (!form.street.trim() || !form.number.trim()) {
+                setError('Informe a rua e o número para entrega.');
+                return;
+            }
+            finalAddress = `${form.street.trim()}, ${form.number.trim()}${form.complement.trim() ? ' - ' + form.complement.trim() : ''}${form.neighborhood.trim() ? ', ' + form.neighborhood.trim() : ''}${form.city.trim() ? ' - ' + form.city.trim() : ''}${form.cep.trim() ? ' (CEP: ' + form.cep.trim() + ')' : ''}`;
+        }
 
         setLoading(true);
         setError('');
@@ -129,12 +205,12 @@ export default function CheckoutPage() {
                 selected_options: i.selected_options || [],
             })),
             subtotalCents,
-            deliveryFeeCents,
+            deliveryFeeCents: effectiveDeliveryFeeCents,
             discountCents,
             couponCode: coupon?.code,
             totalCents,
-            addressText: form.addressText.trim(),
-            notes: form.notes.trim(),
+            addressText: finalAddress,
+            notes: `${orderType === 'pickup' ? '[RETIRADA NO BALCÃO] ' : '[ENTREGA] '}${form.notes.trim()}`,
             paymentMethod: form.paymentMethod,
             changeFor: form.paymentMethod === 'cash' && form.changeFor ? Number(form.changeFor) * 100 : undefined,
             taxId: form.taxId.replace(/\D/g, ''),
@@ -151,38 +227,11 @@ export default function CheckoutPage() {
                 const data = await res.json();
                 clearCart();
 
-                // 🚀 Phase 62: Persist context for personalization
                 try {
                     localStorage.setItem('customer_name', form.name.trim());
-                    if (items.length > 0) {
-                        const lastOrderDetails = {
-                            id: items[0].menuItemId,
-                            name: items[0].name
-                        };
-                        localStorage.setItem('last_order_details', JSON.stringify(lastOrderDetails));
-                    }
-                } catch (e) { console.error('Failed to save personalization data', e); }
+                } catch { }
 
-                // 🚀 Phase 67: Trigger Purchase Events for Marketing Pixels
-                if (typeof window !== 'undefined') {
-                    try {
-                        const revenue = (totalCents / 100).toFixed(2);
-                        if ((window as any).fbq) {
-                            (window as any).fbq('track', 'Purchase', { currency: 'BRL', value: revenue });
-                        }
-                        if ((window as any).gtag) {
-                            (window as any).gtag('event', 'purchase', { currency: 'BRL', value: revenue, transaction_id: data.id });
-                        }
-                        if ((window as any).ttq) {
-                            (window as any).ttq.track('CompletePayment', {
-                                contents: items.map(i => ({ content_id: i.menuItemId, content_name: i.name, quantity: i.qty, price: i.price_cents / 100 })),
-                                value: revenue, currency: 'BRL'
-                            });
-                        }
-                    } catch (e) { console.warn('Pixel tracking failed', e); }
-                }
-
-                // PIX: persist QR data in sessionStorage, then redirect to /pix/[id]
+                // PIX: salva sessão e vai para a tela de QR code
                 if (form.paymentMethod === 'pix' && (data.pix_qr_code || data.payment_reference)) {
                     const pixSession = {
                         orderId: data.id,
@@ -196,15 +245,13 @@ export default function CheckoutPage() {
                     try {
                         localStorage.setItem('tenant_slug', slug);
                         sessionStorage.setItem(`pix_${data.id}`, JSON.stringify(pixSession));
-                    } catch {
-                        /* ignore storage quota errors */
-                    }
+                    } catch { }
                     router.push(`/pix/${data.id}`);
                 } else if (data.payment_url) {
                     // Mercado Pago Checkout Pro (Cartão de Crédito / Débito)
                     window.location.href = data.payment_url;
                 } else {
-                    // Cash/other: go directly to order tracking
+                    // Dinheiro ou outro: vai direto para o acompanhamento
                     router.push(`/order/${data.id}?method=${form.paymentMethod}`);
                 }
             } else {
@@ -227,6 +274,31 @@ export default function CheckoutPage() {
                     <h2 className="text-xl font-black text-gray-800">Finalizar Pedido</h2>
                 </div>
 
+                {/* Seletor de Tipo de Pedido: Entrega vs Retirada */}
+                <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 rounded-2xl mb-5">
+                    <button
+                        type="button"
+                        onClick={() => setOrderType('delivery')}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all ${orderType === 'delivery'
+                            ? 'bg-white text-purple-700 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                        <span>🛵</span>
+                        <span>Receber em Casa</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setOrderType('pickup')}
+                        className={`flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all ${orderType === 'pickup'
+                            ? 'bg-white text-emerald-700 shadow-sm'
+                            : 'text-gray-500 hover:text-gray-800'}`}
+                    >
+                        <span>🛍️</span>
+                        <span>Retirar no Local</span>
+                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">Grátis</span>
+                    </button>
+                </div>
+
                 {/* Global error */}
                 {error && (
                     <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 mb-4 text-sm font-medium" role="alert">
@@ -239,7 +311,7 @@ export default function CheckoutPage() {
 
                     {/* Personal Info */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-700 mb-3 text-xs uppercase tracking-widest">👤 Dados Pessoais</h3>
+                        <h3 className="font-bold text-gray-700 mb-3 text-xs uppercase tracking-widest">👤 Seus Dados</h3>
                         <div className="flex flex-col gap-3">
                             <input
                                 type="text"
@@ -252,7 +324,7 @@ export default function CheckoutPage() {
                             />
                             <input
                                 type="tel"
-                                placeholder="Telefone / WhatsApp com DDD *"
+                                placeholder="WhatsApp com DDD (ex: 11 99999-9999) *"
                                 required
                                 autoComplete="tel"
                                 className="border border-gray-200 rounded-lg p-3 w-full outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 text-sm transition"
@@ -272,24 +344,117 @@ export default function CheckoutPage() {
                         </div>
                     </div>
 
-                    {/* Address */}
-                    <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-700 mb-3 text-xs uppercase tracking-widest">📍 Endereço de Entrega</h3>
-                        <textarea
-                            required
-                            rows={3}
-                            placeholder="Rua, Número, Bairro, Complemento... *"
-                            autoComplete="street-address"
-                            className="border border-gray-200 rounded-lg p-3 w-full outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 resize-none text-sm transition"
-                            value={form.addressText}
-                            onChange={e => setForm({ ...form, addressText: e.target.value })}
-                        />
-                    </div>
+                    {/* Se for Retirada no Balcão */}
+                    {orderType === 'pickup' ? (
+                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
+                            <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
+                                <span>🏬</span>
+                                <span>Retirada no Balcão da Loja</span>
+                            </div>
+                            <p className="text-xs text-emerald-700 leading-relaxed font-medium">
+                                Você retira seu pedido diretamente na loja assim que estiver pronto. Avisaremos pelo WhatsApp!
+                            </p>
+                            <div className="flex items-center gap-3 pt-2 text-xs font-bold text-emerald-900 border-t border-emerald-100">
+                                <span>⏱️ Tempo de preparo: ~20 a 30 min</span>
+                                <span className="bg-emerald-200 px-2 py-0.5 rounded-full text-[11px]">Taxa: R$ 0,00</span>
+                            </div>
+                        </div>
+                    ) : (
+                        /* Se for Entrega em Casa */
+                        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest">📍 Endereço de Entrega</h3>
+                                {deliveryInfo.distanceKm > 0 && (
+                                    <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
+                                        ~{deliveryInfo.distanceKm} km · {deliveryInfo.estimatedMinutes} min
+                                    </span>
+                                )}
+                            </div>
+
+                            {/* Campo CEP com cálculo */}
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    maxLength={9}
+                                    placeholder="Digite seu CEP (ex: 01310-100)"
+                                    className="flex-1 border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm font-medium"
+                                    value={form.cep}
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setForm({ ...form, cep: val });
+                                        if (val.replace(/\D/g, '').length === 8) {
+                                            handleCalculateDelivery(val);
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => handleCalculateDelivery(form.cep)}
+                                    disabled={cepLoading || form.cep.replace(/\D/g, '').length < 8}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 rounded-lg text-xs disabled:opacity-40 transition"
+                                >
+                                    {cepLoading ? 'Calculando...' : 'Calcular'}
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Rua / Avenida *"
+                                    required
+                                    className="col-span-2 border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
+                                    value={form.street}
+                                    onChange={e => setForm({ ...form, street: e.target.value })}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Número *"
+                                    required
+                                    className="border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
+                                    value={form.number}
+                                    onChange={e => setForm({ ...form, number: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Bairro"
+                                    className="border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
+                                    value={form.neighborhood}
+                                    onChange={e => setForm({ ...form, neighborhood: e.target.value })}
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Cidade"
+                                    className="border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
+                                    value={form.city}
+                                    onChange={e => setForm({ ...form, city: e.target.value })}
+                                />
+                            </div>
+
+                            <input
+                                type="text"
+                                placeholder="Complemento / Ponto de Referência (ex: Apto 12, Bloco B)"
+                                className="border border-gray-200 rounded-lg p-3 w-full outline-none focus:border-purple-500 text-sm"
+                                value={form.complement}
+                                onChange={e => setForm({ ...form, complement: e.target.value })}
+                            />
+
+                            {/* Informações da Rota / Taxa */}
+                            <div className="bg-purple-50 border border-purple-100 p-3 rounded-xl flex items-center justify-between text-xs">
+                                <span className="text-purple-900 font-semibold">🛵 Taxa calculada para seu endereço:</span>
+                                <span className="font-black text-purple-700 text-sm">
+                                    R$ {(deliveryInfo.feeCents / 100).toFixed(2).replace('.', ',')}
+                                </span>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Payment */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
                         <h3 className="font-bold text-gray-700 mb-3 text-xs uppercase tracking-widest">💳 Forma de Pagamento</h3>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                             {PAYMENT_METHODS.map(m => (
                                 <button
                                     key={m.value}
@@ -303,20 +468,6 @@ export default function CheckoutPage() {
                                     {m.label}
                                 </button>
                             ))}
-                            {walletBalance !== null && walletBalance > 0 && (
-                                <button
-                                    type="button"
-                                    onClick={() => setForm({ ...form, paymentMethod: 'wallet' })}
-                                    className={`flex flex-col items-center py-3 px-2 rounded-xl border-2 font-bold text-sm transition ${form.paymentMethod === 'wallet'
-                                        ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
-                                        : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'} ${walletBalance < totalCents ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                    disabled={walletBalance < totalCents}
-                                >
-                                    <span className="text-2xl mb-1">💜</span>
-                                    Carteira
-                                    <span className="text-[9px] font-normal leading-tight mt-1">Saldo: R$ {(walletBalance / 100).toFixed(2)}</span>
-                                </button>
-                            )}
                         </div>
                         <p className="text-xs text-gray-400 mt-2">
                             {PAYMENT_METHODS.find(m => m.value === form.paymentMethod)?.hint}
@@ -382,7 +533,7 @@ export default function CheckoutPage() {
 
                     {/* Order Summary */}
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 text-sm">
-                        <p className="font-bold text-gray-700 text-xs uppercase tracking-widest mb-2">🧾 Resumo</p>
+                        <p className="font-bold text-gray-700 text-xs uppercase tracking-widest mb-2">🧾 Resumo do Pedido</p>
                         {items.map(item => (
                             <div key={item.menuItemId} className="flex justify-between text-gray-600">
                                 <span>{item.qty}x {item.name}</span>
@@ -395,8 +546,10 @@ export default function CheckoutPage() {
                                 <span>R$ {(subtotalCents / 100).toFixed(2).replace('.', ',')}</span>
                             </div>
                             <div className="flex justify-between text-gray-500">
-                                <span>Taxa de entrega</span>
-                                <span>R$ {(deliveryFeeCents / 100).toFixed(2).replace('.', ',')}</span>
+                                <span>Entrega ({orderType === 'pickup' ? 'Retirada no Local' : `${deliveryInfo.distanceKm} km`})</span>
+                                <span className={orderType === 'pickup' ? 'text-emerald-600 font-bold' : ''}>
+                                    {orderType === 'pickup' ? 'Grátis' : `R$ ${(effectiveDeliveryFeeCents / 100).toFixed(2).replace('.', ',')}`}
+                                </span>
                             </div>
                             {coupon && (
                                 <div className="flex justify-between text-green-600 font-semibold">
