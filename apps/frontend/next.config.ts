@@ -16,6 +16,16 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "**" },
     ],
   },
+
+  // Rewrites para redirecionar chamadas /api para o backend local (porta 3002)
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "http://127.0.0.1:3002/api/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
