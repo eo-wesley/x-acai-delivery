@@ -294,8 +294,28 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
         const API = getApiBase();
 
+        const loadFromFallback = () => {
+            return fetch('/default-menu.json')
+                .then(r => r.json())
+                .then(items => {
+                    const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
+                    if (found) {
+                        setProduct({ ...found, option_groups: found.option_groups || [] });
+                        const initialSelections: Record<string, string[]> = {};
+                        (found.option_groups || []).forEach((group: OptionGroup) => {
+                            initialSelections[group.id] = [];
+                        });
+                        setSelections(initialSelections);
+                    }
+                })
+                .catch(() => {});
+        };
+
         fetch(`${API}/api/${slug}/menu/item/${id}`)
-            .then(r => r.json())
+            .then(async r => {
+                if (!r.ok) throw new Error('API offline');
+                return r.json();
+            })
             .then(data => {
                 if (data && data.id) {
                     setProduct(data);
@@ -308,18 +328,22 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 }
 
                 return fetch(`${API}/api/${slug}/menu`)
-                    .then(r => r.json())
+                    .then(async r => {
+                        if (!r.ok) throw new Error('API offline');
+                        return r.json();
+                    })
                     .then(items => {
                         const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
                         if (found) {
                             setProduct({ ...found, option_groups: [] });
                             setSelections({});
+                        } else {
+                            return loadFromFallback();
                         }
-                    });
+                    })
+                    .catch(() => loadFromFallback());
             })
-            .catch(() => {
-                // Leave fallback state handled below.
-            })
+            .catch(() => loadFromFallback())
             .finally(() => setLoading(false));
     }, [id, ready, slug]);
 
