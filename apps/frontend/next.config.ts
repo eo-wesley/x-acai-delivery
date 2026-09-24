@@ -5,9 +5,12 @@ const nextConfig: NextConfig = {
   // This creates a self-contained server with minimal dependencies
   output: "standalone",
 
+  // Desativa o botão vermelho do Turbopack / Next.js Dev Overlay
+  devIndicators: false,
+
   // Environment variables exposed to the browser
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000",
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "",
   },
 
   // Allow cross-origin image sources (for menu item images from external CDNs)

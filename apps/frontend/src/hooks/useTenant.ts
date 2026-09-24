@@ -90,5 +90,8 @@ export function useTenant() {
  * getApiBase — returns the backend API base URL
  */
 export function getApiBase(): string {
-    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+    if (typeof window !== 'undefined') {
+        return process.env.NEXT_PUBLIC_API_URL || '';
+    }
+    return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3002';
 }
