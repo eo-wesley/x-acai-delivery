@@ -200,8 +200,11 @@ export default function CheckoutPage() {
                         /* ignore storage quota errors */
                     }
                     router.push(`/pix/${data.id}`);
+                } else if (data.payment_url) {
+                    // Mercado Pago Checkout Pro (Cartão de Crédito / Débito)
+                    window.location.href = data.payment_url;
                 } else {
-                    // Cash/card: go directly to order tracking
+                    // Cash/other: go directly to order tracking
                     router.push(`/order/${data.id}?method=${form.paymentMethod}`);
                 }
             } else {

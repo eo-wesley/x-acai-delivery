@@ -35,19 +35,18 @@ export class MercadoPagoService {
                 unit_price: Number((totalCents / 100).toFixed(2))
             }];
 
-            const API_URL = env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
-            const webhookUrl = `${API_URL}/api/payments/mercadopago/webhook/mercadopago`;
+            const publicBase = (env.MP_WEBHOOK_URL ? env.MP_WEBHOOK_URL.split('/api/')[0] : '') || env.NEXT_PUBLIC_API_URL || 'https://x-acai-delivery.vercel.app';
+            const webhookUrl = env.MP_WEBHOOK_URL || `${publicBase}/api/payments/mercadopago/webhook/mercadopago`;
 
-            const payload = {
+            const payload: any = {
                 items: singleLineItem,
                 external_reference: orderId,
                 notification_url: webhookUrl,
                 back_urls: {
-                    success: `${API_URL}/order/${orderId}?payment=success`,
-                    failure: `${API_URL}/order/${orderId}?payment=failure`,
-                    pending: `${API_URL}/order/${orderId}?payment=pending`
-                },
-                auto_return: 'approved'
+                    success: `${publicBase}/order/${orderId}?payment=success`,
+                    failure: `${publicBase}/order/${orderId}?payment=failure`,
+                    pending: `${publicBase}/order/${orderId}?payment=pending`
+                }
             };
 
             const response = await fetch(this.apiUrl, {
