@@ -27,6 +27,7 @@ export default function CheckoutPage() {
         number: '',
         neighborhood: '',
         city: '',
+        state: '',
         complement: '',
         notes: '',
         paymentMethod: 'pix',
@@ -40,10 +41,13 @@ export default function CheckoutPage() {
         feeCents: number;
         distanceKm: number;
         estimatedMinutes: number;
+        verified: boolean;
+        quoteId?: string;
     }>({
-        feeCents: 500,
-        distanceKm: 2.5,
-        estimatedMinutes: 30,
+        feeCents: 0,
+        distanceKm: 0,
+        estimatedMinutes: 0,
+        verified: false,
     });
 
     const [error, setError] = useState('');
@@ -82,9 +86,27 @@ export default function CheckoutPage() {
     }, [slug]);
 
     // Buscar CEP e calcular rota/taxa
-    const handleCalculateDelivery = async (rawCep: string) => {
+    const resetDeliveryQuote = () => {
+        setDeliveryInfo({ feeCents: 0, distanceKm: 0, estimatedMinutes: 0, verified: false });
+    };
+
+    const updateAddressField = (field: 'cep' | 'street' | 'number' | 'neighborhood' | 'city' | 'state' | 'complement', value: string) => {
+        setForm(f => ({ ...f, [field]: value }));
+        resetDeliveryQuote();
+    };
+
+    const handleCalculateDelivery = async (rawCep: string = form.cep) => {
         const cleanCep = rawCep.replace(/\D/g, '');
-        if (cleanCep.length !== 8) return;
+        if (cleanCep.length !== 8) {
+            setError('Informe um CEP válido com 8 dígitos.');
+            resetDeliveryQuote();
+            return;
+        }
+        if (!form.street.trim() || !form.number.trim() || !form.neighborhood.trim() || !form.city.trim()) {
+            setError('Preencha CEP, rua, número, bairro e cidade antes de calcular.');
+            resetDeliveryQuote();
+            return;
+        }
 
         setCepLoading(true);
         setError('');
@@ -93,26 +115,43 @@ export default function CheckoutPage() {
             const res = await fetch(`${API}/api/${slug}/delivery/calculate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ cep: cleanCep, type: orderType }),
+                body: JSON.stringify({
+                    type: orderType,
+                    cep: cleanCep,
+                    street: form.street,
+                    number: form.number,
+                    neighborhood: form.neighborhood,
+                    city: form.city,
+                    state: form.state,
+                    complement: form.complement,
+                }),
             });
-            if (res.ok) {
-                const data = await res.json();
-                if (data.address) {
-                    setForm(f => ({
-                        ...f,
-                        street: data.address.street || f.street,
-                        neighborhood: data.address.neighborhood || f.neighborhood,
-                        city: data.address.city || f.city,
-                    }));
-                }
-                setDeliveryInfo({
-                    feeCents: data.feeCents,
-                    distanceKm: data.distanceKm,
-                    estimatedMinutes: data.estimatedMinutes,
-                });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                resetDeliveryQuote();
+                setError(data.error || 'Não foi possível confirmar esse endereço.');
+                return;
             }
+            setForm(f => ({
+                ...f,
+                cep: data.address?.cep || cleanCep,
+                street: data.address?.street || f.street,
+                neighborhood: data.address?.neighborhood || f.neighborhood,
+                city: data.address?.city || f.city,
+                state: data.address?.state || f.state,
+            }));
+            setDeliveryInfo({
+                feeCents: data.feeCents,
+                distanceKm: data.distanceKm,
+                estimatedMinutes: data.estimatedMinutes,
+                verified: data.verified === true,
+                quoteId: data.quoteId,
+            });
+            setError('');
         } catch (e) {
             console.error('Falha ao calcular taxa:', e);
+            resetDeliveryQuote();
+            setError('Não foi possível confirmar o endereço agora. Tente novamente.');
         } finally {
             setCepLoading(false);
         }
@@ -123,7 +162,7 @@ export default function CheckoutPage() {
     const [couponLoading, setCouponLoading] = useState(false);
     const [couponMsg, setCouponMsg] = useState('');
 
-    const effectiveDeliveryFeeCents = orderType === 'pickup' ? 0 : deliveryInfo.feeCents;
+    const effectiveDeliveryFeeCents = orderType === 'pickup' ? 0 : (deliveryInfo.verified ? deliveryInfo.feeCents : 0);
     const discountCents = coupon?.discountCents || 0;
     const totalCents = Math.max(0, subtotalCents + effectiveDeliveryFeeCents - discountCents);
 
@@ -183,8 +222,12 @@ export default function CheckoutPage() {
 
         let finalAddress = 'Retirada no Balcão (Loja)';
         if (orderType === 'delivery') {
-            if (!form.street.trim() || !form.number.trim()) {
-                setError('Informe a rua e o número para entrega.');
+            if (!form.cep.trim() || !form.street.trim() || !form.number.trim() || !form.neighborhood.trim() || !form.city.trim()) {
+                setError('Informe CEP, rua, número, bairro e cidade para entrega.');
+                return;
+            }
+            if (!deliveryInfo.verified) {
+                setError('Clique em “Calcular” para confirmar o endereço e a rota antes de finalizar.');
                 return;
             }
             finalAddress = `${form.street.trim()}, ${form.number.trim()}${form.complement.trim() ? ' - ' + form.complement.trim() : ''}${form.neighborhood.trim() ? ', ' + form.neighborhood.trim() : ''}${form.city.trim() ? ' - ' + form.city.trim() : ''}${form.cep.trim() ? ' (CEP: ' + form.cep.trim() + ')' : ''}`;
@@ -210,6 +253,16 @@ export default function CheckoutPage() {
             couponCode: coupon?.code,
             totalCents,
             addressText: finalAddress,
+            orderType,
+            deliveryAddress: orderType === 'delivery' ? {
+                cep: form.cep,
+                street: form.street,
+                number: form.number,
+                neighborhood: form.neighborhood,
+                city: form.city,
+                state: form.state,
+                complement: form.complement,
+            } : undefined,
             notes: `${orderType === 'pickup' ? '[RETIRADA NO BALCÃO] ' : '[ENTREGA] '}${form.notes.trim()}`,
             paymentMethod: form.paymentMethod,
             changeFor: form.paymentMethod === 'cash' && form.changeFor ? Number(form.changeFor) * 100 : undefined,
@@ -377,20 +430,15 @@ export default function CheckoutPage() {
                                     type="text"
                                     maxLength={9}
                                     placeholder="Digite seu CEP (ex: 01310-100)"
+                                    required
                                     className="flex-1 border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm font-medium"
                                     value={form.cep}
-                                    onChange={e => {
-                                        const val = e.target.value;
-                                        setForm({ ...form, cep: val });
-                                        if (val.replace(/\D/g, '').length === 8) {
-                                            handleCalculateDelivery(val);
-                                        }
-                                    }}
+                                    onChange={e => updateAddressField('cep', e.target.value)}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => handleCalculateDelivery(form.cep)}
-                                    disabled={cepLoading || form.cep.replace(/\D/g, '').length < 8}
+                                    disabled={cepLoading || form.cep.replace(/\D/g, '').length !== 8}
                                     className="bg-purple-600 hover:bg-purple-700 text-white font-bold px-4 rounded-lg text-xs disabled:opacity-40 transition"
                                 >
                                     {cepLoading ? 'Calculando...' : 'Calcular'}
@@ -404,7 +452,7 @@ export default function CheckoutPage() {
                                     required
                                     className="col-span-2 border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
                                     value={form.street}
-                                    onChange={e => setForm({ ...form, street: e.target.value })}
+                                    onChange={e => updateAddressField('street', e.target.value)}
                                 />
                                 <input
                                     type="text"
@@ -412,41 +460,55 @@ export default function CheckoutPage() {
                                     required
                                     className="border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
                                     value={form.number}
-                                    onChange={e => setForm({ ...form, number: e.target.value })}
+                                    onChange={e => updateAddressField('number', e.target.value)}
                                 />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                                 <input
                                     type="text"
-                                    placeholder="Bairro"
+                                    placeholder="Bairro *"
+                                    required
                                     className="border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
                                     value={form.neighborhood}
-                                    onChange={e => setForm({ ...form, neighborhood: e.target.value })}
+                                    onChange={e => updateAddressField('neighborhood', e.target.value)}
                                 />
                                 <input
                                     type="text"
-                                    placeholder="Cidade"
+                                    placeholder="Cidade *"
+                                    required
                                     className="border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm"
                                     value={form.city}
-                                    onChange={e => setForm({ ...form, city: e.target.value })}
+                                    onChange={e => updateAddressField('city', e.target.value)}
                                 />
                             </div>
+
+                            <input
+                                type="text"
+                                placeholder="UF"
+                                readOnly
+                                className="border border-gray-200 bg-gray-50 rounded-lg p-3 w-24 outline-none text-sm"
+                                value={form.state}
+                            />
 
                             <input
                                 type="text"
                                 placeholder="Complemento / Ponto de Referência (ex: Apto 12, Bloco B)"
                                 className="border border-gray-200 rounded-lg p-3 w-full outline-none focus:border-purple-500 text-sm"
                                 value={form.complement}
-                                onChange={e => setForm({ ...form, complement: e.target.value })}
+                                onChange={e => updateAddressField('complement', e.target.value)}
                             />
 
                             {/* Informações da Rota / Taxa */}
-                            <div className="bg-purple-50 border border-purple-100 p-3 rounded-xl flex items-center justify-between text-xs">
-                                <span className="text-purple-900 font-semibold">🛵 Taxa calculada para seu endereço:</span>
-                                <span className="font-black text-purple-700 text-sm">
-                                    R$ {(deliveryInfo.feeCents / 100).toFixed(2).replace('.', ',')}
+                            <div className={`border p-3 rounded-xl flex items-center justify-between text-xs ${deliveryInfo.verified ? 'bg-green-50 border-green-200' : 'bg-purple-50 border-purple-100'}`}>
+                                <span className={deliveryInfo.verified ? 'text-green-800 font-semibold' : 'text-purple-900 font-semibold'}>
+                                    {deliveryInfo.verified ? '✅ Endereço e rota confirmados:' : '🛵 Preencha o endereço e clique em Calcular'}
                                 </span>
+                                {deliveryInfo.verified && (
+                                    <span className="font-black text-green-700 text-sm">
+                                        R$ {(deliveryInfo.feeCents / 100).toFixed(2).replace('.', ',')}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     )}
@@ -546,7 +608,7 @@ export default function CheckoutPage() {
                                 <span>R$ {(subtotalCents / 100).toFixed(2).replace('.', ',')}</span>
                             </div>
                             <div className="flex justify-between text-gray-500">
-                                <span>Entrega ({orderType === 'pickup' ? 'Retirada no Local' : `${deliveryInfo.distanceKm} km`})</span>
+                                <span>Entrega ({orderType === 'pickup' ? 'Retirada no Local' : (deliveryInfo.verified ? `${deliveryInfo.distanceKm} km` : 'aguardando confirmação')})</span>
                                 <span className={orderType === 'pickup' ? 'text-emerald-600 font-bold' : ''}>
                                     {orderType === 'pickup' ? 'Grátis' : `R$ ${(effectiveDeliveryFeeCents / 100).toFixed(2).replace('.', ',')}`}
                                 </span>

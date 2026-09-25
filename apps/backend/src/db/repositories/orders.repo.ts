@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { customersRepo } from './customers.repo';
 import { recipesRepo } from './recipes.repo';
 import { inventoryRepo } from './inventory.repo';
+import type { VerifiedDeliveryAddress } from '../../services/delivery-quote.service';
 
 export interface OrderItemInput {
     menuItemId: string;
@@ -22,6 +23,7 @@ export interface CreateOrderInput {
     deliveryFeeCents: number;
     totalCents: number;
     addressText: string;
+    deliveryAddress?: VerifiedDeliveryAddress;
     notes?: string;
     paymentMethod?: string;
     source?: string;
@@ -49,8 +51,11 @@ export class OrdersRepo {
 
         await db.run(
             `INSERT INTO orders 
-            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text, notes, payment_status, payment_provider, payment_method, customer_name, customer_phone, restaurant_id, source, external_id, tax_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text,
+             delivery_cep, delivery_street, delivery_number, delivery_complement, delivery_neighborhood,
+             delivery_city, delivery_state, delivery_lat, delivery_lng, delivery_distance_km, delivery_address_verified,
+             notes, payment_status, payment_provider, payment_method, customer_name, customer_phone, restaurant_id, source, external_id, tax_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 finalCustomerId,
@@ -60,6 +65,17 @@ export class OrdersRepo {
                 input.deliveryFeeCents,
                 input.totalCents,
                 input.addressText,
+                input.deliveryAddress?.cep || null,
+                input.deliveryAddress?.street || null,
+                input.deliveryAddress?.number || null,
+                input.deliveryAddress?.complement || null,
+                input.deliveryAddress?.neighborhood || null,
+                input.deliveryAddress?.city || null,
+                input.deliveryAddress?.state || null,
+                input.deliveryAddress?.latitude ?? null,
+                input.deliveryAddress?.longitude ?? null,
+                input.deliveryAddress?.distanceKm ?? null,
+                input.deliveryAddress ? 1 : 0,
                 input.notes || null,
                 'pending_payment',
                 'mercadopago_mock',

@@ -43,7 +43,9 @@ restaurantsRouter.patch('/admin/restaurant/config', adminAuthMiddleware, tenantM
             'name', 'phone', 'email', 'description', 'address',
             'whatsapp', 'logo_url', 'banner_url', 'primary_color',
             'secondary_color', 'store_status', 'prep_time_minutes',
-            'delivery_fee_cents', 'min_order_cents', 'custom_domain',
+            'delivery_fee_cents', 'delivery_included_km', 'delivery_fee_per_km_cents',
+            'delivery_max_distance_km', 'delivery_origin_lat', 'delivery_origin_lng',
+            'min_order_cents', 'custom_domain',
             'theme_id', 'font_family', 'facebook_pixel_id',
             'google_analytics_id', 'tiktok_pixel_id'
         ];

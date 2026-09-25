@@ -8,6 +8,7 @@ import { eventBus } from '../core/eventBus';
 import { loyaltyRepo } from '../db/repositories/loyalty.repo';
 import { PricingService } from '../services/pricing.service';
 import { menuRepo } from '../db/repositories/menu.repo';
+import { DeliveryQuoteError, deliveryQuoteService } from '../services/delivery-quote.service';
 
 export const ordersRouter = Router();
 
@@ -32,6 +33,16 @@ const createOrderSchema = z.object({
     deliveryFeeCents: z.number().nonnegative(),
     totalCents: z.number().nonnegative(),
     addressText: z.string(),
+    orderType: z.enum(['delivery', 'pickup']).optional(),
+    deliveryAddress: z.object({
+        cep: z.string(),
+        street: z.string(),
+        number: z.string(),
+        neighborhood: z.string(),
+        city: z.string(),
+        state: z.string().optional(),
+        complement: z.string().optional(),
+    }).optional(),
     notes: z.string().optional(),
     paymentMethod: z.enum(['pix', 'card', 'cash', 'wallet']).optional().default('pix'),
     restaurantId: z.string().optional(),
@@ -199,7 +210,7 @@ ordersRouter.post('/orders', async (req, res) => {
 // ─── Delivery & Route Calculation ──────────────────────────────────────────
 const handleDeliveryCalculation = async (req: any, res: any) => {
     try {
-        const { cep, type, address } = req.body;
+        const { type } = req.body;
 
         if (type === 'pickup') {
             return res.json({
@@ -210,55 +221,29 @@ const handleDeliveryCalculation = async (req: any, res: any) => {
                 message: 'Retirada no balcão sem taxa de entrega.'
             });
         }
-
-        const cleanCep = (cep || '').replace(/\D/g, '');
-        let street = '';
-        let neighborhood = '';
-        let city = '';
-        let state = '';
-        let distanceKm = 2.5;
-
-        if (cleanCep.length === 8) {
-            try {
-                const viaCepRes = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal: AbortSignal.timeout(5000) });
-                if (viaCepRes.ok) {
-                    const viaCepData = await viaCepRes.json();
-                    if (!viaCepData.erro) {
-                        street = viaCepData.logradouro || '';
-                        neighborhood = viaCepData.bairro || '';
-                        city = viaCepData.localidade || '';
-                        state = viaCepData.uf || '';
-
-                        const cepNum = parseInt(cleanCep.substring(0, 5), 10);
-                        const seed = (cepNum % 100) / 10;
-                        distanceKm = Math.max(1.2, Number((2.0 + (seed % 6)).toFixed(1)));
-                    }
-                }
-            } catch (e) {
-                console.warn('[ViaCEP] Error fetching CEP:', e);
-            }
-        }
-
-        const baseFeeCents = 500;
-        const extraKm = Math.max(0, distanceKm - 3);
-        const feeCents = Math.round(baseFeeCents + (extraKm * 150));
-        const estimatedMinutes = Math.round(25 + (distanceKm * 3));
-
+        const tenantId = req.tenantId || 'default_tenant';
+        const quote = await deliveryQuoteService.calculate(tenantId, req.body);
         res.json({
             type: 'delivery',
-            feeCents,
-            distanceKm,
-            estimatedMinutes,
+            feeCents: quote.feeCents,
+            distanceKm: quote.distanceKm,
+            estimatedMinutes: quote.estimatedMinutes,
+            quoteId: quote.quoteId,
+            expiresAt: quote.expiresAt,
+            verified: true,
             address: {
-                street,
-                neighborhood,
-                city,
-                state,
-                cep: cleanCep
-            }
+                street: quote.street,
+                number: quote.number,
+                neighborhood: quote.neighborhood,
+                city: quote.city,
+                state: quote.state,
+                cep: quote.cep,
+            },
         });
     } catch (e: any) {
-        res.status(500).json({ error: e.message });
+        if (e instanceof DeliveryQuoteError) return res.status(e.statusCode).json({ error: e.message });
+        console.error('[DeliveryQuote] Unexpected error:', e);
+        res.status(500).json({ error: 'Falha ao calcular a entrega.' });
     }
 };
 
@@ -273,9 +258,27 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
         const paymentMethod = (req.body.paymentMethod as string) || 'pix';
         const discountCents = Number(req.body.discountCents) || 0;
         const couponCode = req.body.couponCode;
+        const orderType = data.orderType || (data.deliveryAddress ? 'delivery' : 'pickup');
+
+        let verifiedAddress;
+        if (orderType === 'delivery') {
+            if (!data.deliveryAddress) {
+                return res.status(422).json({ error: 'Confirme o endereço completo pelo CEP antes de finalizar.' });
+            }
+            try {
+                // Recalculate on the server. The browser fee, distance and total are
+                // display-only and are never trusted for the order record/payment.
+                verifiedAddress = await deliveryQuoteService.calculate(tenantId, data.deliveryAddress);
+            } catch (e: any) {
+                if (e instanceof DeliveryQuoteError) return res.status(e.statusCode).json({ error: e.message });
+                throw e;
+            }
+        }
 
         // Apply Dynamic Pricing (Surge & Happy Hour)
-        const surge = await PricingService.calculateDeliveryFee(tenantId, data.deliveryFeeCents);
+        const surge = orderType === 'delivery'
+            ? await PricingService.calculateDeliveryFee(tenantId, verifiedAddress!.feeCents)
+            : { finalFeeCents: 0, isSurge: false };
         const finalDeliveryFee = surge.finalFeeCents;
 
         const processedItems = await Promise.all(data.items.map(async (i) => {
@@ -294,7 +297,10 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
         }));
 
         const finalSubtotal = processedItems.reduce((sum, i) => sum + (i.unitPriceCents * i.qty), 0);
-        const finalTotal = finalSubtotal + finalDeliveryFee - discountCents;
+        const finalTotal = Math.max(0, finalSubtotal + finalDeliveryFee - Math.max(0, discountCents));
+        const finalAddress = verifiedAddress
+            ? deliveryQuoteService.formatAddress(verifiedAddress)
+            : 'Retirada no Balcão (Loja)';
 
         const order = await ordersRepo.createOrder({
             ...data,
@@ -302,6 +308,8 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             deliveryFeeCents: finalDeliveryFee,
             subtotalCents: finalSubtotal,
             totalCents: finalTotal,
+            addressText: finalAddress,
+            deliveryAddress: verifiedAddress,
             restaurantId: tenantId,
             paymentMethod,
         });
@@ -321,7 +329,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
 
         if (paymentMethod === 'wallet') {
             const balance = await loyaltyRepo.getWalletBalance(tenantId, order.customer_id);
-            if (balance < data.totalCents) {
+            if (balance < finalTotal) {
                 // We should probably cancel the order here or throw an error before creation
                 // But for now, let's just mark it as pending and return an error
                 await db.run(`UPDATE orders SET status = 'cancelled' WHERE id = ?`, [order.id]);
@@ -331,7 +339,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             await loyaltyRepo.updateWalletBalance(
                 tenantId,
                 order.customer_id,
-                data.totalCents,
+                finalTotal,
                 'debit',
                 `Pagamento do pedido ${order.id.substring(0, 8)}`,
                 order.id
@@ -353,7 +361,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
                 totalCents: finalTotal,
                 extra: {
                     paymentMethod,
-                    addressText: data.addressText,
+                    addressText: finalAddress,
                     items: processedItems,
                 }
             });
@@ -375,7 +383,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             (order as any).payment_reference = pixInfo.paymentId;
             (order as any).pix_expires_at = pixInfo.expiresAt;
         } else if (paymentMethod === 'card') {
-            const checkoutUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
+            const checkoutUrl = await mercadoPagoService.createPreference(order.id, finalTotal, processedItems);
             (order as any).payment_url = checkoutUrl;
         }
 
@@ -387,7 +395,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             customerName: data.customerName,
             totalCents: finalTotal,
             paymentMethod,
-            addressText: data.addressText,
+            addressText: finalAddress,
             items: processedItems,
         });
 
