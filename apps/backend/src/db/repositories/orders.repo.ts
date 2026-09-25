@@ -55,7 +55,7 @@ export class OrdersRepo {
              delivery_cep, delivery_street, delivery_number, delivery_complement, delivery_neighborhood,
              delivery_city, delivery_state, delivery_lat, delivery_lng, delivery_distance_km, delivery_address_verified,
              notes, payment_status, payment_provider, payment_method, customer_name, customer_phone, restaurant_id, source, external_id, tax_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
                 finalCustomerId,

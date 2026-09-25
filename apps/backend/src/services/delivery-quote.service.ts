@@ -61,6 +61,16 @@ function clean(value: unknown): string {
     return String(value ?? '').trim();
 }
 
+function parseCoordinate(value: unknown, maximum: number): number | undefined {
+    // Number(null) and Number('') are zero, but neither is a configured point.
+    if (typeof value !== 'number' && typeof value !== 'string') return undefined;
+    if (typeof value === 'string' && !value.trim()) return undefined;
+    const coordinate = Number(value);
+    return Number.isFinite(coordinate) && Math.abs(coordinate) <= maximum
+        ? coordinate
+        : undefined;
+}
+
 function normalize(value: unknown): string {
     return clean(value)
         .normalize('NFD')
@@ -139,10 +149,10 @@ async function geocode(query: string): Promise<GeocodedPoint> {
         'Geocodificador',
     );
 
-    const result = data[0];
-    const latitude = Number(result?.lat);
-    const longitude = Number(result?.lon);
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+    const result = Array.isArray(data) ? data[0] : undefined;
+    const latitude = parseCoordinate(result?.lat, 90);
+    const longitude = parseCoordinate(result?.lon, 180);
+    if (latitude === undefined || longitude === undefined) {
         throw new DeliveryQuoteError('Não consegui localizar esse número nessa rua. Confira rua, número e CEP.');
     }
 
@@ -198,8 +208,8 @@ export class DeliveryQuoteService {
             delivery_included_km?: number;
             delivery_fee_per_km_cents?: number;
             delivery_max_distance_km?: number;
-            delivery_origin_lat?: number;
-            delivery_origin_lng?: number;
+            delivery_origin_lat?: number | string | null;
+            delivery_origin_lng?: number | string | null;
         }>(
             `SELECT address, city, prep_time_minutes, delivery_fee_cents,
                     delivery_included_km, delivery_fee_per_km_cents,
@@ -215,10 +225,12 @@ export class DeliveryQuoteService {
         );
 
         let origin: GeocodedPoint;
-        if (Number.isFinite(Number(restaurant.delivery_origin_lat)) && Number.isFinite(Number(restaurant.delivery_origin_lng))) {
+        const originLatitude = parseCoordinate(restaurant.delivery_origin_lat, 90);
+        const originLongitude = parseCoordinate(restaurant.delivery_origin_lng, 180);
+        if (originLatitude !== undefined && originLongitude !== undefined) {
             origin = {
-                latitude: Number(restaurant.delivery_origin_lat),
-                longitude: Number(restaurant.delivery_origin_lng),
+                latitude: originLatitude,
+                longitude: originLongitude,
             };
         } else {
             const storeAddress = clean(restaurant.address);
