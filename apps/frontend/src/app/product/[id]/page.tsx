@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCart, buildCartKey, SelectedOption } from '../../../components/CartContext';
 import { useTenant, getApiBase } from '../../../hooks/useTenant';
+import { buildPromotionOptionGroups } from '../../../lib/promotion-options';
 
 interface OptionItem {
     id: string;
@@ -82,6 +83,8 @@ function fallbackOptions(scope: string, values: readonly (readonly [string, numb
 }
 
 function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'category'>): OptionGroup[] {
+    const promotionGroups = buildPromotionOptionGroups(product);
+    if (promotionGroups.length > 0) return promotionGroups;
     const category = (product.category || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const name = product.name || '';
     const normalizedName = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
@@ -295,11 +298,11 @@ function GroupSelector({
                 ) : null}
             </div>
 
-            <div className="divide-y divide-gray-50">
+            <div className="divide-y divide-gray-50" role={isSingle ? 'radiogroup' : 'group'} aria-label={group.name}>
                 {group.options.map(opt => {
                     const optionCount = selectedCounts[opt.id] || 0;
                     const isSelected = optionCount > 0;
-                    const disabled = !isSelected && limitReached;
+                    const disabled = !isSingle && !isSelected && limitReached;
                     const canIncrement = allowUnlimited || maxSelect <= 0 || selectionCount < maxSelect;
 
                     if (isSingle) {
@@ -307,6 +310,8 @@ function GroupSelector({
                             <button
                                 key={opt.id}
                                 type="button"
+                                role="radio"
+                                aria-checked={isSelected}
                                 onClick={() => toggleSingle(opt.id)}
                                 disabled={disabled}
                                 className={`flex w-full items-center justify-between gap-4 px-4 py-3 text-left transition ${
@@ -331,8 +336,8 @@ function GroupSelector({
                                         </p>
                                     </div>
                                 </div>
-                                <span className={`text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
-                                    {formatOptionPrice(opt.price_cents)}
+                                <span className={`shrink-0 whitespace-nowrap text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
+                                    {opt.price_cents === 0 && /tamanho/i.test(group.name) ? 'Incluso' : formatOptionPrice(opt.price_cents)}
                                 </span>
                             </button>
                         );
@@ -357,8 +362,11 @@ function GroupSelector({
                                         {optionCount > 0 ? optionCount : '+'}
                                     </div>
                                     <div className="min-w-0">
-                                        <p className={`truncate text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
+                                        <p className={`break-words text-sm font-semibold ${isSelected ? 'text-purple-700' : 'text-gray-800'}`}>
                                             {opt.name}
+                                        </p>
+                                        <p className={`mt-1 text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
+                                            {formatOptionPrice(opt.price_cents)}
                                         </p>
                                         {optionCount > 1 ? (
                                             <p className="text-xs font-bold uppercase tracking-wide text-purple-500">
@@ -370,9 +378,6 @@ function GroupSelector({
                             </div>
 
                             <div className="flex flex-shrink-0 items-center gap-3">
-                                <span className={`text-sm font-black ${opt.price_cents > 0 ? 'text-gray-700' : 'text-gray-400'}`}>
-                                    {formatOptionPrice(opt.price_cents)}
-                                </span>
                                 <div className="flex items-center rounded-2xl border border-gray-200 bg-white p-1 shadow-sm">
                                     <button
                                         type="button"
@@ -414,6 +419,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     const [product, setProduct] = useState<Product | null>(null);
     const [qty, setQty] = useState(1);
     const [notes, setNotes] = useState('');
+    const [descriptionExpanded, setDescriptionExpanded] = useState(false);
     const [loading, setLoading] = useState(true);
     const [added, setAdded] = useState(false);
     const [selections, setSelections] = useState<Record<string, string[]>>({});
@@ -610,9 +616,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     <section className="space-y-4">
                         <div>
                             <h1 className="text-3xl font-black leading-tight text-gray-900">{product.name}</h1>
-                            <p className="mt-2 text-base leading-relaxed text-gray-500">
+                            <p id="product-description" className={`mt-2 whitespace-pre-line text-base leading-relaxed text-gray-500 ${descriptionExpanded ? '' : 'line-clamp-3'}`}>
                                 {product.description || 'Monte seu pedido com os complementos disponiveis abaixo.'}
                             </p>
+                            {(product.description?.length || 0) > 200 ? (
+                                <button type="button" aria-expanded={descriptionExpanded} aria-controls="product-description" onClick={() => setDescriptionExpanded(current => !current)} className="mt-2 text-sm font-bold text-purple-700">
+                                    {descriptionExpanded ? 'Recolher descrição' : 'Ler descrição completa'}
+                                </button>
+                            ) : null}
                         </div>
 
                         <div className="rounded-3xl border border-purple-100 bg-purple-50 p-6">
@@ -620,7 +631,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                             <p className="mt-1 text-4xl font-black text-purple-700">{formatCurrency(product.price_cents)}</p>
                             {optionGroups.length > 0 ? (
                                 <p className="mt-3 text-sm font-medium text-purple-700/80">
-                                    Todos os acompanhamentos e adicionais estao nesta tela.
+                                    Escolha suas opções abaixo. O valor é atualizado a cada escolha.
                                 </p>
                             ) : null}
                         </div>
@@ -630,7 +641,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         <section className="space-y-4">
                             <div className="flex items-center justify-between gap-3">
                                 <div>
-                                    <h2 className="text-lg font-black text-gray-900">Complementos e adicionais</h2>
+                                    <h2 className="text-lg font-black text-gray-900">Personalize seu pedido</h2>
                                     <p className="text-sm text-gray-500">Selecione tudo o que quiser antes de adicionar ao carrinho.</p>
                                 </div>
                                 <div className="rounded-2xl bg-gray-100 px-3 py-2 text-right">
@@ -697,15 +708,15 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                                     Base: {formatCurrency(product.price_cents)}
                                 </p>
                                 <p className="mt-1 text-sm font-semibold text-gray-700">
-                                    Adicionais: {formatCurrency(modifierTotal)}
+                                    Opções selecionadas: {formatCurrency(modifierTotal)}
                                 </p>
                                 <p className="mt-1 text-sm font-semibold text-gray-700">
                                     Total por unidade: {formatCurrency(totalPerItem)}
                                 </p>
                             </div>
-                            <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+                            <div className="shrink-0 rounded-2xl bg-white px-3 py-3 text-right shadow-sm">
                                 <p className="text-xs font-black uppercase tracking-widest text-gray-400">Total</p>
-                                <p className="mt-1 text-xl font-black text-purple-700">{formatCurrency(totalWithQty)}</p>
+                                <p className="mt-1 whitespace-nowrap text-lg font-black text-purple-700">{formatCurrency(totalWithQty)}</p>
                             </div>
                         </div>
                     </section>
@@ -727,7 +738,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         type="button"
                         onClick={handleAdd}
                         disabled={!isValid || added}
-                        className={`flex w-full items-center justify-between rounded-2xl px-6 py-4 text-base font-black transition ${
+                        className={`flex w-full items-center justify-between gap-2 rounded-2xl px-4 py-4 text-sm font-black transition sm:text-base ${
                             added
                                 ? 'bg-green-500 text-white'
                                 : !isValid
@@ -740,7 +751,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         ) : (
                             <>
                                 <span>Adicionar ao carrinho</span>
-                                <span>{formatCurrency(totalWithQty)}</span>
+                                <span className="shrink-0 whitespace-nowrap">{formatCurrency(totalWithQty)}</span>
                             </>
                         )}
                     </button>
