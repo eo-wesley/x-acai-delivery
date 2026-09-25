@@ -74,7 +74,7 @@ export default function Home() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [store, setStore] = useState<StoreInfo | null>(null);
   const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState<string>(PUBLIC_CATEGORY_TABS[0].key);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerPoints, setCustomerPoints] = useState(0);
 
@@ -264,11 +264,6 @@ export default function Home() {
 
           {/* Categories Slider */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide snap-x">
-            <button key="all" onClick={() => { setCategory(''); setSearchTerm(''); }}
-              className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${category === '' ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
-                }`}>
-              Todos
-            </button>
             {categoryTabs.map(tab => (
               <button key={tab.key} onClick={() => { setCategory(tab.key); setSearchTerm(''); }}
                 className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${category === tab.key ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'

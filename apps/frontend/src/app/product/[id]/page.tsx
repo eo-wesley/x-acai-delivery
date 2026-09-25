@@ -39,6 +39,135 @@ const formatOptionPrice = (cents: number) =>
 const formatCurrency = (cents: number) =>
     `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
+const COMPLEMENT_OPTIONS = [
+    'Amendoim Torrado Granulado', 'Aveia', 'Banana', 'Bis',
+    'Cereal Ball Chocolate', 'Cereal Ball Mesclado', 'Cobertura De Caramelo',
+    'Cobertura De Chocolate', 'Cobertura De Morango', 'Cobertura Fini Bananas',
+    'Cobertura Fini Beijos', 'Cobertura Fini Dentaduras', 'Confete',
+    'Gotas De Chocolate', 'Granola', 'Granulado Brigadeiro', 'Granulado Colorido',
+    'Kiwi', 'Leite Condensado', 'Leite Em Pó', 'Morango', 'Ovomaltine',
+    'Ouro Branco', 'Paçoca',
+];
+
+const ADDITIONAL_OPTIONS = [
+    ['Amendoim Torrado Granulado', 400], ['Aveia', 400], ['Banana', 400], ['Bis', 400],
+    ['Cereal Ball Chocolate', 400], ['Cereal Ball Mesclado', 400], ['Cobertura De Caramelo', 400],
+    ['Cobertura De Chocolate', 400], ['Cobertura De Morango', 400], ['Cobertura Fini Bananas', 400],
+    ['Cobertura Fini Beijos', 400], ['Cobertura Fini Dentaduras', 400], ['Confete', 400],
+    ['Creme De Amendoim', 600], ['Creme De Avelã', 600], ['Creme De Bueno', 600],
+    ['Creme De Bombom', 600], ['Creme De Leitinho', 600], ['Creme De Morango', 600],
+    ['Gotas De Chocolate', 500], ['Granola', 400], ['Granulado Brigadeiro', 400],
+    ['Granulado Colorido', 400], ['Kit-Kat', 600], ['Kiwi', 500], ['Leite Condensado', 400],
+    ['Leite Em Pó', 400], ['Morango', 500], ['Nutella', 1000], ['Ovomaltine', 500],
+    ['Ouro Branco', 400], ['Paçoca', 400],
+] as const;
+
+const BEVERAGE_OPTIONS = [
+    ['Água Mineral Crystal com Gás 500ml', 700],
+    ['Água Mineral Crystal Sem Gás 500ml', 600],
+    ['Coca-Cola 350ml', 1000],
+    ['Pepsi 350ml', 1000],
+] as const;
+
+function fallbackId(scope: string, value: string) {
+    return `fallback-${scope}-${value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+}
+
+function fallbackOptions(scope: string, values: readonly (readonly [string, number])[] | string[]): OptionItem[] {
+    return values.map((value, index) => {
+        const name = Array.isArray(value) ? value[0] : value;
+        const price_cents = Array.isArray(value) ? value[1] : 0;
+        return { id: fallbackId(scope, name), name, price_cents, sort_order: index, available: 1 };
+    });
+}
+
+function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'category'>): OptionGroup[] {
+    const category = (product.category || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const name = product.name || '';
+    const normalizedName = name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const scope = product.id;
+    const beverageGroup: OptionGroup = {
+        id: fallbackId(scope, 'bebida'),
+        name: 'Vai uma Bebida?',
+        required: 0,
+        min_select: 0,
+        max_select: 1,
+        sort_order: 10,
+        options: fallbackOptions(`${scope}-bebida`, BEVERAGE_OPTIONS),
+    };
+
+    if (category.includes('monte') || /\d+\s*complementos/.test(normalizedName)) {
+        const freeCount = Number(name.match(/(\d+)\s*complementos/i)?.[1] || 0);
+        const placement = normalizedName.includes('marmitex')
+            ? 'Dentro Da Marmitex'
+            : normalizedName.includes('barca')
+                ? 'Dentro Da Barca'
+                : normalizedName.includes('roleta')
+                    ? 'Dentro Da Roleta'
+                    : 'Dentro Do Copo';
+
+        return [
+            {
+                id: fallbackId(scope, 'onde-vai'),
+                name: 'Onde vai?',
+                required: 1,
+                min_select: 1,
+                max_select: 1,
+                sort_order: 1,
+                options: fallbackOptions(`${scope}-onde`, [[placement, 0], ['Itens Separados', 500]]),
+            },
+            {
+                id: fallbackId(scope, 'complementos'),
+                name: `Complementos (escolha ${freeCount})`,
+                required: 1,
+                min_select: freeCount,
+                max_select: freeCount,
+                sort_order: 2,
+                options: fallbackOptions(`${scope}-complementos`, COMPLEMENT_OPTIONS),
+            },
+            {
+                id: fallbackId(scope, 'adicionais'),
+                name: 'Adicionais pagos',
+                required: 0,
+                min_select: 0,
+                max_select: 99,
+                sort_order: 3,
+                options: fallbackOptions(`${scope}-adicionais`, ADDITIONAL_OPTIONS),
+            },
+            beverageGroup,
+        ];
+    }
+
+    if (category.includes('combo') || normalizedName.includes('escolha 2')) {
+        return [
+            {
+                id: fallbackId(scope, 'copos'),
+                name: 'Escolha seus 2 Copos',
+                required: 1,
+                min_select: 2,
+                max_select: 2,
+                sort_order: 0,
+                options: fallbackOptions(`${scope}-copos`, [
+                    ['Açaí X-King Paçoca', 0], ['Açaí X-Splash', 0],
+                    ['Açaí X-Tradicional', 0], ['Açaí X-Paçoleite', 0],
+                ]),
+            },
+            beverageGroup,
+            {
+                id: fallbackId(scope, 'colher'),
+                name: 'Colher',
+                required: 1,
+                min_select: 1,
+                max_select: 1,
+                sort_order: 20,
+                options: fallbackOptions(`${scope}-colher`, [['Sim', 0], ['Não', 0]]),
+            },
+        ];
+    }
+
+    return [];
+}
+
 function buildGroupLabel(group: OptionGroup) {
     const required = Boolean(group.required);
     const minSelect = Number(group.min_select || 0);
@@ -300,9 +429,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 .then(items => {
                     const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
                     if (found) {
-                        setProduct({ ...found, option_groups: found.option_groups || [] });
+                        setProduct({ ...found, option_groups: found.option_groups?.length ? found.option_groups : buildFallbackOptionGroups(found) });
                         const initialSelections: Record<string, string[]> = {};
-                        (found.option_groups || []).forEach((group: OptionGroup) => {
+                        (found.option_groups?.length ? found.option_groups : buildFallbackOptionGroups(found)).forEach((group: OptionGroup) => {
                             initialSelections[group.id] = [];
                         });
                         setSelections(initialSelections);
@@ -318,9 +447,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             })
             .then(data => {
                 if (data && data.id) {
-                    setProduct(data);
+                    const optionGroups = data.option_groups?.length ? data.option_groups : buildFallbackOptionGroups(data);
+                    setProduct({ ...data, option_groups: optionGroups });
                     const initialSelections: Record<string, string[]> = {};
-                    (data.option_groups || []).forEach((group: OptionGroup) => {
+                    optionGroups.forEach((group: OptionGroup) => {
                         initialSelections[group.id] = [];
                     });
                     setSelections(initialSelections);
@@ -335,8 +465,11 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     .then(items => {
                         const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
                         if (found) {
-                            setProduct({ ...found, option_groups: [] });
-                            setSelections({});
+                            const optionGroups = found.option_groups?.length ? found.option_groups : buildFallbackOptionGroups(found);
+                            setProduct({ ...found, option_groups: optionGroups });
+                            const initialSelections: Record<string, string[]> = {};
+                            optionGroups.forEach((group: OptionGroup) => { initialSelections[group.id] = []; });
+                            setSelections(initialSelections);
                         } else {
                             return loadFromFallback();
                         }
