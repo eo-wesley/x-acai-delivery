@@ -82,6 +82,14 @@ function fallbackOptions(scope: string, values: readonly (readonly [string, numb
     });
 }
 
+function normalizeOptionLabel(value: string) {
+    return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function isMonteSeu(product: Pick<Product, 'name' | 'category'>) {
+    return normalizeOptionLabel(product.category || '').includes('monte') || /\d+\s*complementos/i.test(product.name);
+}
+
 function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'category'>): OptionGroup[] {
     const promotionGroups = buildPromotionOptionGroups(product);
     if (promotionGroups.length > 0) return promotionGroups;
@@ -99,7 +107,7 @@ function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'categ
         options: fallbackOptions(`${scope}-bebida`, BEVERAGE_OPTIONS),
     };
 
-    if (category.includes('monte') || /\d+\s*complementos/.test(normalizedName)) {
+    if (isMonteSeu(product)) {
         const freeCount = Number(name.match(/(\d+)\s*complementos/i)?.[1] || 0);
         const placement = normalizedName.includes('marmitex')
             ? 'Dentro Da Marmitex'
@@ -110,6 +118,16 @@ function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'categ
                     : 'Dentro Do Copo';
 
         return [
+            {
+                id: fallbackId(scope, 'massa'),
+                name: 'Vai o quê?',
+                required: 1,
+                min_select: 1,
+                max_select: 1,
+                sort_order: 0,
+                // Vídeo do Monte o Seu: 00:24 / 01:18, cupuaçu +R$5,00.
+                options: fallbackOptions(`${scope}-massa`, [['Açaí', 0], ['Cupuaçu', 500]]),
+            },
             {
                 id: fallbackId(scope, 'onde-vai'),
                 name: 'Onde vai?',
@@ -138,6 +156,15 @@ function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'categ
                 options: fallbackOptions(`${scope}-adicionais`, ADDITIONAL_OPTIONS),
             },
             beverageGroup,
+            {
+                id: fallbackId(scope, 'colher'),
+                name: 'Colher',
+                required: 1,
+                min_select: 1,
+                max_select: 1,
+                sort_order: /barca\s+m\b/.test(normalizedName) ? 4 : 20,
+                options: fallbackOptions(`${scope}-colher`, [['Sim', 0], ['Não', 0]]),
+            },
         ];
     }
 
@@ -169,6 +196,37 @@ function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'categ
     }
 
     return [];
+}
+
+function resolveProductOptionGroups(product: Pick<Product, 'id' | 'name' | 'category'> & { option_groups?: OptionGroup[] }): OptionGroup[] {
+    const groups = product.option_groups;
+    if (!groups?.length) return buildFallbackOptionGroups(product);
+    if (!isMonteSeu(product)) return groups;
+
+    // Algumas versões importadas já têm acompanhamentos, mas omitem a massa
+    // ou a colher. Completar apenas os dois grupos ausentes preserva os IDs,
+    // preços, opções e limites dos grupos que já vieram do cadastro.
+    const hasMass = groups.some(group => {
+        const label = normalizeOptionLabel(group.name);
+        return label.includes('massa') || label.includes('base') || label === 'vaioque'
+            || (group.options.some(option => normalizeOptionLabel(option.name) === 'acai')
+                && group.options.some(option => normalizeOptionLabel(option.name) === 'cupuacu'));
+    });
+    const hasSpoon = groups.some(group => /colher|talher/.test(normalizeOptionLabel(group.name)));
+    if (hasMass && hasSpoon) return groups;
+
+    const fallback = buildFallbackOptionGroups(product);
+    const firstOrder = Math.min(...groups.map(group => group.sort_order ?? 0));
+    const lastOrder = Math.max(...groups.map(group => group.sort_order ?? 0));
+    const beverage = groups.find(group => normalizeOptionLabel(group.name).includes('bebida'));
+    const spoonOrder = /barca\s+m\b/i.test(product.name) && beverage
+        ? (beverage.sort_order ?? 0) - 0.5
+        : lastOrder + 1;
+    return [
+        ...(!hasMass ? [{ ...fallback[0], sort_order: firstOrder - 1 }] : []),
+        ...groups,
+        ...(!hasSpoon ? [{ ...fallback[fallback.length - 1], sort_order: spoonOrder }] : []),
+    ];
 }
 
 function buildGroupLabel(group: OptionGroup) {
@@ -435,9 +493,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                 .then(items => {
                     const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
                     if (found) {
-                        setProduct({ ...found, option_groups: found.option_groups?.length ? found.option_groups : buildFallbackOptionGroups(found) });
+                        const optionGroups = resolveProductOptionGroups(found);
+                        setProduct({ ...found, option_groups: optionGroups });
                         const initialSelections: Record<string, string[]> = {};
-                        (found.option_groups?.length ? found.option_groups : buildFallbackOptionGroups(found)).forEach((group: OptionGroup) => {
+                        optionGroups.forEach((group: OptionGroup) => {
                             initialSelections[group.id] = [];
                         });
                         setSelections(initialSelections);
@@ -453,7 +512,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             })
             .then(data => {
                 if (data && data.id) {
-                    const optionGroups = data.option_groups?.length ? data.option_groups : buildFallbackOptionGroups(data);
+                    const optionGroups = resolveProductOptionGroups(data);
                     setProduct({ ...data, option_groups: optionGroups });
                     const initialSelections: Record<string, string[]> = {};
                     optionGroups.forEach((group: OptionGroup) => {
@@ -471,7 +530,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                     .then(items => {
                         const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
                         if (found) {
-                            const optionGroups = found.option_groups?.length ? found.option_groups : buildFallbackOptionGroups(found);
+                            const optionGroups = resolveProductOptionGroups(found);
                             setProduct({ ...found, option_groups: optionGroups });
                             const initialSelections: Record<string, string[]> = {};
                             optionGroups.forEach((group: OptionGroup) => { initialSelections[group.id] = []; });

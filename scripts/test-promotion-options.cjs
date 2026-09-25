@@ -19,7 +19,7 @@ function loadSource(relativePath, suffix = '', mocks = {}) {
 }
 
 const { buildPromotionOptionGroups } = loadSource('src/lib/promotion-options.ts');
-const { GroupSelector, buildFallbackOptionGroups } = loadSource('src/app/product/[id]/page.tsx', '\nexport { GroupSelector, buildFallbackOptionGroups };', {
+const { GroupSelector, buildFallbackOptionGroups, resolveProductOptionGroups } = loadSource('src/app/product/[id]/page.tsx', '\nexport { GroupSelector, buildFallbackOptionGroups, resolveProductOptionGroups };', {
     'next/navigation': {},
     '../../../components/CartContext': {},
     '../../../hooks/useTenant': {},
@@ -109,6 +109,99 @@ test('não aplica tamanhos promocionais nas bebidas, combos nem Monte o Seu', ()
         const count = item.name.includes('Barca M') ? 7 : 6;
         assert.equal(buildFallbackOptionGroups(item).find(group => group.name.startsWith('Complementos')).max_select, count);
     }
+});
+
+test('todos os dez Monte o Seu têm massa e colher obrigatórios, com preços e ordem do vídeo', () => {
+    const monte = menu.filter(item => normalize(item.category).includes('monte'));
+    assert.equal(monte.length, 10);
+    for (const item of monte) {
+        const groups = resolveProductOptionGroups(item).sort((a, b) => a.sort_order - b.sort_order);
+        assert.equal(groups.length, 6, item.name);
+        const mass = groups[0];
+        const spoon = groups.find(group => group.name === 'Colher');
+        assert.equal(groups.indexOf(spoon), item.name.includes('Barca M') ? 4 : 5);
+        assert.equal(mass.name, 'Vai o quê?');
+        assert.deepEqual(mass.options.map(option => [option.name, option.price_cents]), [['Açaí', 0], ['Cupuaçu', 500]]);
+        assert.equal(spoon.name, 'Colher');
+        assert.deepEqual(spoon.options.map(option => [option.name, option.price_cents]), [['Sim', 0], ['Não', 0]]);
+        for (const group of [mass, spoon]) {
+            assert.equal(group.required, 1);
+            assert.equal(group.min_select, 1);
+            assert.equal(group.max_select, 1);
+            let selection = [group.options[0].id];
+            const radios = nodes(GroupSelector({ group, selected: selection, onChange: next => { selection = next; } })).filter(node => node.props?.role === 'radio');
+            assert.ok(!radios[1].props.disabled);
+            radios[1].props.onClick();
+            assert.deepEqual(selection, [group.options[1].id]);
+        }
+        assert.equal(groups.find(group => group.name.startsWith('Complementos')).max_select, Number(item.name.match(/(\d+)\s*Complementos/i)[1]));
+    }
+});
+
+test('cadastro parcial recebe massa e colher sem duplicar nem substituir grupos existentes', () => {
+    const item = menu.find(item => normalize(item.category).includes('monte'));
+    const defaults = buildFallbackOptionGroups(item);
+    const partial = defaults.filter(group => group.name !== 'Vai o quê?' && group.name !== 'Colher');
+    const original = JSON.stringify(partial);
+    const resolved = resolveProductOptionGroups({ ...item, option_groups: partial });
+    assert.equal(resolved.length, 6);
+    assert.equal(JSON.stringify(partial), original);
+    for (const group of partial) assert.strictEqual(resolved.find(candidate => candidate.id === group.id), group);
+    assert.strictEqual(resolveProductOptionGroups({ ...item, option_groups: resolved }), resolved);
+
+    const renamed = defaults.map(group => group.name === 'Vai o quê?' ? { ...group, id: 'massa-do-servidor', name: 'Escolha sua base' } : group);
+    assert.strictEqual(resolveProductOptionGroups({ ...item, option_groups: renamed }), renamed);
+    const onlySpoonMissing = resolveProductOptionGroups({ ...item, option_groups: renamed.filter(group => group.name !== 'Colher') });
+    assert.equal(onlySpoonMissing.length, 6);
+    assert.equal(onlySpoonMissing[0].id, 'massa-do-servidor');
+});
+
+test('Monte o Seu exige massa e colher e envia Cupuaçu +R$5 e Não para a sacola', () => {
+    const React = appRequire('react');
+    const { renderToStaticMarkup } = appRequire('react-dom/server');
+    const item = menu.find(item => item.name.includes('300ml') && normalize(item.category).includes('monte'));
+    const groups = resolveProductOptionGroups(item);
+    const product = { ...item, option_groups: groups };
+    let selections = {};
+    let cartItem;
+    const { default: ProductPage } = loadSource('src/app/product/[id]/page.tsx', '', {
+        react: {
+            ...React,
+            use: () => ({ id: item.id }), useEffect: () => {}, useMemo: compute => compute(),
+            useState: initial => [initial === null ? product : initial === true ? false : typeof initial === 'object' ? selections : initial, () => {}],
+        },
+        'next/navigation': { useRouter: () => ({ push: () => {}, back: () => {} }) },
+        '../../../components/CartContext': {
+            useCart: () => ({ addToCart: value => { cartItem = value; } }),
+            buildCartKey: loadSource('src/components/CartContext.tsx').buildCartKey,
+        },
+        '../../../hooks/useTenant': { useTenant: () => ({ slug: 'default', ready: true }), getApiBase: () => '' },
+        '../../../lib/promotion-options': { buildPromotionOptionGroups },
+    });
+    const render = () => ProductPage({ params: Promise.resolve({ id: item.id }) });
+    const addButton = tree => nodes(tree).find(node => node.props?.id === 'add-to-cart-btn');
+    const html = renderToStaticMarkup(render());
+    assert.ok(html.includes('Cupuaçu'));
+    assert.ok(html.includes('Colher'));
+    // Complete os grupos já existentes, deixando somente massa e colher vazios.
+    for (const group of groups.filter(group => group.required && !['Vai o quê?', 'Colher'].includes(group.name))) {
+        selections[group.id] = Array(group.min_select).fill(group.options[0].id);
+    }
+    assert.equal(addButton(render()).props.disabled, true);
+    selections[groups[0].id] = [groups[0].options[1].id];
+    assert.equal(addButton(render()).props.disabled, true);
+    selections[groups.at(-1).id] = [groups.at(-1).options[1].id];
+    assert.equal(addButton(render()).props.disabled, false);
+    addButton(render()).props.onClick();
+    assert.equal(cartItem.price_cents, 3590);
+    assert.equal(cartItem.base_price_cents, 3090);
+    assert.ok(cartItem.selected_options.some(option => option.groupName === 'Vai o quê?' && option.optionName === 'Cupuaçu' && option.price_cents === 500));
+    assert.ok(cartItem.selected_options.some(option => option.groupName === 'Colher' && option.optionName === 'Não' && option.price_cents === 0));
+    const cupuacuKey = cartItem.cartKey;
+    selections[groups[0].id] = [groups[0].options[0].id];
+    addButton(render()).props.onClick();
+    assert.equal(cartItem.price_cents, 3090);
+    assert.notEqual(cartItem.cartKey, cupuacuKey);
 });
 
 test('tela impede adicionar sem tamanho/colher e envia tamanho, adicional e bebida para a sacola', () => {

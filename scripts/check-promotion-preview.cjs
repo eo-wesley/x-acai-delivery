@@ -12,14 +12,17 @@ async function main() {
         return response.text();
     }));
     const code = chunks.join('\n');
-    for (const label of ['Copo de 700ml', 'Turbinando o Açaí', 'Creme De Avelã', 'Vai uma Bebida?']) {
+    for (const label of ['Copo de 700ml', 'Turbinando o Açaí', 'Creme De Avelã', 'Vai uma Bebida?', 'Vai o quê?', 'Cupuaçu', 'Colher']) {
         assert.ok(code.includes(label), `Código entregue ao celular deve conter ${label}`);
     }
     const catalog = await fetch(`${base}/default-menu.json`);
     assert.equal(catalog.status, 200);
     const menu = await catalog.json();
     assert.equal(menu.filter(item => item.category === 'Açaí Copos da Promoção').length, 10);
-    console.log(`OK: ${base} entrega a página, as novas opções e os dez copos da promoção.`);
+    assert.equal(menu.filter(item => item.category === 'Açaí Monte O Seu').length, 10);
+    const montePage = await fetch(`${base}/product/fffb5892-7684-49d0-977c-32b910bc93d4`);
+    assert.equal(montePage.status, 200);
+    console.log(`OK: ${base} entrega os copos da promoção e o Monte o Seu com massa e colher.`);
 }
 
 main().catch(error => { console.error(error.message); process.exitCode = 1; });
