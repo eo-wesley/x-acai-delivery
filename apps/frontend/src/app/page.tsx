@@ -15,6 +15,7 @@ interface MenuItem {
   description?: string;
   price_cents: number;
   category?: string;
+  sort_order?: number;
   image_url?: string;
   available?: number;
   out_of_stock?: number;
@@ -36,6 +37,35 @@ interface StoreInfo {
   secondary_color?: string;
   font_family?: string;
   can_accept_orders?: boolean;
+}
+
+// These are the only customer-facing categories from the approved iFood layout.
+// The API can contain legacy/imported categories, so the public menu normalizes
+// them here instead of exposing those internal names to customers.
+const PUBLIC_CATEGORY_TABS = [
+  { key: 'vai uma bebida?', label: 'Vai uma Bebida?' },
+  { key: 'acai combos', label: 'Açaí Combos' },
+  { key: 'acai monte o seu', label: 'Açaí Monte O Seu' },
+  { key: 'acai copos da promocao', label: 'Açaí Copos da Promoção' },
+] as const;
+
+function normalizeCategory(value?: string) {
+  return (value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+\?/g, '?')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function publicCategoryKey(value?: string) {
+  const normalized = normalizeCategory(value);
+  return PUBLIC_CATEGORY_TABS.find(tab => tab.key === normalized)?.key || null;
+}
+
+function isStagingSmokeTest(item: MenuItem) {
+  return item.id === 'seed_menu_acai_classico' || /smoke test de staging/i.test(item.description || '');
 }
 
 export default function Home() {
@@ -94,16 +124,33 @@ export default function Home() {
   const storeOpen = !store || store.store_status === 'open';
   const canOrder = !store || store.can_accept_orders !== false;
 
-  const categories = ['', ...Array.from(new Set(menuItems.map(m => m.category).filter(Boolean)))];
+  const publicMenuItems = menuItems
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => publicCategoryKey(item.category) && !isStagingSmokeTest(item))
+    .sort((a, b) => {
+      const categoryDifference = PUBLIC_CATEGORY_TABS.findIndex(tab => tab.key === publicCategoryKey(a.item.category))
+        - PUBLIC_CATEGORY_TABS.findIndex(tab => tab.key === publicCategoryKey(b.item.category));
+      if (categoryDifference !== 0) return categoryDifference;
 
-  const filtered = menuItems.filter(m =>
+      // Keep the order supplied by the catalog when no explicit order exists.
+      // This preserves the iFood-imported sequence instead of alphabetizing products.
+      const aOrder = typeof a.item.sort_order === 'number' ? a.item.sort_order : Number.POSITIVE_INFINITY;
+      const bOrder = typeof b.item.sort_order === 'number' ? b.item.sort_order : Number.POSITIVE_INFINITY;
+      return aOrder !== bOrder ? aOrder - bOrder : a.index - b.index;
+    })
+    .map(({ item }) => item);
+
+  const availableCategoryKeys = new Set(publicMenuItems.map(item => publicCategoryKey(item.category)).filter(Boolean));
+  const categoryTabs = PUBLIC_CATEGORY_TABS.filter(tab => availableCategoryKeys.has(tab.key));
+
+  const filtered = publicMenuItems.filter(m =>
     m.hidden !== 1 &&
-    (!category || m.category === category) &&
+    (!category || publicCategoryKey(m.category) === category) &&
     (!searchTerm || m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.description?.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const popularItems = menuItems.filter(m => m.tags?.includes('popular') || m.tags?.includes('promo') || m.category === 'Destaques').slice(0, 5);
-  const highlights = popularItems.length > 0 ? popularItems : menuItems.filter(m => m.hidden !== 1 && m.available !== 0 && m.out_of_stock !== 1).slice(0, 4);
+  const popularItems = publicMenuItems.filter(m => m.tags?.includes('popular') || m.tags?.includes('promo')).slice(0, 5);
+  const highlights = popularItems.length > 0 ? popularItems : publicMenuItems.filter(m => m.hidden !== 1 && m.available !== 0 && m.out_of_stock !== 1).slice(0, 4);
 
   const R = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
@@ -217,11 +264,16 @@ export default function Home() {
 
           {/* Categories Slider */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide snap-x">
-            {categories.map(c => (
-              <button key={c || 'all'} onClick={() => { setCategory(c || ''); setSearchTerm(''); }}
-                className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${category === c ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+            <button key="all" onClick={() => { setCategory(''); setSearchTerm(''); }}
+              className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${category === '' ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+                }`}>
+              Todos
+            </button>
+            {categoryTabs.map(tab => (
+              <button key={tab.key} onClick={() => { setCategory(tab.key); setSearchTerm(''); }}
+                className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${category === tab.key ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
                   }`}>
-                {c || 'Todos'}
+                {tab.label}
               </button>
             ))}
           </div>
