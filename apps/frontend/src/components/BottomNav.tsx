@@ -39,7 +39,7 @@ export default function BottomNav() {
                                 <span className="text-white font-medium">Ver Sacola</span>
                             </div>
                             <span className="text-white font-bold">
-                                R$ {(subtotalCents / 100).toFixed(2)}
+                                {(subtotalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                             </span>
                         </div>
                     </Link>

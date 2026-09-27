@@ -9,6 +9,7 @@ import { loyaltyRepo } from '../db/repositories/loyalty.repo';
 import { PricingService } from '../services/pricing.service';
 import { menuRepo } from '../db/repositories/menu.repo';
 import { DeliveryQuoteError, deliveryQuoteService } from '../services/delivery-quote.service';
+import { loadProductOptionGroups, MenuSelectionError, resolveSelectedOptions, SelectedMenuOption } from '../services/menu-options';
 
 export const ordersRouter = Router();
 
@@ -19,7 +20,7 @@ const createOrderSchema = z.object({
     customerEmail: z.string().email().optional(),
     items: z.array(z.object({
         menuItemId: z.string(),
-        qty: z.number().positive(),
+        qty: z.number().int().positive(),
         notes: z.string().optional(),
         selected_options: z.array(z.object({
             groupId: z.string(),
@@ -72,6 +73,25 @@ function emitOrderCreatedEvent(payload: {
             items: payload.items,
         }
     });
+}
+
+interface OrderItemInput { menuItemId: string; qty: number; notes?: string; selected_options?: SelectedMenuOption[] }
+
+async function priceOrderItems(tenantId: string, items: OrderItemInput[]) {
+    const db = await (await import('../db/db.client')).getDb();
+    return Promise.all(items.map(async item => {
+        if (!Number.isSafeInteger(item.qty) || item.qty < 1) throw new MenuSelectionError('Quantidade inválida do produto.');
+        const product = await menuRepo.getMenuItemById(tenantId, item.menuItemId);
+        if (!product || !product.available || [1, true].includes((product as any).hidden) || [1, true].includes((product as any).out_of_stock)) {
+            throw new MenuSelectionError('Um produto não está mais disponível. Revise o carrinho.');
+        }
+        const pricing = await PricingService.calculateItemPrice(tenantId, product);
+        const groups = await loadProductOptionGroups(db, product);
+        const selected_options = resolveSelectedOptions(groups, item.selected_options);
+        const unitPriceCents = pricing.finalPriceCents + selected_options.reduce((sum, option) => sum + option.price_cents, 0);
+        if (!Number.isSafeInteger(unitPriceCents) || unitPriceCents < 0) throw new MenuSelectionError('Preço inválido no cadastro do produto.');
+        return { ...item, selected_options, unitPriceCents };
+    }));
 }
 
 async function getPublicPaymentStatus(orderId: string) {
@@ -144,9 +164,13 @@ ordersRouter.get('/:slug/orders/:id', async (req, res) => {
 ordersRouter.post('/orders', async (req, res) => {
     try {
         const data = createOrderSchema.parse(req.body);
-        const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
+        const processedItems = await priceOrderItems('default_tenant', data.items);
+        const subtotalCents = processedItems.reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0);
+        const totalCents = subtotalCents + data.deliveryFeeCents;
         const order = await ordersRepo.createOrder({
             ...data,
+            subtotalCents,
+            totalCents,
             items: processedItems,
             restaurantId: 'default_tenant',
             paymentMethod: data.paymentMethod,
@@ -161,7 +185,7 @@ ordersRouter.post('/orders', async (req, res) => {
             try {
                 const pixResult = await pixPaymentService.createPixPayment({
                     orderId: order.id,
-                    totalCents: data.totalCents,
+                    totalCents,
                     customerName: data.customerName || 'Cliente',
                     customerEmail: data.customerEmail,
                 });
@@ -179,7 +203,7 @@ ordersRouter.post('/orders', async (req, res) => {
                 console.error('[Orders/PIX] Failed to generate PIX:', pixErr.message);
             }
         } else {
-            paymentUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
+            paymentUrl = await mercadoPagoService.createPreference(order.id, totalCents, processedItems);
         }
 
         emitOrderCreatedEvent({
@@ -188,7 +212,7 @@ ordersRouter.post('/orders', async (req, res) => {
             customerId: order.customer_id,
             customerPhone: data.customerPhone,
             customerName: data.customerName,
-            totalCents: data.totalCents,
+            totalCents,
             paymentMethod: data.paymentMethod,
             addressText: data.addressText,
             items: processedItems,
@@ -202,6 +226,7 @@ ordersRouter.post('/orders', async (req, res) => {
             payment_reference: paymentReference || undefined,
         });
     } catch (e: any) {
+        if (e instanceof MenuSelectionError) return res.status(e.statusCode).json({ error: e.message });
         if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
         res.status(500).json({ error: e.message });
     }
@@ -281,20 +306,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             : { finalFeeCents: 0, isSurge: false };
         const finalDeliveryFee = surge.finalFeeCents;
 
-        const processedItems = await Promise.all(data.items.map(async (i) => {
-            const itemBase = await menuRepo.getMenuItemById(tenantId, i.menuItemId);
-            if (!itemBase) return { ...i, unitPriceCents: 0 };
-
-            const pricing = await PricingService.calculateItemPrice(tenantId, itemBase);
-            let unitPrice = pricing.finalPriceCents;
-
-            // Add options price
-            if (i.selected_options) {
-                unitPrice += i.selected_options.reduce((sum, opt) => sum + opt.price_cents, 0);
-            }
-
-            return { ...i, unitPriceCents: unitPrice };
-        }));
+        const processedItems = await priceOrderItems(tenantId, data.items);
 
         const finalSubtotal = processedItems.reduce((sum, i) => sum + (i.unitPriceCents * i.qty), 0);
         const finalTotal = Math.max(0, finalSubtotal + finalDeliveryFee - Math.max(0, discountCents));
@@ -408,6 +420,7 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             coupon_code: couponCode || null,
         });
     } catch (e: any) {
+        if (e instanceof MenuSelectionError) return res.status(e.statusCode).json({ error: e.message });
         if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
         res.status(500).json({ error: e.message });
     }

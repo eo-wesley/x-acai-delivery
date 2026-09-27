@@ -1,10 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useCart, buildCartKey, SelectedOption } from '../../../components/CartContext';
 import { useTenant, getApiBase } from '../../../hooks/useTenant';
 import { buildPromotionOptionGroups } from '../../../lib/promotion-options';
+import { getMenuDisplayName } from '../../../lib/menu-presentation';
+import { getWaterBundle, buildBundleCartItems } from '../../../lib/water-bundles';
+import { applyCounterCatalog, applyCounterProduct, applyCounterOptionGroups } from '../../../lib/counter-prices';
 
 interface OptionItem {
     id: string;
@@ -31,6 +34,9 @@ interface Product {
     price_cents: number;
     category?: string;
     image_url?: string;
+    available?: number | boolean | null;
+    hidden?: number | boolean | null;
+    out_of_stock?: number | boolean | null;
     option_groups: OptionGroup[];
 }
 
@@ -200,8 +206,8 @@ function buildFallbackOptionGroups(product: Pick<Product, 'id' | 'name' | 'categ
 
 function resolveProductOptionGroups(product: Pick<Product, 'id' | 'name' | 'category'> & { option_groups?: OptionGroup[] }): OptionGroup[] {
     const groups = product.option_groups;
-    if (!groups?.length) return buildFallbackOptionGroups(product);
-    if (!isMonteSeu(product)) return groups;
+    if (!groups?.length) return applyCounterOptionGroups(product.id, buildFallbackOptionGroups(product));
+    if (!isMonteSeu(product)) return applyCounterOptionGroups(product.id, groups);
 
     // Algumas versões importadas já têm acompanhamentos, mas omitem a massa
     // ou a colher. Completar apenas os dois grupos ausentes preserva os IDs,
@@ -468,93 +474,106 @@ function GroupSelector({
     );
 }
 
+class CatalogRequestError extends Error {
+    constructor(public status: number) {
+        super('Catálogo indisponível');
+    }
+}
+
+async function loadProductData(read: (url: string) => Promise<unknown>, api: string, slug: string, id: string) {
+    const [detailResult, menuResult] = await Promise.allSettled([
+        read(`${api}/api/${slug}/menu/item/${id}`),
+        read(`${api}/api/${slug}/menu`),
+    ]);
+    const detailValue = detailResult.status === 'fulfilled' ? detailResult.value : null;
+    const detail = detailValue && typeof detailValue === 'object' && 'id' in detailValue && detailValue.id === id
+        ? detailValue as Product : undefined;
+    const catalog = menuResult.status === 'fulfilled' && Array.isArray(menuResult.value)
+        ? menuResult.value as Product[] : undefined;
+
+    if (catalog) {
+        const catalogItem = catalog.find(item => item.id === id);
+        // A successful live catalog is authoritative about removed products.
+        return { found: catalogItem ? detail || catalogItem : undefined, catalog };
+    }
+    // Preserve current prices, options and availability even if the list failed.
+    // An unknown catalog intentionally prevents composing a bundle with water.
+    if (detail) return { found: detail, catalog: undefined };
+    if (detailResult.status === 'rejected' && detailResult.reason instanceof CatalogRequestError
+        && detailResult.reason.status === 404) {
+        return { found: undefined, catalog: undefined };
+    }
+
+    // The existing local preview is used only when no live product/catalog was obtained.
+    const fallback = await read('/default-menu.json');
+    const fallbackCatalog = Array.isArray(fallback) ? fallback as Product[] : [];
+    return { found: fallbackCatalog.find(item => item.id === id), catalog: fallbackCatalog };
+}
+
 export default function ProductPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const bundleMode = searchParams.get('bundle');
     const { addToCart } = useCart();
     const { slug, ready } = useTenant();
+    const requestKey = JSON.stringify([slug, id, bundleMode]);
 
     const [product, setProduct] = useState<Product | null>(null);
+    const [bundleCatalog, setBundleCatalog] = useState<Product[] | undefined>(undefined);
     const [qty, setQty] = useState(1);
     const [notes, setNotes] = useState('');
     const [descriptionExpanded, setDescriptionExpanded] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loadedRequestKey, setLoadedRequestKey] = useState<string | null>(null);
     const [added, setAdded] = useState(false);
     const [selections, setSelections] = useState<Record<string, string[]>>({});
 
     useEffect(() => {
         if (!ready) return;
-
+        let cancelled = false;
         const API = getApiBase();
-
-        const loadFromFallback = () => {
-            return fetch('/default-menu.json')
-                .then(r => r.json())
-                .then(items => {
-                    const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
-                    if (found) {
-                        const optionGroups = resolveProductOptionGroups(found);
-                        setProduct({ ...found, option_groups: optionGroups });
-                        const initialSelections: Record<string, string[]> = {};
-                        optionGroups.forEach((group: OptionGroup) => {
-                            initialSelections[group.id] = [];
-                        });
-                        setSelections(initialSelections);
-                    }
-                })
-                .catch(() => {});
+        const read = async (url: string) => {
+            const response = await fetch(url);
+            if (!response.ok) throw new CatalogRequestError(response.status);
+            return response.json();
         };
+        const load = async () => {
+            const { found, catalog } = await loadProductData(read, API, slug, id)
+                .catch(() => ({ found: undefined, catalog: undefined }));
+            if (cancelled) return;
+            setProduct(found ? applyCounterProduct({ ...found, option_groups: resolveProductOptionGroups(found) }) : null);
+            setBundleCatalog(catalog ? applyCounterCatalog(catalog) : undefined);
+            setSelections({});
+            setAdded(false);
+            setQty(1);
+            setNotes('');
+            setLoadedRequestKey(requestKey);
+        };
+        void load();
+        return () => { cancelled = true; };
+    }, [id, ready, slug, requestKey]);
 
-        fetch(`${API}/api/${slug}/menu/item/${id}`)
-            .then(async r => {
-                if (!r.ok) throw new Error('API offline');
-                return r.json();
-            })
-            .then(data => {
-                if (data && data.id) {
-                    const optionGroups = resolveProductOptionGroups(data);
-                    setProduct({ ...data, option_groups: optionGroups });
-                    const initialSelections: Record<string, string[]> = {};
-                    optionGroups.forEach((group: OptionGroup) => {
-                        initialSelections[group.id] = [];
-                    });
-                    setSelections(initialSelections);
-                    return;
-                }
+    const loading = !ready || loadedRequestKey !== requestKey;
 
-                return fetch(`${API}/api/${slug}/menu`)
-                    .then(async r => {
-                        if (!r.ok) throw new Error('API offline');
-                        return r.json();
-                    })
-                    .then(items => {
-                        const found = (Array.isArray(items) ? items : []).find((item: Product) => item.id === id);
-                        if (found) {
-                            const optionGroups = resolveProductOptionGroups(found);
-                            setProduct({ ...found, option_groups: optionGroups });
-                            const initialSelections: Record<string, string[]> = {};
-                            optionGroups.forEach((group: OptionGroup) => { initialSelections[group.id] = []; });
-                            setSelections(initialSelections);
-                        } else {
-                            return loadFromFallback();
-                        }
-                    })
-                    .catch(() => loadFromFallback());
-            })
-            .catch(() => loadFromFallback())
-            .finally(() => setLoading(false));
-    }, [id, ready, slug]);
+    const bundle = useMemo(() => product && Array.isArray(bundleCatalog)
+        ? getWaterBundle(bundleCatalog.map(item => item.id === product.id ? product : item), product.id, bundleMode)
+        : null, [product, bundleCatalog, bundleMode]);
+    const bundleRequested = Boolean(bundleMode);
+    const isBeverageGroup = (group: OptionGroup) => /bebida|drink/i.test(group.name);
+    const bundleBlocked = bundleRequested && (!bundle || product?.option_groups.some(group =>
+        isBeverageGroup(group) && (Boolean(group.required) || group.min_select > 0)));
 
     const optionGroups = useMemo(() => {
         if (!product?.option_groups) return [];
 
         return [...product.option_groups]
+            .filter(group => !bundle || !isBeverageGroup(group))
             .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
             .map(group => ({
                 ...group,
                 options: [...(group.options || [])].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)),
             }));
-    }, [product]);
+    }, [product, bundle]);
 
     const validationErrors = useMemo(
         () =>
@@ -564,7 +583,10 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         [optionGroups, selections],
     );
 
-    const isValid = validationErrors.length === 0;
+    const productUnavailable = product?.available === false || product?.available === 0
+        || product?.hidden === true || product?.hidden === 1
+        || product?.out_of_stock === true || product?.out_of_stock === 1;
+    const isValid = validationErrors.length === 0 && !bundleBlocked && !productUnavailable;
 
     const selectedOptions = useMemo<SelectedOption[]>(() => {
         return optionGroups.flatMap(group =>
@@ -584,7 +606,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     }, [optionGroups, selections]);
 
     const modifierTotal = selectedOptions.reduce((sum, option) => sum + option.price_cents, 0);
-    const totalPerItem = product ? product.price_cents + modifierTotal : 0;
+    const totalPerItem = product ? (bundle?.price_cents ?? product.price_cents) + modifierTotal : 0;
     const totalWithQty = totalPerItem * qty;
 
     const handleGroupChange = (groupId: string, optionIds: string[]) => {
@@ -594,10 +616,14 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
     const handleAdd = () => {
         if (!product || !isValid) return;
 
-        addToCart({
-            cartKey: buildCartKey(product.id, selectedOptions),
+        if (bundle) {
+            const bundleItems = buildBundleCartItems(bundle, selectedOptions, qty, notes);
+            if (bundleItems.length !== 2) return;
+            bundleItems.forEach(item => addToCart({ ...item, name: item.menuItemId === product.id ? getMenuDisplayName(product) : item.name }));
+        } else addToCart({
+            cartKey: buildCartKey(product.id, selectedOptions, notes),
             menuItemId: product.id,
-            name: product.name,
+            name: getMenuDisplayName(product),
             base_price_cents: product.price_cents,
             price_cents: totalPerItem,
             qty,
@@ -637,6 +663,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
         );
     }
 
+    const displayName = bundle?.title || getMenuDisplayName(product);
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="relative mx-auto min-h-screen max-w-md bg-white pb-44 shadow-sm">
@@ -650,7 +678,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                             Voltar
                         </button>
                         <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-gray-900">{product.name}</p>
+                            <p className="text-sm font-black text-gray-900">{displayName}</p>
                             <p className="text-xs font-semibold uppercase tracking-wide text-purple-600">
                                 {optionGroups.length > 0 ? 'Monte do seu jeito' : product.category || 'Cardapio'}
                             </p>
@@ -674,9 +702,9 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
 
                     <section className="space-y-4">
                         <div>
-                            <h1 className="text-3xl font-black leading-tight text-gray-900">{product.name}</h1>
+                            <h1 className="text-3xl font-black leading-tight text-gray-900">{displayName}</h1>
                             <p id="product-description" className={`mt-2 whitespace-pre-line text-base leading-relaxed text-gray-500 ${descriptionExpanded ? '' : 'line-clamp-3'}`}>
-                                {product.description || 'Monte seu pedido com os complementos disponiveis abaixo.'}
+                                {bundle?.description || product.description || 'Monte seu pedido com os complementos disponiveis abaixo.'}
                             </p>
                             {(product.description?.length || 0) > 200 ? (
                                 <button type="button" aria-expanded={descriptionExpanded} aria-controls="product-description" onClick={() => setDescriptionExpanded(current => !current)} className="mt-2 text-sm font-bold text-purple-700">
@@ -686,8 +714,8 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                         </div>
 
                         <div className="rounded-3xl border border-purple-100 bg-purple-50 p-6">
-                            <p className="text-xs font-black uppercase tracking-widest text-purple-400">Preco base</p>
-                            <p className="mt-1 text-4xl font-black text-purple-700">{formatCurrency(product.price_cents)}</p>
+                            <p className="text-xs font-black uppercase tracking-widest text-purple-400">{bundle ? 'Conjunto com água • sem extras' : 'Preço base'}</p>
+                            <p className="mt-1 text-4xl font-black text-purple-700">{formatCurrency(bundle?.price_cents ?? product.price_cents)}</p>
                             {optionGroups.length > 0 ? (
                                 <p className="mt-3 text-sm font-medium text-purple-700/80">
                                     Escolha suas opções abaixo. O valor é atualizado a cada escolha.
@@ -695,6 +723,22 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                             ) : null}
                         </div>
                     </section>
+
+                    {bundle ? (
+                        <section className="flex items-center gap-4 rounded-3xl border border-sky-100 bg-sky-50 p-4" aria-label="Bebida incluída no conjunto">
+                            {bundle.waterProduct.image_url ? <img src={bundle.waterProduct.image_url} alt={bundle.waterProduct.name} className="h-20 w-16 shrink-0 rounded-xl object-contain bg-white" /> : null}
+                            <div className="min-w-0">
+                                <h2 className="font-black text-sky-900">{bundle.waterQty} × água sem gás de 500 ml incluída{bundle.waterQty > 1 ? 's' : ''}</h2>
+                                <p className="mt-1 text-sm text-sky-900">O açaí e a água aparecem separados na sacola, somando o valor acima. Sem desconto e sem cobrança duplicada.</p>
+                                <a href={`/product/${product.id}`} className="mt-2 inline-block text-sm font-bold underline text-sky-900">Quero somente o açaí, sem água</a>
+                            </div>
+                        </section>
+                    ) : null}
+                    {bundleBlocked || productUnavailable ? (
+                        <p role="alert" className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-orange-900">
+                            {productUnavailable ? 'Este produto está indisponível no momento.' : 'Este conjunto não está disponível com o cadastro atual. Escolha o produto avulso no cardápio.'}
+                        </p>
+                    ) : null}
 
                     {optionGroups.length > 0 ? (
                         <section className="space-y-4">
@@ -766,6 +810,7 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                                 <p className="mt-2 text-sm font-semibold text-gray-700">
                                     Base: {formatCurrency(product.price_cents)}
                                 </p>
+                                {bundle ? <p className="mt-1 text-sm font-semibold text-gray-700">Água ({bundle.waterQty} × 500 ml): {formatCurrency(bundle.waterProduct.price_cents * bundle.waterQty)}</p> : null}
                                 <p className="mt-1 text-sm font-semibold text-gray-700">
                                     Opções selecionadas: {formatCurrency(modifierTotal)}
                                 </p>

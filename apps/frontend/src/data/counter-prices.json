@@ -1,0 +1,201 @@
+{
+  "version": "balcao-2026-09-26-v1",
+  "products": {
+    "7415285a-c203-4974-9b67-feb09156fceb": {
+      "name": "Açaí X-King Paçoca",
+      "price_cents": 1349,
+      "size_prices_cents": {
+        "300": 1349,
+        "400": 1638,
+        "500": 1995,
+        "700": 2752
+      }
+    },
+    "6f26d4f4-587f-4018-9663-39299c506915": {
+      "name": "Açaí X-Splash",
+      "price_cents": 1319,
+      "size_prices_cents": {
+        "300": 1319,
+        "400": 1679,
+        "500": 2102,
+        "700": 2890
+      }
+    },
+    "af7c2b3f-618f-4fbe-8fc6-b036f3e0f4fe": {
+      "name": "Açaí X-Tradicional",
+      "price_cents": 1238,
+      "size_prices_cents": {
+        "300": 1238,
+        "400": 1634,
+        "500": 2005,
+        "700": 2766
+      }
+    },
+    "12eed558-c22d-47c6-b305-395e6946765c": {
+      "name": "Açaí X-Paçoleite",
+      "price_cents": 1275,
+      "size_prices_cents": {
+        "300": 1275,
+        "400": 1635,
+        "500": 2036,
+        "700": 2752
+      }
+    },
+    "4cdb4cbd-8c0f-428d-a4c3-279a9079613b": {
+      "name": "Açaí X-Paçokita",
+      "price_cents": 1435,
+      "size_prices_cents": {
+        "300": 1435,
+        "400": 1667,
+        "500": 2031,
+        "700": 2951
+      }
+    },
+    "f74a51d0-5139-44b3-b92d-f27698bb6838": {
+      "name": "Açaí X-Chocolã",
+      "price_cents": 1619,
+      "size_prices_cents": {
+        "300": 1619,
+        "400": 1931,
+        "500": 2427,
+        "700": 3161
+      }
+    },
+    "291c81bc-e2e7-4457-ae2f-87f610819cab": {
+      "name": "Açaí X-Tropical",
+      "price_cents": 1804,
+      "size_prices_cents": {
+        "300": 1804,
+        "400": 2166,
+        "500": 2540,
+        "700": 3652
+      }
+    },
+    "18602f71-e704-47de-8500-847fe00d602e": {
+      "name": "Açaí X-Creme",
+      "price_cents": 1822,
+      "size_prices_cents": {
+        "300": 1822,
+        "400": 2283,
+        "500": 2920,
+        "700": 3862
+      }
+    },
+    "92685966-02fd-4bd2-8ca8-89bf4dc05cc3": {
+      "name": "Açaí X-Tella",
+      "price_cents": 1838,
+      "size_prices_cents": {
+        "300": 1838,
+        "400": 2211,
+        "500": 2625,
+        "700": 3679
+      }
+    },
+    "a19eecf6-7a36-49b6-8f9b-d26a9b758657": {
+      "name": "Açaí X-King Tella",
+      "price_cents": 1766,
+      "size_prices_cents": {
+        "300": 1766,
+        "400": 2156,
+        "500": 2567,
+        "700": 3586
+      }
+    },
+    "fffb5892-7684-49d0-977c-32b910bc93d4": {
+      "name": "Açaí 300ml Gratis 3 Complementos",
+      "price_cents": 1252
+    },
+    "b98750fc-958f-47b7-a39c-50f4a4739ca2": {
+      "name": "Açaí 400ml Grátis 3 Complementos",
+      "price_cents": 2128
+    },
+    "69c59c30-187f-4a2d-8a11-8b4de4b85fa8": {
+      "name": "Açaí 500ml Grátis 3 Complementos",
+      "price_cents": 2482
+    },
+    "667f40ae-4cfd-4a75-bfc9-70b06f83c0b7": {
+      "name": "Açaí Marmitex 500ml Grátis 3 Complementos",
+      "price_cents": 2456
+    },
+    "6b352e1f-42e3-481f-a325-0f32c5a24ba9": {
+      "name": "Açaí 700ml Grátis 4 Complementos",
+      "price_cents": 3821
+    },
+    "ca813c77-c2c3-4d9e-a670-888abc6996e3": {
+      "name": "Açaí Marmitex 700ml Grátis 4 Complementos",
+      "price_cents": 3741
+    },
+    "0dc26733-4de7-451c-83c3-b933fae19c7b": {
+      "name": "Açaí Barca P Grátis 6 Complementos",
+      "price_cents": 4170
+    },
+    "44f59f74-854d-4cd8-99f8-046f0b13890a": {
+      "name": "Açaí Litrão Grátis 6 Complementos",
+      "price_cents": 5090
+    },
+    "54c38cbd-c7f2-4ff2-bee5-d9e372ae1f96": {
+      "name": "Açaí Roleta Grátis 6 Complementos",
+      "price_cents": 6106
+    },
+    "accc975e-ee51-4c17-a3f2-059a8fd58964": {
+      "name": "Açaí Barca M Grátis 7 Complementos",
+      "price_cents": 6416
+    },
+    "d28de53c-d037-43b3-93b7-7a76c331da40": {
+      "name": "Água Mineral Crystal com Gás 500ml",
+      "price_cents": 700
+    },
+    "832bbb21-b77c-427e-9822-d95e5ef3022b": {
+      "name": "Água Mineral Sem Gás 500ml",
+      "price_cents": 600
+    },
+    "2358b164-92ca-4eae-ad0a-2c6ff66bd1b8": {
+      "name": "Coca-Cola 350ml",
+      "price_cents": 1000
+    },
+    "51a3bbb2-fa01-4e01-8407-82287f7fdd04": {
+      "name": "Pepsi 350ml",
+      "price_cents": 1000
+    },
+    "7bd94882-bb72-47cf-8894-6491f3443b86": {
+      "name": "Açaí 300ml Escolha 2 opções",
+      "price_cents": 2476,
+      "duo_flavor_prices_cents": {
+        "acai x-tradicional": 1238,
+        "acai x-king pacoca": 1349,
+        "acai x-splash": 1319,
+        "acai x-pacoleite": 1275
+      }
+    },
+    "661d2574-0f5b-4157-bac5-46b41f81cad6": {
+      "name": "Açaí 400ml Escolha 2 opções",
+      "price_cents": 3268,
+      "duo_flavor_prices_cents": {
+        "acai x-tradicional": 1634,
+        "acai x-king pacoca": 1638,
+        "acai x-splash": 1679,
+        "acai x-pacoleite": 1635
+      }
+    },
+    "eadbeb4e-46a9-41ca-adc0-3120dcd737ad": {
+      "name": "Açaí 500ml Escolha 2 opções",
+      "price_cents": 3990,
+      "duo_flavor_prices_cents": {
+        "acai x-tradicional": 2005,
+        "acai x-king pacoca": 1995,
+        "acai x-splash": 2102,
+        "acai x-pacoleite": 2036
+      }
+    },
+    "b122a44c-3599-44e8-9094-d4d2617aada8": {
+      "name": "Açaí 700ml Escolha 2 opções",
+      "price_cents": 5504,
+      "duo_flavor_prices_cents": {
+        "acai x-tradicional": 2766,
+        "acai x-king pacoca": 2752,
+        "acai x-splash": 2890,
+        "acai x-pacoleite": 2752
+      }
+    }
+  }
+}

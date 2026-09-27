@@ -3,16 +3,19 @@
 import React from 'react';
 import { useCart } from './CartContext';
 import Link from 'next/link';
+import { getMenuDisplayName, getMenuPriceLabel } from '../lib/menu-presentation';
+import type { CatalogMenuItem } from '../lib/load-menu';
 
 interface UpsellProps {
-    allProducts: any[];
+    allProducts: CatalogMenuItem[];
+    showDeliveryReward?: boolean;
 }
 
 /**
  * UpsellComponent — O "Coração" da Receita na Fase 61.
  * Exibe progresso para recompensas e recomendações inteligentes.
  */
-export default function UpsellComponent({ allProducts }: UpsellProps) {
+export default function UpsellComponent({ allProducts, showDeliveryReward = false }: UpsellProps) {
     const {
         subtotalCents,
         progressToFreeDelivery,
@@ -25,12 +28,12 @@ export default function UpsellComponent({ allProducts }: UpsellProps) {
     const remainingForFree = Math.max(0, freeDeliveryThreshold - subtotalCents);
     const R = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
-    if (subtotalCents === 0) return null;
+    if (subtotalCents === 0 || (!showDeliveryReward && recommendations.length === 0)) return null;
 
     return (
         <div className="space-y-6 my-6 anim-fade-in">
             {/* 🎯 Reward Progress Bar */}
-            <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm overflow-hidden relative">
+            {showDeliveryReward && <div className="bg-white p-4 rounded-2xl border border-purple-100 shadow-sm overflow-hidden relative">
                 <div className="flex justify-between items-end mb-2">
                     <div>
                         <h3 className="text-sm font-black text-gray-800">
@@ -55,7 +58,7 @@ export default function UpsellComponent({ allProducts }: UpsellProps) {
                 {isFreeDeliveryEligible && (
                     <div className="absolute -right-2 -top-2 opacity-10 text-6xl rotate-12 pointer-events-none">🚚</div>
                 )}
-            </div>
+            </div>}
 
             {/* 🍟 Smart Recommendations */}
             {recommendations.length > 0 && (
@@ -73,9 +76,9 @@ export default function UpsellComponent({ allProducts }: UpsellProps) {
                                 <div className="h-24 bg-purple-50 rounded-xl mb-2 flex items-center justify-center text-3xl overflow-hidden">
                                     {item.image_url ? <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" /> : '🥤'}
                                 </div>
-                                <h4 className="text-xs font-bold text-gray-800 truncate">{item.name}</h4>
+                                <h4 className="text-xs font-bold text-gray-800 truncate">{getMenuDisplayName(item)}</h4>
                                 <div className="flex items-center justify-between mt-1">
-                                    <span className="text-sm font-black text-purple-600">{R(item.price_cents)}</span>
+                                    <span className="text-sm font-black text-purple-600">{getMenuPriceLabel(item)} {R(item.price_cents)}</span>
                                     <div className="w-6 h-6 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs">+</div>
                                 </div>
                             </Link>

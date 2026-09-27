@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useCart } from '../../components/CartContext';
 import { useTenant, getApiBase } from '../../hooks/useTenant';
+import { canStoreAcceptOrders, loadStoreInfo, storeUnavailableMessage, type StoreInfo } from '../../lib/store-availability';
 
 const PAYMENT_METHODS = [
     { value: 'pix', label: 'PIX', emoji: '⚡', hint: 'QR Code instantâneo com confirmação na hora' },
@@ -15,7 +16,7 @@ const PAYMENT_METHODS = [
 export default function CheckoutPage() {
     const router = useRouter();
     const { items, subtotalCents, coupon, applyCoupon, removeCoupon, clearCart } = useCart();
-    const { slug } = useTenant();
+    const { slug, ready } = useTenant();
 
     const [orderType, setOrderType] = useState<'delivery' | 'pickup'>('delivery');
 
@@ -52,6 +53,23 @@ export default function CheckoutPage() {
 
     const [error, setError] = useState('');
     const [walletBalance, setWalletBalance] = useState<number | null>(null);
+    const [store, setStore] = useState<StoreInfo | null>(null);
+    const [checkedStoreSlug, setCheckedStoreSlug] = useState<string | null>(null);
+    const [checkingStore, setCheckingStore] = useState(true);
+    const canOrder = ready && !checkingStore && checkedStoreSlug === slug && canStoreAcceptOrders(store);
+
+    const refreshStore = useCallback(async () => {
+        setCheckingStore(true);
+        const currentStore = await loadStoreInfo(getApiBase(), slug);
+        setStore(currentStore);
+        setCheckedStoreSlug(slug);
+        setCheckingStore(false);
+        return currentStore;
+    }, [slug]);
+
+    useEffect(() => {
+        if (ready) void refreshStore();
+    }, [ready, refreshStore]);
 
     // Carregar dados salvos do cliente
     useEffect(() => {
@@ -215,6 +233,11 @@ export default function CheckoutPage() {
     // --- Submit ---
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (loading) return;
+        if (!canOrder) {
+            setError(checkingStore ? 'Verificando a disponibilidade da loja. Aguarde.' : storeUnavailableMessage(store));
+            return;
+        }
 
         // Validation
         if (!form.name.trim()) { setError('Informe seu nome.'); return; }
@@ -270,6 +293,13 @@ export default function CheckoutPage() {
         };
 
         try {
+            // Revalidate immediately before submission: an old open status must
+            // not allow an offline/closed store to receive a checkout attempt.
+            const currentStore = await refreshStore();
+            if (!canStoreAcceptOrders(currentStore)) {
+                setError(storeUnavailableMessage(currentStore));
+                return;
+            }
             const res = await fetch(`${API}/api/${slug}/orders`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -326,6 +356,13 @@ export default function CheckoutPage() {
                     <button onClick={() => router.back()} className="text-purple-600 font-bold text-sm">← Voltar</button>
                     <h2 className="text-xl font-black text-gray-800">Finalizar Pedido</h2>
                 </div>
+
+                {!canOrder && (
+                    <div role="status" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                        <p>{checkingStore ? 'Verificando disponibilidade da loja...' : storeUnavailableMessage(store)}</p>
+                        {!checkingStore && <button type="button" onClick={() => { void refreshStore(); }} className="mt-2 font-bold underline">Verificar novamente</button>}
+                    </div>
+                )}
 
                 {/* Seletor de Tipo de Pedido: Entrega vs Retirada */}
                 <div className="grid grid-cols-2 gap-2 p-1.5 bg-gray-100 rounded-2xl mb-5">
@@ -630,12 +667,13 @@ export default function CheckoutPage() {
                     <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white border-t border-gray-200 p-4 z-50 shadow-lg">
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || !canOrder}
                             className="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-black py-4 rounded-xl shadow-lg transition active:scale-95 disabled:opacity-60 text-base"
                         >
                             {loading
                                 ? '⏳ Confirmando pedido...'
-                                : `✅ Confirmar Pedido · R$ ${(totalCents / 100).toFixed(2).replace('.', ',')}`}
+                                : !canOrder ? (checkingStore ? 'Verificando loja...' : 'Pedidos indisponíveis')
+                                    : `✅ Confirmar Pedido · R$ ${(totalCents / 100).toFixed(2).replace('.', ',')}`}
                         </button>
                     </div>
 

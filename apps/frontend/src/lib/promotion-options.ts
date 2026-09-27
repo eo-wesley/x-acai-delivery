@@ -1,4 +1,6 @@
-// Conferido no vídeo do cardápio de 24/09/2026 e no cadastro iFood importado.
+import { applyCounterOptionGroups } from './counter-prices';
+
+// Estrutura conferida no vídeo; a tabela de balcão substitui os preços antigos.
 // O acréscimo de 700 ml do X-King Paçoca é diferente dos demais sabores.
 const promotionCups: Record<string, number> = {
     'acai x-king pacoca': 1600,
@@ -30,7 +32,7 @@ export function buildPromotionOptionGroups(product: { id: string; name: string; 
         };
     };
 
-    return [
+    return applyCounterOptionGroups(product.id, [
         group('tamanho', 'Tamanho do Copo', 1, 1, 1, 0, [
             ['Copo de 300ml', 0], ['Copo de 400ml', 400],
             ['Copo de 500ml', 800], ['Copo de 700ml', largeCupExtra],
@@ -46,5 +48,5 @@ export function buildPromotionOptionGroups(product: { id: string; name: string; 
             ['Coca-Cola 350ml', 1000], ['Pepsi 350ml', 1000],
         ]),
         group('colher', 'Colher', 1, 1, 1, 3, [['Sim', 0], ['Não', 0]]),
-    ];
+    ]);
 }

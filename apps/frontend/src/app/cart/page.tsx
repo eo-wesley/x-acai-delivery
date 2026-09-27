@@ -8,36 +8,31 @@ import { useCart } from '../../components/CartContext';
 import { useTenant, getApiBase } from '../../hooks/useTenant';
 import { useEffect } from 'react';
 import UpsellComponent from '../../components/UpsellComponent';
+import { loadMenuCatalog, type CatalogMenuItem } from '../../lib/load-menu';
 
 const Rfull = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
 export default function CartPage() {
     const router = useRouter();
-    const { items, removeFromCart, updateQty, cartCount, subtotalCents, coupon, applyCoupon, removeCoupon } = useCart();
-    const { slug } = useTenant();
+    const { items, removeFromCart, updateQty, cartCount, subtotalCents, coupon, applyCoupon, removeCoupon, priceUpdateNotice } = useCart();
+    const { slug, ready } = useTenant();
 
     const [couponInput, setCouponInput] = useState(coupon?.code || '');
     const [couponMsg, setCouponMsg] = useState('');
     const [verifying, setVerifying] = useState(false);
-    const [allProducts, setAllProducts] = useState<any[]>([]);
+    const [allProducts, setAllProducts] = useState<CatalogMenuItem[]>([]);
 
     useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const API = getApiBase();
-                const res = await fetch(`${API}/api/${slug}/menu`);
-                const data = await res.json();
-                if (res.ok) setAllProducts(data);
-            } catch (err) {
-                console.error('Failed to fetch products for upsell', err);
-            }
-        };
-        if (slug) fetchProducts();
-    }, [slug]);
+        if (!ready) return;
+        let cancelled = false;
+        loadMenuCatalog(getApiBase(), slug)
+            .then(products => { if (!cancelled) setAllProducts(products); })
+            .catch(() => { if (!cancelled) setAllProducts([]); });
+        return () => { cancelled = true; };
+    }, [slug, ready]);
 
-    const deliveryFeeCents = 500;
     const discountCents = coupon?.discountCents || 0;
-    const totalCents = Math.max(0, subtotalCents + deliveryFeeCents - discountCents);
+    const totalCents = Math.max(0, subtotalCents - discountCents);
 
     const handleApplyCoupon = async () => {
         if (!couponInput.trim()) return;
@@ -96,13 +91,19 @@ export default function CartPage() {
                     <h2 className="text-xl font-black text-gray-800">Minha Sacola ({cartCount})</h2>
                 </div>
 
+                {priceUpdateNotice && (
+                    <p role="status" className="mb-4 rounded-xl bg-purple-50 p-3 text-sm text-purple-800">
+                        Os valores da sua sacola foram atualizados para os preços de balcão. Seus produtos, quantidades e observações foram mantidos. Confira o total; se havia um cupom, aplique-o novamente.
+                    </p>
+                )}
+
                 {/* Items */}
                 <div className="flex flex-col gap-3">
                     {items.map((item) => {
                         const extrasCents = item.price_cents - (item.base_price_cents || item.price_cents);
                         return (
                             <div key={item.cartKey || item.menuItemId} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-                                <div className="flex gap-3 justify-between">
+                                <div className="flex flex-col gap-3">
                                     <div className="flex-1 min-w-0">
                                         <h3 className="font-black text-gray-800 text-sm leading-tight">{item.name}</h3>
 
@@ -122,7 +123,7 @@ export default function CartPage() {
                                         )}
 
                                         {item.notes && (
-                                            <p className="text-xs text-gray-400 mt-1 italic">"{item.notes}"</p>
+                                            <p className="text-xs text-gray-500 mt-1 italic break-words">&ldquo;{item.notes}&rdquo;</p>
                                         )}
 
                                         {/* Pricing breakdown */}
@@ -140,9 +141,10 @@ export default function CartPage() {
                                     </div>
 
                                     {/* Controls */}
-                                    <div className="flex flex-col items-end justify-between flex-shrink-0">
+                                    <div className="flex items-center justify-between gap-3">
                                         <button
                                             onClick={() => removeFromCart(item.cartKey || item.menuItemId)}
+                                            aria-label={`Remover ${item.name}`}
                                             className="text-red-400 text-xs font-bold hover:text-red-600 mb-2">
                                             ✕
                                         </button>
@@ -172,9 +174,9 @@ export default function CartPage() {
                         <span>Subtotal ({cartCount} {cartCount === 1 ? 'item' : 'itens'})</span>
                         <span>{Rfull(subtotalCents)}</span>
                     </div>
-                    <div className="flex justify-between text-gray-600 pb-3 border-b border-gray-100">
+                    <div className="flex justify-between gap-3 text-gray-600 pb-3 border-b border-gray-100">
                         <span>Taxa de Entrega</span>
-                        <span>{Rfull(deliveryFeeCents)}</span>
+                        <span className="text-right">A calcular pelo endereço</span>
                     </div>
                     {coupon && (
                         <div className="flex justify-between text-green-600 font-bold pb-2 border-b border-gray-100">
@@ -183,7 +185,7 @@ export default function CartPage() {
                         </div>
                     )}
                     <div className="flex justify-between font-black text-gray-900 text-base pt-1">
-                        <span>Total</span>
+                        <span>Total sem entrega</span>
                         <span className="text-purple-700">{Rfull(totalCents)}</span>
                     </div>
                 </div>
@@ -208,7 +210,7 @@ export default function CartPage() {
                                 <input
                                     type="text"
                                     placeholder="Digite seu cupom"
-                                    className="flex-1 border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm uppercase"
+                                    className="min-w-0 flex-1 border border-gray-200 rounded-lg p-3 outline-none focus:border-purple-500 text-sm uppercase"
                                     value={couponInput}
                                     onChange={e => setCouponInput(e.target.value.toUpperCase())}
                                     onKeyDown={e => e.key === 'Enter' && handleApplyCoupon()}
