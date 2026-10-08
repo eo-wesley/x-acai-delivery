@@ -12,6 +12,7 @@ export interface StockForecast {
 export class ForecastingService {
     async getInventoryForecast(restaurantId: string): Promise<StockForecast[]> {
         const db = await getDb();
+        const consumptionCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
         // 1. Get recent consumption (last 30 days) from inventory_movements
         // We filter by 'out' movements linked to 'sale'
@@ -23,9 +24,9 @@ export class ForecastingService {
             WHERE restaurant_id = ? 
             AND type = 'out' 
             AND reason = 'sale'
-            AND created_at >= date('now', '-30 days')
+            AND created_at >= ?
             GROUP BY inventory_item_id
-        `, [restaurantId]);
+        `, [restaurantId, consumptionCutoff]);
 
         // 2. Get current stock levels
         const items = await db.all(`
@@ -67,6 +68,7 @@ export class ForecastingService {
 
     async getOrderDemandForecast(restaurantId: string): Promise<{ date: string; predictedOrders: number }[]> {
         const db = await getDb();
+        const orderHistoryCutoff = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000).toISOString();
 
         // 1. Get daily order counts for the last 21 days to have enough trend data
         const history = await db.all(`
@@ -74,10 +76,10 @@ export class ForecastingService {
             FROM orders
             WHERE restaurant_id = ? 
             AND status != 'cancelled'
-            AND created_at >= date('now', '-21 days')
+            AND created_at >= ?
             GROUP BY day
             ORDER BY day ASC
-        `, [restaurantId]);
+        `, [restaurantId, orderHistoryCutoff]);
 
         if (history.length < 3) {
             // Not enough data, return empty or zeroed forecast
