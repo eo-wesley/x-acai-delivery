@@ -27,7 +27,7 @@ export class InventoryAlertService {
                 // combine traditional min-stock alerts with AI predictive alerts
                 let restaurants = [];
                 try {
-                    restaurants = await db.all('SELECT id, name FROM restaurants WHERE status = "active"');
+                    restaurants = await db.all("SELECT id, name FROM restaurants WHERE status = 'active'");
                 } catch (e: any) {
                     if (e.message.includes('no such table')) {
                         console.warn('⚠️ Table "restaurants" not ready yet. Retrying in 5s...');
