@@ -144,9 +144,10 @@ ordersRouter.get('/:slug/orders/:id', async (req, res) => {
 ordersRouter.post('/orders', async (req, res) => {
     try {
         const data = createOrderSchema.parse(req.body);
+        const { deliveryAddress: _unverifiedDeliveryAddress, ...legacyData } = data;
         const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
         const order = await ordersRepo.createOrder({
-            ...data,
+            ...legacyData,
             items: processedItems,
             restaurantId: 'default_tenant',
             paymentMethod: data.paymentMethod,
