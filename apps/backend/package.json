@@ -23,6 +23,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1147.0",
     "@google/generative-ai": "^0.24.1",
     "@sentry/node": "^10.46.0",
     "@sentry/profiling-node": "^10.46.0",

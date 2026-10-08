@@ -61,7 +61,7 @@ class QueueService {
         }
         const { Worker } = require('bullmq');
         const worker = new Worker(queueName, processor, { connection });
-        worker.on('completed', (job) => console.log(`[Worker] Job ${job.id} completed.`));
+        worker.on('completed', (job: Job) => console.log(`[Worker] Job ${job.id} completed.`));
         return worker;
     }
 }

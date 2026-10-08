@@ -2,6 +2,52 @@ import { getDb } from '../db.client';
 import { randomUUID } from 'crypto';
 
 export class FinanceRepo {
+    async registerExpense(tenantId: string, data: {
+        category?: string;
+        valueCents?: number;
+        value_cents?: number;
+        amountCents?: number;
+        description?: string;
+    }) {
+        const valueCents = data.valueCents ?? data.value_cents ?? data.amountCents;
+        if (!Number.isInteger(valueCents) || (valueCents as number) <= 0) {
+            throw new Error('valueCents must be a positive integer');
+        }
+
+        const session = await this.getCurrentSession(tenantId);
+        return this.addEntry(tenantId, session?.id || null, {
+            type: 'out',
+            category: data.category || 'expense',
+            valueCents: valueCents as number,
+            description: data.description,
+        });
+    }
+
+    async listExpenses(tenantId: string, fromDate: string, toDate: string) {
+        const db = await getDb();
+        return db.all(`
+            SELECT * FROM financial_entries
+            WHERE restaurant_id = ? AND type = 'out'
+              AND created_at BETWEEN ? AND ?
+            ORDER BY created_at DESC
+        `, [tenantId, fromDate, `${toDate} 23:59:59`]);
+    }
+
+    async getFinancialOverview(tenantId: string, fromDate: string, toDate: string) {
+        const db = await getDb();
+        const dre = await this.getDRE(tenantId, fromDate, `${toDate} 23:59:59`);
+        const expensesByCategory = await db.all(`
+            SELECT category, COALESCE(SUM(value_cents), 0) AS total_cents
+            FROM financial_entries
+            WHERE restaurant_id = ? AND type = 'out'
+              AND created_at BETWEEN ? AND ?
+            GROUP BY category
+            ORDER BY total_cents DESC
+        `, [tenantId, fromDate, `${toDate} 23:59:59`]);
+
+        return { ...dre, expenses_by_category: expensesByCategory };
+    }
+
     async getCurrentSession(tenantId: string) {
         const db = await getDb();
         return db.get(`
