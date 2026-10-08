@@ -18,7 +18,7 @@ export class ForecastingService {
         const consumptionData = await db.all(`
             SELECT 
                 inventory_item_id,
-                SUM(quantity) as total_out
+                SUM(qty) as total_out
             FROM inventory_movements
             WHERE restaurant_id = ? 
             AND type = 'out' 
