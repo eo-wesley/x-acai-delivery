@@ -65,6 +65,45 @@ export class FinanceRepo {
         return db.all(`SELECT * FROM financial_entries WHERE restaurant_id = ? ORDER BY created_at DESC LIMIT 50`, [tenantId]);
     }
 
+    async registerExpense(tenantId: string, data: {
+        sessionId?: string;
+        cash_session_id?: string;
+        category?: string;
+        valueCents?: number;
+        value_cents?: number;
+        amount_cents?: number;
+        description?: string;
+    }) {
+        const rawValue = data.valueCents ?? data.value_cents ?? data.amount_cents;
+        const valueCents = Number(rawValue);
+        if (!Number.isSafeInteger(valueCents) || valueCents <= 0) {
+            throw new Error('valueCents must be a positive integer');
+        }
+
+        const sessionId = data.sessionId ?? data.cash_session_id ?? (await this.getCurrentSession(tenantId))?.id ?? null;
+        return this.addEntry(tenantId, sessionId, {
+            type: 'out',
+            category: data.category?.trim() || 'expense',
+            valueCents,
+            description: data.description?.trim() || undefined,
+        });
+    }
+
+    async listExpenses(tenantId: string, fromDate: string, toDate: string) {
+        const db = await getDb();
+        return db.all(`
+            SELECT *, value_cents AS amount_cents
+            FROM financial_entries
+            WHERE restaurant_id = ? AND type = 'out'
+              AND created_at BETWEEN ? AND ?
+            ORDER BY created_at DESC
+        `, [tenantId, fromDate, toDate]);
+    }
+
+    async getFinancialOverview(tenantId: string, fromDate: string, toDate: string) {
+        return this.getDRE(tenantId, fromDate, toDate);
+    }
+
     async getDRE(tenantId: string, startDate: string, endDate: string) {
         const db = await getDb();
 

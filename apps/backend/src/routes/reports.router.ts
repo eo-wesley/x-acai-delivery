@@ -31,9 +31,9 @@ reportsRouter.get('/closing', adminAuthMiddleware, tenantMiddleware, async (req:
 
         // 3. Expenses
         const expenses = await db.all(`
-            SELECT category, SUM(amount) as total 
-            FROM expenses 
-            WHERE restaurant_id = ? AND date = ?
+            SELECT category, SUM(value_cents) as total
+            FROM financial_entries
+            WHERE restaurant_id = ? AND type = 'out' AND date(created_at) = ?
             GROUP BY category
         `, [tenantId, date]);
 
@@ -49,7 +49,9 @@ reportsRouter.get('/closing', adminAuthMiddleware, tenantMiddleware, async (req:
         `, [tenantId, date]);
 
         // Summary calculation
-        const revenue = orders.filter(o => o.status === 'delivered').reduce((acc, curr) => acc + curr.total, 0);
+        const revenue = orders
+            .filter(o => ['completed', 'delivered'].includes(o.status))
+            .reduce((acc, curr) => acc + Number(curr.total || 0), 0);
         const totalExpenses = expenses.reduce((acc, curr) => acc + curr.total, 0);
 
         res.json({
