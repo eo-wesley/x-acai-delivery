@@ -54,14 +54,14 @@ class QueueService {
         return queue.add(jobName, data, opts);
     }
 
-    createWorker(queueName: string, processor: (job: any) => Promise<void>) {
+    createWorker(queueName: string, processor: (job: Job) => Promise<void>) {
         if (!isRedisEnabled) {
             console.log(`[MockWorker] Started for ${queueName}`);
             return { close: async () => {} };
         }
         const { Worker } = require('bullmq');
         const worker = new Worker(queueName, processor, { connection });
-        worker.on('completed', (job) => console.log(`[Worker] Job ${job.id} completed.`));
+        worker.on('completed', (job: Job) => console.log(`[Worker] Job ${job.id} completed.`));
         return worker;
     }
 }

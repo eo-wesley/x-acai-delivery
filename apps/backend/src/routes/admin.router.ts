@@ -410,7 +410,8 @@ adminRouter.post('/admin/restaurants', adminAuthMiddleware, async (req, res) => 
             category: 'Açaís',
             tags: ['promo', 'novo'],
             available: true,
-            image_url: null
+            image_url: null,
+            sort_order: 0
         });
 
         res.status(201).json({

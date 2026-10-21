@@ -12,7 +12,8 @@
     "db:seed": "tsx src/seeds/seed-demo-v2.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run test:pricing",
+    "test:pricing": "tsx scripts/test-costing-engine.ts && tsx scripts/test-costing-report.ts && tsx scripts/test-inventory-purchase-profile-migration.ts"
   },
   "keywords": [
     "firebase",
@@ -23,6 +24,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1152.0",
     "@google/generative-ai": "^0.24.1",
     "@sentry/node": "^10.46.0",
     "@sentry/profiling-node": "^10.46.0",

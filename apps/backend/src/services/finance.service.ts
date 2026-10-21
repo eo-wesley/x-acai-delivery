@@ -66,8 +66,8 @@ export class FinanceService {
 
         // 3. Get Expenses
         const expensesRes = await db.get(
-            `SELECT SUM(amount) as total_expenses FROM expenses 
-             WHERE restaurant_id = ? ${dateFilter.replace('created_at', 'date')}`,
+            `SELECT SUM(value_cents) as total_expenses FROM financial_entries
+             WHERE restaurant_id = ? AND type = 'out' ${dateFilter}`,
             params
         );
         const totalExpenses = expensesRes?.total_expenses || 0;

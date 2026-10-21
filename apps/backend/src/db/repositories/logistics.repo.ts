@@ -36,12 +36,12 @@ export class LogisticsRepository {
 
     async getLocationByDriver(driverId: string): Promise<DriverLocation | null> {
         const db = await getDb();
-        return await db.get('SELECT * FROM driver_locations WHERE driver_id = ?', [driverId]);
+        return (await db.get('SELECT * FROM driver_locations WHERE driver_id = ?', [driverId])) ?? null;
     }
 
     async getLocationByOrder(orderId: string): Promise<DriverLocation | null> {
         const db = await getDb();
-        return await db.get('SELECT * FROM driver_locations WHERE order_id = ?', [orderId]);
+        return (await db.get('SELECT * FROM driver_locations WHERE order_id = ?', [orderId])) ?? null;
     }
 
     async getActiveDeliveries(): Promise<DriverLocation[]> {
