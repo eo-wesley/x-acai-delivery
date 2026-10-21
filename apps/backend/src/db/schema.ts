@@ -117,6 +117,8 @@ export const schemaStatements: string[] = [
         source TEXT DEFAULT 'online',
         notes TEXT,
         external_id TEXT,
+        idempotency_key TEXT,
+        request_fingerprint TEXT,
         tax_id TEXT,
         is_surge INTEGER DEFAULT 0,
         is_happy_hour INTEGER DEFAULT 0,
@@ -126,6 +128,9 @@ export const schemaStatements: string[] = [
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE UNIQUE INDEX IF NOT EXISTS orders_restaurant_idempotency_uidx
+     ON orders (restaurant_id, idempotency_key)
+     WHERE idempotency_key IS NOT NULL`,
     `CREATE TABLE IF NOT EXISTS coupons (
         id TEXT PRIMARY KEY,
         restaurant_id TEXT NOT NULL,
@@ -464,6 +469,8 @@ export const schemaAlterations: string[] = [
     `ALTER TABLE orders ADD COLUMN payment_qr_base64 TEXT`,
     `ALTER TABLE orders ADD COLUMN payment_reference TEXT`,
     `ALTER TABLE orders ADD COLUMN external_id TEXT`,
+    `ALTER TABLE orders ADD COLUMN idempotency_key TEXT`,
+    `ALTER TABLE orders ADD COLUMN request_fingerprint TEXT`,
     `ALTER TABLE orders ADD COLUMN tax_id TEXT`,
     `ALTER TABLE orders ADD COLUMN is_surge INTEGER DEFAULT 0`,
     `ALTER TABLE orders ADD COLUMN is_happy_hour INTEGER DEFAULT 0`,

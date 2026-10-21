@@ -36,6 +36,11 @@ export default function CheckoutPage() {
     });
 
     const [loading, setLoading] = useState(false);
+    const [idempotencyKey] = useState(() =>
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+            ? crypto.randomUUID()
+            : `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`
+    );
     const [cepLoading, setCepLoading] = useState(false);
     const [deliveryInfo, setDeliveryInfo] = useState<{
         feeCents: number;
@@ -267,12 +272,13 @@ export default function CheckoutPage() {
             paymentMethod: form.paymentMethod,
             changeFor: form.paymentMethod === 'cash' && form.changeFor ? Number(form.changeFor) * 100 : undefined,
             taxId: form.taxId.replace(/\D/g, ''),
+            idempotencyKey,
         };
 
         try {
             const res = await fetch(`${API}/api/${slug}/orders`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
                 body: JSON.stringify(payload),
             });
 
@@ -291,7 +297,7 @@ export default function CheckoutPage() {
                         qrCode: data.pix_qr_code || '',
                         qrBase64: data.pix_qr_base64 || '',
                         slug,
-                        totalCents,
+                        totalCents: data.total_cents ?? totalCents,
                         expiresAt: data.pix_expires_at || new Date(Date.now() + 30 * 60 * 1000).toISOString(),
                         items: items.map(i => ({ name: i.name, qty: i.qty })),
                     };

@@ -13,7 +13,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "npm run test:pricing",
-    "test:pricing": "tsx scripts/test-costing-engine.ts && tsx scripts/test-costing-report.ts && tsx scripts/test-inventory-purchase-profile-migration.ts"
+    "test:pricing": "tsx scripts/test-costing-engine.ts && tsx scripts/test-costing-report.ts && tsx scripts/test-inventory-purchase-profile-migration.ts && tsx scripts/test-approved-order-integration.ts"
   },
   "keywords": [
     "firebase",

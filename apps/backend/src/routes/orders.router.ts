@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { ordersRepo } from '../db/repositories/orders.repo';
+import { createHash } from 'crypto';
+import { OrderIdempotencyConflictError, ordersRepo } from '../db/repositories/orders.repo';
 import { z } from 'zod';
 import { pixPaymentService } from '../payments/pix.service';
 import { mercadoPagoService } from '../payments/mercadopago.service';
@@ -9,6 +10,7 @@ import { loyaltyRepo } from '../db/repositories/loyalty.repo';
 import { PricingService } from '../services/pricing.service';
 import { menuRepo } from '../db/repositories/menu.repo';
 import { DeliveryQuoteError, deliveryQuoteService } from '../services/delivery-quote.service';
+import { applyApprovedBasePrice, approvedOptionPrice } from '../services/approved-menu-prices';
 
 export const ordersRouter = Router();
 
@@ -46,7 +48,14 @@ const createOrderSchema = z.object({
     notes: z.string().optional(),
     paymentMethod: z.enum(['pix', 'card', 'cash', 'wallet']).optional().default('pix'),
     restaurantId: z.string().optional(),
+    idempotencyKey: z.string().min(8).max(255).optional(),
 });
+
+class OrderValidationError extends Error { }
+
+function orderFingerprint(value: unknown): string {
+    return createHash('sha256').update(JSON.stringify(value)).digest('hex');
+}
 
 function emitOrderCreatedEvent(payload: {
     orderId: string;
@@ -143,6 +152,7 @@ ordersRouter.get('/:slug/orders/:id', async (req, res) => {
 
 ordersRouter.post('/orders', async (req, res) => {
     try {
+        return res.status(410).json({ error: 'Use a rota segura /api/:slug/orders para confirmar o pedido.' });
         const data = createOrderSchema.parse(req.body);
         const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
         const order = await ordersRepo.createOrder({
@@ -150,6 +160,7 @@ ordersRouter.post('/orders', async (req, res) => {
             items: processedItems,
             restaurantId: 'default_tenant',
             paymentMethod: data.paymentMethod,
+            deliveryAddress: undefined,
         });
 
         let pixQrCode = '';
@@ -281,19 +292,38 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             : { finalFeeCents: 0, isSurge: false };
         const finalDeliveryFee = surge.finalFeeCents;
 
+        const db = await (await import('../db/db.client')).getDb();
         const processedItems = await Promise.all(data.items.map(async (i) => {
             const itemBase = await menuRepo.getMenuItemById(tenantId, i.menuItemId);
-            if (!itemBase) return { ...i, unitPriceCents: 0 };
+            if (!itemBase || !itemBase.available) throw new OrderValidationError('Um produto do carrinho não está mais disponível.');
 
-            const pricing = await PricingService.calculateItemPrice(tenantId, itemBase);
+            const approvedItem = applyApprovedBasePrice(itemBase);
+            const pricing = await PricingService.calculateItemPrice(tenantId, approvedItem);
             let unitPrice = pricing.finalPriceCents;
 
-            // Add options price
-            if (i.selected_options) {
-                unitPrice += i.selected_options.reduce((sum, opt) => sum + opt.price_cents, 0);
+            const canonicalOptions = [];
+            for (const selected of i.selected_options || []) {
+                const canonical = await db.get<any>(
+                    `SELECT oi.id, oi.name, oi.price_cents, og.id AS group_id, og.name AS group_name
+                     FROM option_items oi
+                     JOIN option_groups og ON og.id = oi.option_group_id
+                     WHERE oi.id = ? AND og.id = ? AND og.menu_item_id = ?
+                       AND oi.restaurant_id = ? AND og.restaurant_id = ? AND oi.available = 1`,
+                    [selected.optionId, selected.groupId, i.menuItemId, tenantId, tenantId],
+                );
+                if (!canonical) throw new OrderValidationError(`A opção “${selected.optionName}” não está mais disponível.`);
+                const price = approvedOptionPrice(approvedItem.name, canonical.group_name, canonical.name, canonical.price_cents);
+                canonicalOptions.push({
+                    groupId: canonical.group_id,
+                    groupName: canonical.group_name,
+                    optionId: canonical.id,
+                    optionName: canonical.name,
+                    price_cents: price,
+                });
+                unitPrice += price;
             }
 
-            return { ...i, unitPriceCents: unitPrice };
+            return { ...i, selected_options: canonicalOptions, unitPriceCents: unitPrice };
         }));
 
         const finalSubtotal = processedItems.reduce((sum, i) => sum + (i.unitPriceCents * i.qty), 0);
@@ -301,6 +331,21 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
         const finalAddress = verifiedAddress
             ? deliveryQuoteService.formatAddress(verifiedAddress)
             : 'Retirada no Balcão (Loja)';
+
+        const idempotencyKey = String(req.get('Idempotency-Key') || data.idempotencyKey || '').trim() || undefined;
+        const fingerprint = orderFingerprint({
+            tenantId,
+            customerId: data.customerId,
+            customerName: data.customerName,
+            customerPhone: data.customerPhone,
+            processedItems,
+            finalDeliveryFee,
+            finalSubtotal,
+            finalTotal,
+            finalAddress,
+            paymentMethod,
+            couponCode: couponCode || null,
+        });
 
         const order = await ordersRepo.createOrder({
             ...data,
@@ -312,9 +357,15 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             deliveryAddress: verifiedAddress,
             restaurantId: tenantId,
             paymentMethod,
+            idempotencyKey,
+            requestFingerprint: fingerprint,
         });
 
-        const db = await (await import('../db/db.client')).getDb();
+        if (order.reused) {
+            const existing = await ordersRepo.getOrderById(order.id);
+            return res.status(200).json({ ...existing, reused: true });
+        }
+
         await db.run(
             `UPDATE orders SET payment_method = ?, discount_cents = ?, coupon_code = ?, is_surge = ?, is_happy_hour = ? WHERE id = ?`,
             [paymentMethod, discountCents, couponCode || null, surge.isSurge ? 1 : 0, 0, order.id] // Simplified HH tracking
@@ -409,6 +460,8 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
         });
     } catch (e: any) {
         if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
+        if (e instanceof OrderValidationError) return res.status(422).json({ error: e.message });
+        if (e instanceof OrderIdempotencyConflictError) return res.status(409).json({ error: e.message });
         res.status(500).json({ error: e.message });
     }
 });

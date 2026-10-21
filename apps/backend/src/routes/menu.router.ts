@@ -4,6 +4,7 @@ import { tenantMiddleware } from '../middlewares/tenant.middleware';
 import { menuCacheService } from '../services/cache/menu.cache';
 import { getDb } from '../db/db.client';
 import { PricingService } from '../services/pricing.service';
+import { applyApprovedBasePrice, approvedOptionPrice } from '../services/approved-menu-prices';
 
 export const menuRouter = Router();
 
@@ -15,7 +16,7 @@ menuRouter.get('/menu', async (req, res) => {
         const items = category
             ? await menuRepo.getMenuByCategory(tenantId, category, true)
             : await menuCacheService.getMenu(tenantId, true);
-        res.json(items);
+        res.json(items.map(applyApprovedBasePrice));
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -32,9 +33,10 @@ menuRouter.get('/:slug/menu', tenantMiddleware, async (req: any, res: any) => {
 
         // Apply Dynamic Pricing (Happy Hour)
         const enrichedItems = await Promise.all(items.map(async (item: any) => {
-            const pricing = await PricingService.calculateItemPrice(tenantId, item);
+            const approvedItem = applyApprovedBasePrice(item);
+            const pricing = await PricingService.calculateItemPrice(tenantId, approvedItem);
             return {
-                ...item,
+                ...approvedItem,
                 original_price_cents: item.price_cents,
                 price_cents: pricing.finalPriceCents,
                 is_happy_hour: pricing.isHappyHour
@@ -68,12 +70,19 @@ menuRouter.get('/:slug/menu/item/:id', tenantMiddleware, async (req: any, res: a
                 `SELECT * FROM option_items WHERE option_group_id = ? AND available = 1 ORDER BY sort_order ASC`,
                 [g.id]
             );
-            return { ...g, options };
+            return {
+                ...g,
+                options: options.map((option: any) => ({
+                    ...option,
+                    price_cents: approvedOptionPrice(item.name, g.name, option.name, option.price_cents),
+                })),
+            };
         }));
 
-        const pricing = await PricingService.calculateItemPrice(tenantId, item);
+        const approvedItem = applyApprovedBasePrice(item);
+        const pricing = await PricingService.calculateItemPrice(tenantId, approvedItem);
         res.json({
-            ...item,
+            ...approvedItem,
             price_cents: pricing.finalPriceCents,
             original_price_cents: item.price_cents,
             is_happy_hour: pricing.isHappyHour,

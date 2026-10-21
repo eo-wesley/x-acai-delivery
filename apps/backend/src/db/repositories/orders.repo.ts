@@ -29,14 +29,34 @@ export interface CreateOrderInput {
     source?: string;
     externalId?: string;
     taxId?: string;
+    idempotencyKey?: string;
+    requestFingerprint?: string;
+}
+
+export class OrderIdempotencyConflictError extends Error {
+    constructor() {
+        super('A mesma chave de confirmação foi usada com um pedido diferente. Atualize a página e tente novamente.');
+        this.name = 'OrderIdempotencyConflictError';
+    }
 }
 
 export class OrdersRepo {
 
-    async createOrder(input: CreateOrderInput): Promise<{ id: string, customer_id: string, payment_url?: string }> {
+    async createOrder(input: CreateOrderInput): Promise<{ id: string, customer_id: string, payment_url?: string, reused?: boolean }> {
         const db = await getDb();
         const id = randomUUID();
         const tenantId = input.restaurantId || 'default_tenant';
+
+        if (input.idempotencyKey) {
+            const existing = await db.get<any>(
+                'SELECT id, customer_id, request_fingerprint FROM orders WHERE restaurant_id = ? AND idempotency_key = ?',
+                [tenantId, input.idempotencyKey],
+            );
+            if (existing) {
+                if (existing.request_fingerprint !== input.requestFingerprint) throw new OrderIdempotencyConflictError();
+                return { id: existing.id, customer_id: existing.customer_id, reused: true };
+            }
+        }
 
         let finalCustomerId = input.customerId;
         if (input.customerPhone && input.customerName) {
@@ -49,12 +69,14 @@ export class OrdersRepo {
 
         const itemsJson = JSON.stringify(input.items);
 
-        await db.run(
-            `INSERT INTO orders 
+        try {
+            await db.run(
+                `INSERT INTO orders 
             (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text,
              delivery_cep, delivery_street, delivery_number, delivery_complement, delivery_neighborhood,
              delivery_city, delivery_state, delivery_lat, delivery_lng, delivery_distance_km, delivery_address_verified,
-             notes, payment_status, payment_provider, payment_method, customer_name, customer_phone, restaurant_id, source, external_id, tax_id)
+             notes, payment_status, payment_provider, payment_method, customer_name, customer_phone, restaurant_id, source,
+             external_id, tax_id, idempotency_key, request_fingerprint)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id,
@@ -85,9 +107,24 @@ export class OrdersRepo {
                 tenantId,
                 input.source || 'internal',
                 input.externalId || null,
-                input.taxId || null
-            ]
-        );
+                input.taxId || null,
+                input.idempotencyKey || null,
+                input.requestFingerprint || null
+                ]
+            );
+        } catch (error) {
+            if (input.idempotencyKey) {
+                const existing = await db.get<any>(
+                    'SELECT id, customer_id, request_fingerprint FROM orders WHERE restaurant_id = ? AND idempotency_key = ?',
+                    [tenantId, input.idempotencyKey],
+                );
+                if (existing) {
+                    if (existing.request_fingerprint !== input.requestFingerprint) throw new OrderIdempotencyConflictError();
+                    return { id: existing.id, customer_id: existing.customer_id, reused: true };
+                }
+            }
+            throw error;
+        }
 
         // Record Initial Event
         await this.logOrderEvent(id, 'order_created', { initialStatus: 'pending_payment', by: 'customer_or_ai' });
