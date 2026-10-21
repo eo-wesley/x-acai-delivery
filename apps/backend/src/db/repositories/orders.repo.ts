@@ -71,7 +71,7 @@ export class OrdersRepo {
 
         try {
             await db.run(
-                `INSERT INTO orders 
+                `INSERT INTO orders
             (id, customer_id, status, items, subtotal_cents, delivery_fee_cents, total_cents, address_text,
              delivery_cep, delivery_street, delivery_number, delivery_complement, delivery_neighborhood,
              delivery_city, delivery_state, delivery_lat, delivery_lng, delivery_distance_km, delivery_address_verified,
