@@ -1,24 +1,25 @@
 // Conferido no vídeo do cardápio de 24/09/2026 e no cadastro iFood importado.
 // O acréscimo de 700 ml do X-King Paçoca é diferente dos demais sabores.
-const promotionCups: Record<string, number> = {
-    'acai x-king pacoca': 1600,
-    'acai x-splash': 1500,
-    'acai x-tradicional': 1500,
-    'acai x-pacoleite': 1500,
-    'acai x-pacokita': 1500,
-    'acai x-chocola': 1500,
-    'acai x-tropical': 1500,
-    'acai x-creme': 1500,
-    'acai x-tella': 1500,
-    'acai x-king tella': 1500,
+const promotionCups: Record<string, readonly [number, number, number]> = {
+    'acai x-king pacoca': [400, 800, 1600],
+    'acai x-splash': [400, 800, 1500],
+    'acai x-tradicional': [400, 800, 1500],
+    'acai x-pacoleite': [400, 800, 1500],
+    // Approved prices from the canonical X-Acai pricing snapshot.
+    'acai x-pacokita': [300, 700, 1400],
+    'acai x-chocola': [400, 800, 1600],
+    'acai x-tropical': [400, 800, 1700],
+    'acai x-creme': [400, 900, 1800],
+    'acai x-tella': [400, 900, 1900],
+    'acai x-king tella': [400, 900, 1900],
 };
 
 const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
 
 export function buildPromotionOptionGroups(product: { id: string; name: string; category?: string }) {
     if (!normalize(product.category || '').includes('promocao')) return [];
-    const largeCupExtra = promotionCups[normalize(product.name)];
-    if (largeCupExtra === undefined) return [];
+    const sizeExtras = promotionCups[normalize(product.name)];
+    if (sizeExtras === undefined) return [];
 
     const group = (key: string, name: string, required: number, min: number, max: number, order: number, values: readonly (readonly [string, number])[]) => {
         const groupId = `fallback-${product.id}-${key}`;
@@ -32,8 +33,8 @@ export function buildPromotionOptionGroups(product: { id: string; name: string; 
 
     return [
         group('tamanho', 'Tamanho do Copo', 1, 1, 1, 0, [
-            ['Copo de 300ml', 0], ['Copo de 400ml', 400],
-            ['Copo de 500ml', 800], ['Copo de 700ml', largeCupExtra],
+            ['Copo de 300ml', 0], ['Copo de 400ml', sizeExtras[0]],
+            ['Copo de 500ml', sizeExtras[1]], ['Copo de 700ml', sizeExtras[2]],
         ]),
         group('turbinando', 'Turbinando o Açaí', 0, 0, 5, 1, [
             ['Creme De Amendoim', 600], ['Creme De Avelã', 700],

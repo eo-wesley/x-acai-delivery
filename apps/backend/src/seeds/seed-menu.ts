@@ -15,15 +15,15 @@ const uid = () => crypto.randomUUID();
 // SHARED OPTION GROUP TEMPLATES
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TAMANHO_COPOS = {
+const makeTamanhoCopos = (prices: readonly [number, number, number, number]) => ({
     name: 'Tamanho do Copo', required: 1, min_select: 1, max_select: 1, sort_order: 0,
     options: [
         { name: 'Copo de 300ml', price_cents: 0 },
-        { name: 'Copo de 400ml', price_cents: 400 },
-        { name: 'Copo de 500ml', price_cents: 800 },
-        { name: 'Copo de 700ml', price_cents: 1500 },
+        { name: 'Copo de 400ml', price_cents: prices[1] - prices[0] },
+        { name: 'Copo de 500ml', price_cents: prices[2] - prices[0] },
+        { name: 'Copo de 700ml', price_cents: prices[3] - prices[0] },
     ]
-};
+});
 
 const CREMES_ESPECIAIS = {
     name: 'Cremes Especiais', required: 1, min_select: 1, max_select: 1, sort_order: 1,
@@ -91,29 +91,30 @@ type MenuItem = { name: string; price_cents: number; category: string; sort_orde
 const MENU: MenuItem[] = [
     // ── Copos Da Promoção ──────────────────────────────────────────────────
     ...([
-        { name: 'Açaí X-King Paçoca', price_cents: 2690 },
-        { name: 'Açaí X-Splash', price_cents: 2690 },
-        { name: 'Açaí X-Tradicional', price_cents: 2690 },
-        { name: 'Açaí X-Paçoleite', price_cents: 2690 },
-        { name: 'Açaí X-Paçokita', price_cents: 2890 },
-        { name: 'Açaí X-Chocolá', price_cents: 2990 },
-        { name: 'Açaí X-Tropical', price_cents: 3090 },
-        { name: 'Açaí X-Creme', price_cents: 3190 },
-        { name: 'Açaí X-Tella', price_cents: 3290 },
-        { name: 'Açaí X-King Tella', price_cents: 3290 },
+        { name: 'Açaí X-King Paçoca', prices: [2690, 3090, 3490, 4290] as const },
+        { name: 'Açaí X-Splash', prices: [2690, 3090, 3490, 4190] as const },
+        { name: 'Açaí X-Tradicional', prices: [2690, 3090, 3490, 4190] as const },
+        { name: 'Açaí X-Paçoleite', prices: [2690, 3090, 3490, 4190] as const },
+        { name: 'Açaí X-Paçokita', prices: [1290, 1590, 1990, 2690] as const },
+        { name: 'Açaí X-Chocolá', prices: [1490, 1890, 2290, 3090] as const },
+        { name: 'Açaí X-Tropical', prices: [1690, 2090, 2490, 3390] as const },
+        { name: 'Açaí X-Creme', prices: [1790, 2190, 2690, 3590] as const },
+        { name: 'Açaí X-Tella', prices: [1790, 2190, 2690, 3690] as const },
+        { name: 'Açaí X-King Tella', prices: [1790, 2190, 2690, 3690] as const },
     ].map((p, i): MenuItem => ({
-        ...p,
+        name: p.name,
+        price_cents: p.prices[0],
         category: 'Copos Da Promoção',
         sort_order: i,
         description: 'Açaí artesanal com ingredientes selecionados',
-        option_groups: [TAMANHO_COPOS, CREMES_ESPECIAIS, BEBIDA, COLHER],
+        option_groups: [makeTamanhoCopos(p.prices), CREMES_ESPECIAIS, BEBIDA, COLHER],
     }))),
 
     // ── Linha Monte Seu Copo ───────────────────────────────────────────────
     { name: 'Açaí de 300ml 3 complementos grátis', price_cents: 2990, category: 'Linha Monte Seu Copo', sort_order: 0, description: '300ml de açaí puro + 3 complementos grátis', option_groups: [makeOndeVai('copo'), makeComplementos(3), BEBIDA] },
     { name: 'Açaí de 400ml 3 complementos grátis', price_cents: 3390, category: 'Linha Monte Seu Copo', sort_order: 1, description: '400ml de açaí puro + 3 complementos grátis', option_groups: [makeOndeVai('copo'), makeComplementos(3), BEBIDA] },
     { name: 'Açaí de 500ml 3 complementos grátis', price_cents: 3690, category: 'Linha Monte Seu Copo', sort_order: 2, description: '500ml de açaí puro + 3 complementos grátis', option_groups: [makeOndeVai('copo'), makeComplementos(3), BEBIDA] },
-    { name: 'Açaí de 700ml 4 complementos grátis', price_cents: 4490, category: 'Linha Monte Seu Copo', sort_order: 3, description: '700ml de açaí puro + 4 complementos grátis', option_groups: [makeOndeVai('copo'), makeComplementos(4), BEBIDA] },
+    { name: 'Açaí de 700ml 4 complementos grátis', price_cents: 3890, category: 'Linha Monte Seu Copo', sort_order: 3, description: '700ml de açaí puro + 4 complementos grátis', option_groups: [makeOndeVai('copo'), makeComplementos(4), BEBIDA] },
     { name: 'Açaí Marmitex 500ml 3 complementos grátis', price_cents: 3790, category: 'Linha Monte Seu Copo', sort_order: 4, description: '500ml em marmitex + 3 complementos grátis', option_groups: [makeOndeVai('marmitex'), makeComplementos(3), BEBIDA] },
     { name: 'Açaí Marmitex 700ml 4 complementos grátis', price_cents: 4490, category: 'Linha Monte Seu Copo', sort_order: 5, description: '700ml em marmitex + 4 complementos grátis', option_groups: [makeOndeVai('marmitex'), makeComplementos(4), BEBIDA] },
     { name: 'Açaí Barca P 6 complementos grátis', price_cents: 5290, category: 'Linha Monte Seu Copo', sort_order: 6, description: 'Barca pequena + 6 complementos grátis', option_groups: [makeOndeVai('barca'), makeComplementos(6), BEBIDA] },
@@ -123,10 +124,10 @@ const MENU: MenuItem[] = [
 
     // ── Combos ────────────────────────────────────────────────────────────
     ...([
-        { name: 'Açaí Escolha 2 opções de 300ml', price_cents: 4690, sort_order: 0 },
-        { name: 'Açaí Escolha 2 opções de 400ml', price_cents: 5390, sort_order: 1 },
-        { name: 'Açaí Escolha 2 opções de 500ml', price_cents: 6490, sort_order: 2 },
-        { name: 'Açaí Escolha 2 opções de 700ml', price_cents: 7890, sort_order: 3 },
+        { name: 'Açaí Escolha 2 opções de 300ml', price_cents: 2390, sort_order: 0 },
+        { name: 'Açaí Escolha 2 opções de 400ml', price_cents: 2990, sort_order: 1 },
+        { name: 'Açaí Escolha 2 opções de 500ml', price_cents: 3690, sort_order: 2 },
+        { name: 'Açaí Escolha 2 opções de 700ml', price_cents: 4990, sort_order: 3 },
     ].map((p): MenuItem => ({
         ...p,
         category: 'Combos',
