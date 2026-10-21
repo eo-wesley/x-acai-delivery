@@ -56,16 +56,9 @@ jobs:
           NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
           NEXT_PUBLIC_FIREBASE_APP_ID: '1:000000000000:web:0000000000000000000000'
 
-      - name: Run Backend Validation Script
-        run: |
-          node apps/backend/dist/server.js &
-          sleep 5
-          node scripts/test-onboarding.js
-        env:
-          JWT_SECRET: ci_test_jwt_secret
-          ADMIN_SECRET: admin_secret_123
-          NODE_ENV: test
-          PORT: 3000
+      - name: Run Backend Test Suite
+        run: npm test
+        working-directory: apps/backend
 
   # ============================================================
   # 2. DOCKER BUILD (on push to main/production only)
