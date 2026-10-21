@@ -154,9 +154,10 @@ ordersRouter.post('/orders', async (req, res) => {
     try {
         return res.status(410).json({ error: 'Use a rota segura /api/:slug/orders para confirmar o pedido.' });
         const data = createOrderSchema.parse(req.body);
+        const { deliveryAddress: _unverifiedDeliveryAddress, ...legacyData } = data;
         const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
         const order = await ordersRepo.createOrder({
-            ...data,
+            ...legacyData,
             items: processedItems,
             restaurantId: 'default_tenant',
             paymentMethod: data.paymentMethod,

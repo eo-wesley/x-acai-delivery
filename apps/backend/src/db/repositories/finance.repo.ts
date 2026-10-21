@@ -72,9 +72,10 @@ export class FinanceRepo {
         valueCents?: number;
         value_cents?: number;
         amount_cents?: number;
+        amountCents?: number;
         description?: string;
     }) {
-        const rawValue = data.valueCents ?? data.value_cents ?? data.amount_cents;
+        const rawValue = data.valueCents ?? data.value_cents ?? data.amount_cents ?? data.amountCents;
         const valueCents = Number(rawValue);
         if (!Number.isSafeInteger(valueCents) || valueCents <= 0) {
             throw new Error('valueCents must be a positive integer');
@@ -101,7 +102,17 @@ export class FinanceRepo {
     }
 
     async getFinancialOverview(tenantId: string, fromDate: string, toDate: string) {
-        return this.getDRE(tenantId, fromDate, toDate);
+        const db = await getDb();
+        const dre = await this.getDRE(tenantId, fromDate, toDate);
+        const expensesByCategory = await db.all(`
+            SELECT category, COALESCE(SUM(value_cents), 0) AS total_cents
+            FROM financial_entries
+            WHERE restaurant_id = ? AND type = 'out'
+              AND created_at BETWEEN ? AND ?
+            GROUP BY category
+            ORDER BY total_cents DESC
+        `, [tenantId, fromDate, toDate]);
+        return { ...dre, expenses_by_category: expensesByCategory };
     }
 
     async getDRE(tenantId: string, startDate: string, endDate: string) {
