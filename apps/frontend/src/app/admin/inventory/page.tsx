@@ -2,6 +2,15 @@
 
 import React, { useEffect, useState } from 'react';
 
+type CostProfileState = {
+    id: string;
+    purchase_price_cents: number;
+    purchase_quantity: number;
+    purchase_unit: 'g' | 'kg' | 'ml' | 'l' | 'un';
+    yield_percent: number;
+    cost_evidence_state: 'unvalidated' | 'informed' | 'measured' | 'invoice';
+};
+
 export default function InventoryPage() {
     const [items, setItems] = useState<any[]>([]);
     const [forecasts, setForecasts] = useState<any[]>([]);
@@ -11,9 +20,17 @@ export default function InventoryPage() {
     const [loading, setLoading] = useState(true);
 
     const [showItemForm, setShowItemForm] = useState(false);
-    const [newItem, setNewItem] = useState({ name: '', unit: 'un', current_qty: 0, min_stock: 0, acquisition_cost_cents: 0 });
+    const [newItem, setNewItem] = useState({
+        name: '', unit: 'un', current_qty: 0, min_stock: 0, acquisition_cost_cents: 0,
+        purchase_price_cents: 0, purchase_quantity: 1, purchase_unit: 'un', yield_percent: 100,
+        cost_evidence_state: 'unvalidated'
+    });
 
     const [adjustState, setAdjustState] = useState<{ id: string, qty: number, reason: string } | null>(null);
+    const [costProfile, setCostProfile] = useState<CostProfileState | null>(null);
+    const updateCostProfile = (patch: Partial<CostProfileState>) => {
+        setCostProfile(current => current ? { ...current, ...patch } : current);
+    };
 
     const fetchData = async (slug = 'default') => {
         setLoading(true);
@@ -64,11 +81,37 @@ export default function InventoryPage() {
                 body: JSON.stringify(newItem)
             });
             setShowItemForm(false);
-            setNewItem({ name: '', unit: 'un', current_qty: 0, min_stock: 0, acquisition_cost_cents: 0 });
+            setNewItem({
+                name: '', unit: 'un', current_qty: 0, min_stock: 0, acquisition_cost_cents: 0,
+                purchase_price_cents: 0, purchase_quantity: 1, purchase_unit: 'un', yield_percent: 100,
+                cost_evidence_state: 'unvalidated'
+            });
             fetchData(slug);
         } catch (e) {
             console.error(e);
         }
+    };
+
+    const handleCostProfile = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!costProfile) return;
+        const token = localStorage.getItem('admin_token');
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const slug = localStorage.getItem('admin_slug') || 'default';
+        const response = await fetch(`${API_URL}/api/admin/inventory/${costProfile.id}?slug=${slug}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({
+                purchase_price_cents: costProfile.purchase_price_cents,
+                purchase_quantity: costProfile.purchase_quantity,
+                purchase_unit: costProfile.purchase_unit,
+                yield_percent: costProfile.yield_percent,
+                cost_evidence_state: costProfile.cost_evidence_state
+            })
+        });
+        if (!response.ok) throw new Error('Não foi possível salvar o perfil de compra.');
+        setCostProfile(null);
+        await fetchData(slug);
     };
 
     const handleAdjust = async (e: React.FormEvent) => {
@@ -134,6 +177,24 @@ export default function InventoryPage() {
                         <label className="text-xs font-bold text-gray-500 uppercase">Custo (R$)</label>
                         <input required type="number" step="0.01" className="w-full border p-2 mt-1 rounded outline-none w-28" placeholder="0,00" value={newItem.acquisition_cost_cents / 100} onChange={e => setNewItem({ ...newItem, acquisition_cost_cents: Math.round(parseFloat(e.target.value) * 100) })} />
                     </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Preço da compra (R$)</label>
+                        <input required type="number" min="0" step="0.01" className="w-32 border p-2 mt-1 rounded outline-none" value={newItem.purchase_price_cents / 100} onChange={e => setNewItem({ ...newItem, purchase_price_cents: Math.round(Number(e.target.value || 0) * 100) })} />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Conteúdo comprado</label>
+                        <input required type="number" min="0.0001" step="0.01" className="w-28 border p-2 mt-1 rounded outline-none" value={newItem.purchase_quantity} onChange={e => setNewItem({ ...newItem, purchase_quantity: Number(e.target.value || 0) })} />
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Unidade da compra</label>
+                        <select className="w-24 border p-2 mt-1 rounded outline-none bg-white" value={newItem.purchase_unit} onChange={e => setNewItem({ ...newItem, purchase_unit: e.target.value })}>
+                            <option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="un">un</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="text-xs font-bold text-gray-500 uppercase">Rendimento (%)</label>
+                        <input required type="number" min="0.01" max="100" step="0.01" className="w-24 border p-2 mt-1 rounded outline-none" value={newItem.yield_percent} onChange={e => setNewItem({ ...newItem, yield_percent: Number(e.target.value || 0) })} />
+                    </div>
                     <button type="submit" className="bg-green-600 text-white font-bold p-2 px-6 rounded hover:bg-green-700">Salvar</button>
                 </form>
             )}
@@ -160,6 +221,16 @@ export default function InventoryPage() {
                                                 <span className="text-purple-600 text-xs font-bold">R$ {(item.acquisition_cost_cents / 100).toFixed(2)} / {item.unit}</span>
                                             </div>
                                         </div>
+
+                                        {item.purchase_price_cents != null && item.purchase_quantity > 0 ? (
+                                            <div className="mb-4 rounded-lg border border-purple-100 bg-purple-50 p-3 text-xs text-purple-900">
+                                                <div className="font-black uppercase">Perfil de compra</div>
+                                                <div className="mt-1">R$ {(item.purchase_price_cents / 100).toFixed(2)} por {item.purchase_quantity} {item.purchase_unit} · rendimento {item.yield_percent ?? 100}%</div>
+                                                <div className="mt-1 text-[10px] font-bold uppercase text-purple-500">Evidência: {item.cost_evidence_state || 'não validada'}</div>
+                                            </div>
+                                        ) : (
+                                            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">Perfil de compra pendente: o custeio ficará provisório.</div>
+                                        )}
 
                                         <div className="flex justify-between items-center mb-4 text-sm">
                                             <div className="text-gray-600">
@@ -191,7 +262,17 @@ export default function InventoryPage() {
 
                                         {isAlert && <div className="text-xs text-red-500 font-bold mb-3 animate-pulse">⚠️ ALERTA DE ESTOQUE BAIXO</div>}
 
-                                        {adjustState?.id === item.id ? (
+                                        {costProfile && costProfile.id === item.id ? (
+                                            <form onSubmit={handleCostProfile} className="mt-2 grid grid-cols-2 gap-2 rounded-lg border border-purple-200 bg-purple-50 p-3">
+                                                <label className="text-[10px] font-black uppercase text-gray-500">Preço da compra (R$)<input required type="number" min="0" step="0.01" className="mt-1 w-full rounded border p-2 text-sm" value={costProfile.purchase_price_cents / 100} onChange={e => updateCostProfile({ purchase_price_cents: Math.round(Number(e.target.value || 0) * 100) })} /></label>
+                                                <label className="text-[10px] font-black uppercase text-gray-500">Conteúdo<input required type="number" min="0.0001" step="0.01" className="mt-1 w-full rounded border p-2 text-sm" value={costProfile.purchase_quantity} onChange={e => updateCostProfile({ purchase_quantity: Number(e.target.value || 0) })} /></label>
+                                                <label className="text-[10px] font-black uppercase text-gray-500">Unidade<select className="mt-1 w-full rounded border bg-white p-2 text-sm" value={costProfile.purchase_unit} onChange={e => updateCostProfile({ purchase_unit: e.target.value as CostProfileState['purchase_unit'] })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="un">un</option></select></label>
+                                                <label className="text-[10px] font-black uppercase text-gray-500">Rendimento (%)<input required type="number" min="0.01" max="100" step="0.01" className="mt-1 w-full rounded border p-2 text-sm" value={costProfile.yield_percent} onChange={e => updateCostProfile({ yield_percent: Number(e.target.value || 0) })} /></label>
+                                                <label className="col-span-2 text-[10px] font-black uppercase text-gray-500">Base da evidência<select className="mt-1 w-full rounded border bg-white p-2 text-sm" value={costProfile.cost_evidence_state} onChange={e => updateCostProfile({ cost_evidence_state: e.target.value as CostProfileState['cost_evidence_state'] })}><option value="unvalidated">Não validada</option><option value="informed">Informada pelo proprietário</option><option value="measured">Medida</option><option value="invoice">Nota ou comprovante</option></select></label>
+                                                <button type="submit" className="rounded bg-purple-600 p-2 font-bold text-white">Salvar custo</button>
+                                                <button type="button" onClick={() => setCostProfile(null)} className="rounded bg-white p-2 font-bold text-gray-600">Cancelar</button>
+                                            </form>
+                                        ) : adjustState?.id === item.id ? (
                                             <form onSubmit={handleAdjust} className="flex flex-col gap-2 mt-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
                                                 <div className="flex gap-2">
                                                     <input required type="number" step="0.01" placeholder="Delta (ex: -5 ou 10)" className="border p-2 rounded text-sm w-full outline-none" value={adjustState?.qty ?? 0} onChange={e => adjustState && setAdjustState({ ...adjustState, qty: parseFloat(e.target.value) })} />
@@ -207,12 +288,10 @@ export default function InventoryPage() {
                                                 </div>
                                             </form>
                                         ) : (
-                                            <button
-                                                onClick={() => setAdjustState({ id: item.id, qty: 0, reason: 'manual_adjust' })}
-                                                className="text-xs bg-gray-100 text-gray-700 font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200 w-full"
-                                            >
-                                                Ajustar Estoque
-                                            </button>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button onClick={() => setAdjustState({ id: item.id, qty: 0, reason: 'manual_adjust' })} className="text-xs bg-gray-100 text-gray-700 font-bold px-3 py-2 rounded shadow-sm hover:bg-gray-200">Ajustar estoque</button>
+                                                <button onClick={() => setCostProfile({ id: item.id, purchase_price_cents: item.purchase_price_cents ?? item.acquisition_cost_cents ?? 0, purchase_quantity: item.purchase_quantity ?? 1, purchase_unit: item.purchase_unit ?? item.unit ?? 'un', yield_percent: item.yield_percent ?? 100, cost_evidence_state: item.cost_evidence_state ?? 'unvalidated' })} className="text-xs bg-purple-100 text-purple-700 font-bold px-3 py-2 rounded shadow-sm hover:bg-purple-200">Custo da compra</button>
+                                            </div>
                                         )}
                                     </div>
                                 );

@@ -9,6 +9,11 @@ export interface InventoryItemPayload {
     current_qty: number;
     min_stock: number;
     acquisition_cost_cents: number;
+    purchase_price_cents?: number | null;
+    purchase_quantity?: number | null;
+    purchase_unit?: 'g' | 'kg' | 'ml' | 'l' | 'un' | null;
+    yield_percent?: number | null;
+    cost_evidence_state?: 'unvalidated' | 'informed' | 'measured' | 'invoice' | null;
     supplier?: string;
     active?: boolean;
 }
@@ -19,12 +24,19 @@ export class InventoryRepo {
         const id = randomUUID();
         await db.run(
             `INSERT INTO inventory_items 
-             (id, restaurant_id, name, sku, unit, current_qty, min_qty, min_stock, cost_cents, supplier, active) 
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             (id, restaurant_id, name, sku, unit, current_qty, min_qty, min_stock, cost_cents,
+              purchase_price_cents, purchase_quantity, purchase_unit, yield_percent, cost_evidence_state,
+              cost_updated_at, supplier, active)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 id, restaurantId, payload.name, payload.sku || null, payload.unit,
                 payload.current_qty || 0, payload.min_stock || 0, payload.min_stock || 0,
-                payload.acquisition_cost_cents || 0, payload.supplier || null, payload.active !== false ? 1 : 0
+                payload.acquisition_cost_cents || 0,
+                payload.purchase_price_cents ?? null, payload.purchase_quantity ?? null,
+                payload.purchase_unit ?? null, payload.yield_percent ?? 100,
+                payload.cost_evidence_state ?? 'unvalidated',
+                payload.purchase_price_cents != null ? new Date().toISOString() : null,
+                payload.supplier || null, payload.active !== false ? 1 : 0
             ]
         );
         return id;
@@ -35,14 +47,41 @@ export class InventoryRepo {
         const setClauses: string[] = [];
         const params: any[] = [];
 
+        const columnByField: Record<string, string> = {
+            name: 'name',
+            sku: 'sku',
+            unit: 'unit',
+            current_qty: 'current_qty',
+            min_stock: 'min_stock',
+            acquisition_cost_cents: 'cost_cents',
+            purchase_price_cents: 'purchase_price_cents',
+            purchase_quantity: 'purchase_quantity',
+            purchase_unit: 'purchase_unit',
+            yield_percent: 'yield_percent',
+            cost_evidence_state: 'cost_evidence_state',
+            supplier: 'supplier',
+            active: 'active'
+        };
+        let updatesPurchaseProfile = false;
+
         for (const [key, value] of Object.entries(patch)) {
-            setClauses.push(`${key} = ?`);
+            const column = columnByField[key];
+            if (!column) continue;
+            setClauses.push(`${column} = ?`);
+            if (key.startsWith('purchase_') || key === 'yield_percent' || key === 'cost_evidence_state') {
+                updatesPurchaseProfile = true;
+            }
             // Convert boolean to 1/0 for SQLite
             if (typeof value === 'boolean') {
                 params.push(value ? 1 : 0);
             } else {
                 params.push(value);
             }
+        }
+
+        if (updatesPurchaseProfile) {
+            setClauses.push('cost_updated_at = ?');
+            params.push(new Date().toISOString());
         }
 
         if (setClauses.length === 0) return false;
@@ -59,7 +98,7 @@ export class InventoryRepo {
 
     async listItems(restaurantId: string): Promise<any[]> {
         const db = await getDb();
-        return db.all(`SELECT * FROM inventory_items WHERE restaurant_id = ? AND active = 1 ORDER BY name ASC`, [restaurantId]);
+        return db.all(`SELECT *, cost_cents AS acquisition_cost_cents FROM inventory_items WHERE restaurant_id = ? AND active = 1 ORDER BY name ASC`, [restaurantId]);
     }
 
     async getAlerts(restaurantId: string): Promise<any[]> {
