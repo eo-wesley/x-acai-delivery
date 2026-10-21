@@ -12,6 +12,7 @@ async function main() {
 const { setupDatabase, getDb, closeDatabase } = await import('../src/db/db.client');
 const { ordersRepo, OrderIdempotencyConflictError } = await import('../src/db/repositories/orders.repo');
 const { approvedBasePrice, approvedOptionPrice } = await import('../src/services/approved-menu-prices');
+const { resolveFallbackOption } = await import('../src/services/fallback-menu-options');
 
 try {
     await setupDatabase({ seedMinimal: true });
@@ -21,6 +22,15 @@ try {
     assert.equal(approvedBasePrice('Açaí 700ml Grátis 4 Complementos'), 3890);
     assert.equal(approvedBasePrice('Açaí Marmitex 700ml Grátis 4 Complementos'), null);
     assert.equal(approvedOptionPrice('Açaí X-Tella', 'Tamanho do Copo', 'Copo de 700ml', 1500), 1900);
+    const fallbackGroup = 'fallback-product-1-tamanho';
+    assert.equal(resolveFallbackOption(
+        { id: 'product-1', name: 'Açaí X-Paçokita' },
+        { groupId: fallbackGroup, groupName: 'qualquer', optionId: `${fallbackGroup}-3`, optionName: 'Copo de 700ml' },
+    )?.price_cents, 1400);
+    assert.equal(resolveFallbackOption(
+        { id: 'product-1', name: 'Açaí X-Paçokita' },
+        { groupId: fallbackGroup, groupName: 'qualquer', optionId: `${fallbackGroup}-3`, optionName: 'Nutella' },
+    ), null);
 
     const input = {
         customerId: 'customer-test',
@@ -53,7 +63,7 @@ try {
         ['default_tenant', input.idempotencyKey],
     );
     assert.equal(count?.total, 1);
-    console.log('Integração de preços aprovados e idempotência durável: 9 verificações aprovadas.');
+    console.log('Integração de preços aprovados e idempotência durável: 11 verificações aprovadas.');
 } finally {
     await closeDatabase();
     await rm(sqlitePath, { force: true });

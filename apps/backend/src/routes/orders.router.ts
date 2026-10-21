@@ -11,6 +11,7 @@ import { PricingService } from '../services/pricing.service';
 import { menuRepo } from '../db/repositories/menu.repo';
 import { DeliveryQuoteError, deliveryQuoteService } from '../services/delivery-quote.service';
 import { applyApprovedBasePrice, approvedOptionPrice } from '../services/approved-menu-prices';
+import { resolveFallbackOption } from '../services/fallback-menu-options';
 
 export const ordersRouter = Router();
 
@@ -312,7 +313,13 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
                        AND oi.restaurant_id = ? AND og.restaurant_id = ? AND oi.available = 1`,
                     [selected.optionId, selected.groupId, i.menuItemId, tenantId, tenantId],
                 );
-                if (!canonical) throw new OrderValidationError(`A opção “${selected.optionName}” não está mais disponível.`);
+                if (!canonical) {
+                    const fallback = resolveFallbackOption(approvedItem, selected);
+                    if (!fallback) throw new OrderValidationError(`A opção “${selected.optionName}” não está mais disponível.`);
+                    canonicalOptions.push(fallback);
+                    unitPrice += fallback.price_cents;
+                    continue;
+                }
                 const price = approvedOptionPrice(approvedItem.name, canonical.group_name, canonical.name, canonical.price_cents);
                 canonicalOptions.push({
                     groupId: canonical.group_id,
