@@ -47,6 +47,14 @@ jobs:
         working-directory: apps/frontend
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3000
+          # Firebase validates the public web-config shape while Next.js prerenders.
+          # Production values are owned by Vercel; CI only needs inert placeholders.
+          NEXT_PUBLIC_FIREBASE_API_KEY: AIzaSyAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+          NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ci.invalid
+          NEXT_PUBLIC_FIREBASE_PROJECT_ID: ci-build
+          NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ci-build.invalid
+          NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: '000000000000'
+          NEXT_PUBLIC_FIREBASE_APP_ID: '1:000000000000:web:0000000000000000000000'
 
       - name: Run Backend Validation Script
         run: |
@@ -92,19 +100,9 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Build & Push Frontend Image
-        uses: docker/build-push-action@v5
-        with:
-          context: apps/frontend
-          file: apps/frontend/Dockerfile
-          push: true
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/xacai-frontend:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/xacai-frontend:${{ github.sha }}
-          build-args: |
-            NEXT_PUBLIC_API_URL=${{ secrets.NEXT_PUBLIC_API_URL }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      # The public frontend is deployed by Vercel. Keeping its image out of this
+      # VPS pipeline prevents an unconfigured Firebase build from blocking the
+      # backend release or replacing the canonical frontend.
 
   # ============================================================
   # 3. DEPLOY (on push to production only)
