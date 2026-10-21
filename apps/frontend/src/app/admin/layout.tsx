@@ -97,11 +97,11 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     }
 
     if (pathname === '/admin/onboarding') {
-        return <div className="bg-gray-50 flex-1">{children}</div>;
+        return <div className="admin-shell bg-gray-50 flex-1">{children}</div>;
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col md:flex-row">
+        <div className="admin-shell min-h-screen bg-gray-100 flex flex-col md:flex-row">
             {/* Sidebar */}
             <aside className="w-full md:w-64 bg-white shadow-md flex flex-col">
                 <div className="p-6 border-b flex justify-between items-center md:block">
@@ -146,6 +146,9 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                     </Link>
                     <Link href="/admin/inventory" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/inventory' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>📦</span> Estoque
+                    </Link>
+                    <Link href="/admin/costing" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/costing' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🧮</span> Precificação
                     </Link>
                     <Link href="/admin/procurement" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/procurement' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>🛒</span> Compras
