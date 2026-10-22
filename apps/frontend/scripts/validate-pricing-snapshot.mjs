@@ -20,6 +20,11 @@ assert.equal(monte700.price, 38.9);
 assert.match(monte700.status, /aprovado/i);
 assert.match(monte700.status, /não publicado/i);
 
+const marmitex700 = snapshot.pricingScope.approvedPrices.MX700;
+assert.equal(marmitex700.price, 38.9);
+assert.match(marmitex700.status, /aprovado/i);
+assert.match(marmitex700.status, /não publicado/i);
+
 const duoPrices = ['DUO300', 'DUO400', 'DUO500', 'DUO700'].map(key => snapshot.pricingScope.approvedPrices[key].price);
 assert.deepEqual(duoPrices, [23.9, 29.9, 36.9, 49.9]);
 

@@ -861,19 +861,19 @@
       "family": "Monte seu copo",
       "product": "Açaí Marmitex 700ml 4 complementos grátis",
       "size": "700ml",
-      "cost": null,
-      "costQuality": "Sem custo válido",
-      "appPrice": null,
+      "cost": 21.64,
+      "costQuality": "Confirmado (40g/complemento)",
+      "appPrice": 38.9,
       "ifood": 53.9,
       "keeta": 48.9,
       "food99": 41.9,
       "state": {
-        "code": "receita",
-        "label": "Receita e embalagem",
-        "action": "Pesar a base, registrar os complementos e confirmar o kit de embalagem próprio.",
+        "code": "aprovado",
+        "label": "Preço e receita aprovados",
+        "action": "Publicado no cardápio público e Takeat.",
         "lot": 2
       },
-      "released": false
+      "released": true
     },
     {
       "sku": "BARCA-P",
@@ -11699,6 +11699,17 @@
         "worstCaseContributionAmount": 17.124953362183994,
         "worstCaseContributionMarginPercent": 46.40908770239565,
         "status": "receita e preço aprovados pelo proprietário em 20/10/2026; ainda não publicado na Takeat"
+      },
+      "MX700": {
+        "product": "Marmitex 700 ml",
+        "price": 38.9,
+        "channel": "Takeat e venda presencial",
+        "maximumKnownDirectCost": 21.64,
+        "paymentReservePercent": 5,
+        "paymentReserveAmountAtApprovedPrice": 1.945,
+        "worstCaseContributionAmount": 15.315,
+        "worstCaseContributionMarginPercent": 39.37017994858612,
+        "status": "preço aprovado pelo proprietário em 22/10/2026; ainda não publicado na Takeat"
       }
     },
     "proposedPrices": {
@@ -11707,7 +11718,7 @@
         "proposedPrice": 38.9,
         "reason": "mesmo peso final de 710 g, quatro complementos e custo máximo conhecido de R$ 21,64, apenas R$ 0,07 abaixo do Monte Seu 700",
         "worstCaseContributionMarginPercent": 39.37017994858612,
-        "status": "recomendado; aguardando confirmação do proprietário"
+        "status": "aprovado pelo proprietário em 22/10/2026"
       },
       "status": "Marmitex 700 permanece como preço proposto; as Duplas e as seis famílias fixas foram aprovadas"
     },

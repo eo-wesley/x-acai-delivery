@@ -44,7 +44,7 @@ test('40 variações de tamanho somam base mais diferença exata, inclusive todo
         }
     }
     assert.equal(find('Açaí 700ml Grátis 4 Complementos').price_cents, 3821);
-    assert.equal(find('Açaí Marmitex 700ml Grátis 4 Complementos').price_cents, 3741);
+    assert.equal(find('Açaí Marmitex 700ml Grátis 4 Complementos').price_cents, 3890);
     assert.equal(find('Açaí Marmitex 500ml Grátis 3 Complementos').price_cents, 2456);
 });
 

@@ -293,7 +293,7 @@
     "restaurant_id": "default_tenant",
     "name": "Açaí Marmitex 700ml Grátis 4 Complementos",
     "description": "Escolha 4 Complementos No Seu Açaí",
-    "price_cents": 4690,
+    "price_cents": 3890,
     "category": "Açaí Monte O Seu",
     "available": true,
     "image_url": "https://static.ifood-static.com.br/image/upload/t_high/pratos/79f3b413-0d12-4d26-a46c-42f65af3759b/202406182309_822P_i.jpg",
@@ -303,7 +303,7 @@
     "created_at": "2026-04-09 03:58:56",
     "updated_at": "2026-04-09 03:58:56",
     "tags": [],
-    "original_price_cents": 4690,
+    "original_price_cents": 3890,
     "is_happy_hour": false
   },
   {

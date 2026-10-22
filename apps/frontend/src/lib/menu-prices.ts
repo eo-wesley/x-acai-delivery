@@ -20,7 +20,7 @@ export function buildMenuPrices(snapshot: PriceSnapshot): MenuPriceRow[] {
     const rows: MenuPriceRow[] = snapshot.products.map(product => {
         const size = Number(product.size?.match(/\d+/)?.[0]);
         const fixedItem = fixed.find(item => item.product === product.product && item.sizeMl === size);
-        const decisionKey = product.sku === 'MONTE-700' ? 'M700' : product.sku.startsWith('COMBO-') ? `DUO${size}` : '';
+        const decisionKey = product.sku === 'MONTE-700' ? 'M700' : product.sku === 'MARMITEX-700' ? 'MX700' : product.sku.startsWith('COMBO-') ? `DUO${size}` : '';
         const decision = snapshot.pricingScope.approvedPrices[decisionKey];
         const approvedPrice = fixedItem && /aprovad/i.test(fixedItem.status) ? fixedItem.recommendedPrice : decision && /aprovad/i.test(decision.status) ? decision.price ?? null : null;
         const recommendation = product.sku === 'MARMITEX-700' ? snapshot.pricingScope.proposedPrices.MX700 : null;
