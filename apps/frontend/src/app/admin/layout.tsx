@@ -23,7 +23,7 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
 
     // Auth Protection
     useEffect(() => {
-        if (!loading && !user && pathname !== '/admin/login') {
+        if (!loading && !user && pathname !== '/admin/login' && pathname !== '/admin/costing') {
             router.push('/admin/login');
         }
     }, [user, loading, pathname, router]);
@@ -90,6 +90,36 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
     if (!user && pathname === '/admin/login') {
         // If unauthenticated and on login page, layout shouldn't render sidebar
         return <>{children}</>;
+    }
+
+    if (!user && pathname === '/admin/costing') {
+        return (
+            <div className="admin-shell min-h-screen bg-gray-100 flex flex-col md:flex-row">
+                <aside className="w-full md:w-64 bg-white shadow-md flex flex-col">
+                    <div className="p-6 border-b flex justify-between items-center md:block">
+                        <h2 className="text-xl font-black text-purple-700">Painel Lojista</h2>
+                        <span className="inline-block mt-2 text-xs font-bold text-purple-600 bg-purple-50 px-2.5 py-1 rounded-full">X-Açaí Precificação</span>
+                    </div>
+                    <nav className="p-4 flex-1 flex flex-col gap-1 overflow-y-auto">
+                        <Link href="/admin/costing" className="p-3 rounded-lg font-semibold flex items-center gap-2 bg-purple-100 text-purple-700">
+                            <span>📊</span> Precificação & Custos
+                        </Link>
+                        <Link href="/precificacao" className="p-3 rounded-lg font-semibold flex items-center gap-2 text-gray-600 hover:bg-gray-50">
+                            <span>🔍</span> Visão Expandida
+                        </Link>
+                        <Link href="/" className="p-3 rounded-lg font-semibold flex items-center gap-2 text-gray-600 hover:bg-gray-50">
+                            <span>🥣</span> Cardápio Delivery
+                        </Link>
+                        <Link href="/admin/login" className="p-3 rounded-lg font-semibold flex items-center gap-2 text-gray-600 hover:bg-gray-50">
+                            <span>🔐</span> Login Completo
+                        </Link>
+                    </nav>
+                </aside>
+                <main className="flex-1 p-4 md:p-8 overflow-y-auto relative">
+                    {children}
+                </main>
+            </div>
+        );
     }
 
     if (!user) {
