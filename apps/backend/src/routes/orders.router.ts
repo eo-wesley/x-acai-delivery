@@ -1,6 +1,5 @@
 import { Router } from 'express';
-import { createHash } from 'crypto';
-import { OrderIdempotencyConflictError, ordersRepo } from '../db/repositories/orders.repo';
+import { ordersRepo } from '../db/repositories/orders.repo';
 import { z } from 'zod';
 import { pixPaymentService } from '../payments/pix.service';
 import { mercadoPagoService } from '../payments/mercadopago.service';
@@ -10,8 +9,7 @@ import { loyaltyRepo } from '../db/repositories/loyalty.repo';
 import { PricingService } from '../services/pricing.service';
 import { menuRepo } from '../db/repositories/menu.repo';
 import { DeliveryQuoteError, deliveryQuoteService } from '../services/delivery-quote.service';
-import { applyApprovedBasePrice, approvedOptionPrice } from '../services/approved-menu-prices';
-import { resolveFallbackOption } from '../services/fallback-menu-options';
+import { loadProductOptionGroups, MenuSelectionError, resolveSelectedOptions, SelectedMenuOption } from '../services/menu-options';
 
 export const ordersRouter = Router();
 
@@ -22,7 +20,7 @@ const createOrderSchema = z.object({
     customerEmail: z.string().email().optional(),
     items: z.array(z.object({
         menuItemId: z.string(),
-        qty: z.number().positive(),
+        qty: z.number().int().positive(),
         notes: z.string().optional(),
         selected_options: z.array(z.object({
             groupId: z.string(),
@@ -49,14 +47,7 @@ const createOrderSchema = z.object({
     notes: z.string().optional(),
     paymentMethod: z.enum(['pix', 'card', 'cash', 'wallet']).optional().default('pix'),
     restaurantId: z.string().optional(),
-    idempotencyKey: z.string().min(8).max(255).optional(),
 });
-
-class OrderValidationError extends Error { }
-
-function orderFingerprint(value: unknown): string {
-    return createHash('sha256').update(JSON.stringify(value)).digest('hex');
-}
 
 function emitOrderCreatedEvent(payload: {
     orderId: string;
@@ -82,6 +73,25 @@ function emitOrderCreatedEvent(payload: {
             items: payload.items,
         }
     });
+}
+
+interface OrderItemInput { menuItemId: string; qty: number; notes?: string; selected_options?: SelectedMenuOption[] }
+
+async function priceOrderItems(tenantId: string, items: OrderItemInput[]) {
+    const db = await (await import('../db/db.client')).getDb();
+    return Promise.all(items.map(async item => {
+        if (!Number.isSafeInteger(item.qty) || item.qty < 1) throw new MenuSelectionError('Quantidade inválida do produto.');
+        const product = await menuRepo.getMenuItemById(tenantId, item.menuItemId);
+        if (!product || !product.available || [1, true].includes((product as any).hidden) || [1, true].includes((product as any).out_of_stock)) {
+            throw new MenuSelectionError('Um produto não está mais disponível. Revise o carrinho.');
+        }
+        const pricing = await PricingService.calculateItemPrice(tenantId, product);
+        const groups = await loadProductOptionGroups(db, product);
+        const selected_options = resolveSelectedOptions(groups, item.selected_options);
+        const unitPriceCents = pricing.finalPriceCents + selected_options.reduce((sum, option) => sum + option.price_cents, 0);
+        if (!Number.isSafeInteger(unitPriceCents) || unitPriceCents < 0) throw new MenuSelectionError('Preço inválido no cadastro do produto.');
+        return { ...item, selected_options, unitPriceCents };
+    }));
 }
 
 async function getPublicPaymentStatus(orderId: string) {
@@ -153,16 +163,42 @@ ordersRouter.get('/:slug/orders/:id', async (req, res) => {
 
 ordersRouter.post('/orders', async (req, res) => {
     try {
-        return res.status(410).json({ error: 'Use a rota segura /api/:slug/orders para confirmar o pedido.' });
         const data = createOrderSchema.parse(req.body);
-        const { deliveryAddress: _unverifiedDeliveryAddress, ...legacyData } = data;
-        const processedItems = data.items.map(i => ({ ...i, unitPriceCents: 0 }));
+        const orderType = data.orderType || (data.deliveryAddress ? 'delivery' : 'pickup');
+
+        let verifiedAddress;
+        if (orderType === 'delivery') {
+            if (!data.deliveryAddress) {
+                return res.status(422).json({ error: 'Confirme o endereço completo pelo CEP antes de finalizar.' });
+            }
+            try {
+                verifiedAddress = await deliveryQuoteService.calculate('default_tenant', data.deliveryAddress);
+            } catch (e: any) {
+                if (e instanceof DeliveryQuoteError) return res.status(e.statusCode).json({ error: e.message });
+                throw e;
+            }
+        }
+
+        const surge = orderType === 'delivery'
+            ? await PricingService.calculateDeliveryFee('default_tenant', verifiedAddress!.feeCents)
+            : { finalFeeCents: 0, isSurge: false };
+        const finalDeliveryFee = surge.finalFeeCents;
+        const processedItems = await priceOrderItems('default_tenant', data.items);
+        const subtotalCents = processedItems.reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0);
+        const totalCents = subtotalCents + finalDeliveryFee;
+        const finalAddress = verifiedAddress
+            ? deliveryQuoteService.formatAddress(verifiedAddress)
+            : 'Retirada no Balcão (Loja)';
         const order = await ordersRepo.createOrder({
-            ...legacyData,
+            ...data,
+            subtotalCents,
+            totalCents,
             items: processedItems,
+            deliveryFeeCents: finalDeliveryFee,
+            addressText: finalAddress,
+            deliveryAddress: verifiedAddress,
             restaurantId: 'default_tenant',
             paymentMethod: data.paymentMethod,
-            deliveryAddress: undefined,
         });
 
         let pixQrCode = '';
@@ -174,7 +210,7 @@ ordersRouter.post('/orders', async (req, res) => {
             try {
                 const pixResult = await pixPaymentService.createPixPayment({
                     orderId: order.id,
-                    totalCents: data.totalCents,
+                    totalCents,
                     customerName: data.customerName || 'Cliente',
                     customerEmail: data.customerEmail,
                 });
@@ -192,7 +228,7 @@ ordersRouter.post('/orders', async (req, res) => {
                 console.error('[Orders/PIX] Failed to generate PIX:', pixErr.message);
             }
         } else {
-            paymentUrl = await mercadoPagoService.createPreference(order.id, data.totalCents, processedItems);
+            paymentUrl = await mercadoPagoService.createPreference(order.id, totalCents, processedItems);
         }
 
         emitOrderCreatedEvent({
@@ -201,7 +237,7 @@ ordersRouter.post('/orders', async (req, res) => {
             customerId: order.customer_id,
             customerPhone: data.customerPhone,
             customerName: data.customerName,
-            totalCents: data.totalCents,
+            totalCents,
             paymentMethod: data.paymentMethod,
             addressText: data.addressText,
             items: processedItems,
@@ -215,6 +251,7 @@ ordersRouter.post('/orders', async (req, res) => {
             payment_reference: paymentReference || undefined,
         });
     } catch (e: any) {
+        if (e instanceof MenuSelectionError) return res.status(e.statusCode).json({ error: e.message });
         if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
         res.status(500).json({ error: e.message });
     }
@@ -294,66 +331,13 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             : { finalFeeCents: 0, isSurge: false };
         const finalDeliveryFee = surge.finalFeeCents;
 
-        const db = await (await import('../db/db.client')).getDb();
-        const processedItems = await Promise.all(data.items.map(async (i) => {
-            const itemBase = await menuRepo.getMenuItemById(tenantId, i.menuItemId);
-            if (!itemBase || !itemBase.available) throw new OrderValidationError('Um produto do carrinho não está mais disponível.');
-
-            const approvedItem = applyApprovedBasePrice(itemBase);
-            const pricing = await PricingService.calculateItemPrice(tenantId, approvedItem);
-            let unitPrice = pricing.finalPriceCents;
-
-            const canonicalOptions = [];
-            for (const selected of i.selected_options || []) {
-                const canonical = await db.get<any>(
-                    `SELECT oi.id, oi.name, oi.price_cents, og.id AS group_id, og.name AS group_name
-                     FROM option_items oi
-                     JOIN option_groups og ON og.id = oi.option_group_id
-                     WHERE oi.id = ? AND og.id = ? AND og.menu_item_id = ?
-                       AND oi.restaurant_id = ? AND og.restaurant_id = ? AND oi.available = 1`,
-                    [selected.optionId, selected.groupId, i.menuItemId, tenantId, tenantId],
-                );
-                if (!canonical) {
-                    const fallback = resolveFallbackOption(approvedItem, selected);
-                    if (!fallback) throw new OrderValidationError(`A opção “${selected.optionName}” não está mais disponível.`);
-                    canonicalOptions.push(fallback);
-                    unitPrice += fallback.price_cents;
-                    continue;
-                }
-                const price = approvedOptionPrice(approvedItem.name, canonical.group_name, canonical.name, canonical.price_cents);
-                canonicalOptions.push({
-                    groupId: canonical.group_id,
-                    groupName: canonical.group_name,
-                    optionId: canonical.id,
-                    optionName: canonical.name,
-                    price_cents: price,
-                });
-                unitPrice += price;
-            }
-
-            return { ...i, selected_options: canonicalOptions, unitPriceCents: unitPrice };
-        }));
+        const processedItems = await priceOrderItems(tenantId, data.items);
 
         const finalSubtotal = processedItems.reduce((sum, i) => sum + (i.unitPriceCents * i.qty), 0);
         const finalTotal = Math.max(0, finalSubtotal + finalDeliveryFee - Math.max(0, discountCents));
         const finalAddress = verifiedAddress
             ? deliveryQuoteService.formatAddress(verifiedAddress)
             : 'Retirada no Balcão (Loja)';
-
-        const idempotencyKey = String(req.get('Idempotency-Key') || data.idempotencyKey || '').trim() || undefined;
-        const fingerprint = orderFingerprint({
-            tenantId,
-            customerId: data.customerId,
-            customerName: data.customerName,
-            customerPhone: data.customerPhone,
-            processedItems,
-            finalDeliveryFee,
-            finalSubtotal,
-            finalTotal,
-            finalAddress,
-            paymentMethod,
-            couponCode: couponCode || null,
-        });
 
         const order = await ordersRepo.createOrder({
             ...data,
@@ -365,15 +349,9 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             deliveryAddress: verifiedAddress,
             restaurantId: tenantId,
             paymentMethod,
-            idempotencyKey,
-            requestFingerprint: fingerprint,
         });
 
-        if (order.reused) {
-            const existing = await ordersRepo.getOrderById(order.id);
-            return res.status(200).json({ ...existing, reused: true });
-        }
-
+        const db = await (await import('../db/db.client')).getDb();
         await db.run(
             `UPDATE orders SET payment_method = ?, discount_cents = ?, coupon_code = ?, is_surge = ?, is_happy_hour = ? WHERE id = ?`,
             [paymentMethod, discountCents, couponCode || null, surge.isSurge ? 1 : 0, 0, order.id] // Simplified HH tracking
@@ -467,9 +445,8 @@ ordersRouter.post('/:slug/orders', tenantMiddleware, async (req: any, res: any) 
             coupon_code: couponCode || null,
         });
     } catch (e: any) {
+        if (e instanceof MenuSelectionError) return res.status(e.statusCode).json({ error: e.message });
         if (e instanceof z.ZodError) return res.status(400).json({ error: e.issues });
-        if (e instanceof OrderValidationError) return res.status(422).json({ error: e.message });
-        if (e instanceof OrderIdempotencyConflictError) return res.status(409).json({ error: e.message });
         res.status(500).json({ error: e.message });
     }
 });

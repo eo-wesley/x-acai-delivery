@@ -5,159 +5,81 @@ import Link from 'next/link';
 import { useCart } from '../components/CartContext';
 import { useTenant, getApiBase } from '../hooks/useTenant';
 import WelcomeBanner from '../components/WelcomeBanner';
-import LiveSalesPopup from '../components/LiveSalesPopup';
 import FidelityStamps from '../components/FidelityStamps';
-import FlashDealBanner from '../components/FlashDealBanner';
+import {
+  filterMenuItems, getEditorialHighlights, getInitialMenuCategory, getMenuCategoryTabs,
+  getMenuCardDescription, getMenuDisplayName, getMenuPriceLabel, isMenuItemAvailable, normalizeMenuText,
+  sortPublicMenuItems, type MenuPresentationItem,
+} from '../lib/menu-presentation';
+import { getWaterBundle } from '../lib/water-bundles';
+import { loadMenuCatalog } from '../lib/load-menu';
+import { canStoreAcceptOrders, loadStoreInfo, storeUnavailableMessage, type StoreInfo } from '../lib/store-availability';
+import { Droplets, Search, Sparkles, X } from 'lucide-react';
 
-interface MenuItem {
-  id: string;
-  name: string;
-  description?: string;
+interface MenuItem extends MenuPresentationItem {
   price_cents: number;
-  category?: string;
-  sort_order?: number;
   image_url?: string;
-  available?: number;
-  out_of_stock?: number;
-  hidden?: number;
-  tags?: string[];
-}
-
-interface StoreInfo {
-  name: string;
-  store_status: string;
-  temp_close_reason?: string;
-  description?: string;
-  prep_time_minutes?: number;
-  delivery_fee_cents?: number;
-  min_order_cents?: number;
-  banner_url?: string;
-  logo_url?: string;
-  primary_color?: string;
-  secondary_color?: string;
-  font_family?: string;
-  can_accept_orders?: boolean;
-}
-
-// These are the only customer-facing categories from the approved iFood layout.
-// The API can contain legacy/imported categories, so the public menu normalizes
-// them here instead of exposing those internal names to customers.
-const PUBLIC_CATEGORY_TABS = [
-  { key: 'vai uma bebida?', label: 'Vai uma Bebida?' },
-  { key: 'acai combos', label: 'Açaí Combos' },
-  { key: 'acai monte o seu', label: 'Açaí Monte O Seu' },
-  { key: 'acai copos da promocao', label: 'Açaí Copos da Promoção' },
-] as const;
-
-function normalizeCategory(value?: string) {
-  return (value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/\s+\?/g, '?')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function publicCategoryKey(value?: string) {
-  const normalized = normalizeCategory(value);
-  return PUBLIC_CATEGORY_TABS.find(tab => tab.key === normalized)?.key || null;
-}
-
-function isStagingSmokeTest(item: MenuItem) {
-  return item.id === 'seed_menu_acai_classico' || /smoke test de staging/i.test(item.description || '');
 }
 
 export default function Home() {
   const { slug, ready } = useTenant();
-  const { addToCart, cartCount } = useCart();
+  const { cartCount } = useCart();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [store, setStore] = useState<StoreInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [category, setCategory] = useState<string>(PUBLIC_CATEGORY_TABS[0].key);
+  const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerPoints, setCustomerPoints] = useState(0);
 
   const load = useCallback(() => {
     if (!ready) return;
     const API = getApiBase();
-    setLoading(true);
-
     const phone = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('customer_data') || '{}')?.phone : null;
 
     Promise.allSettled([
-      fetch(`${API}/api/${slug}/menu`)
-        .then(async r => {
-          if (!r.ok) throw new Error('API offline');
-          return r.json();
-        })
-        .catch(() => fetch('/default-menu.json').then(r => r.json())),
-      fetch(`${API}/api/${slug}/store`).then(r => r.json()).catch(() => ({
-        name: 'X-Açaí Delivery',
-        store_status: 'open',
-        description: 'O melhor açaí da região, cremoso e com entrega rápida!',
-        delivery_fee_cents: 500,
-        min_order_cents: 1000,
-        prep_time_minutes: 30,
-        can_accept_orders: true,
-      })),
+      loadMenuCatalog(API, slug),
+      loadStoreInfo(API, slug),
       phone ? fetch(`${API}/api/${slug}/loyalty/me?phone=${phone}`).then(r => r.json()).catch(() => null) : Promise.resolve(null),
     ]).then(([menuRes, storeRes, loyaltyRes]) => {
-      if (menuRes.status === 'fulfilled' && Array.isArray(menuRes.value) && menuRes.value.length > 0) {
-        setMenuItems(menuRes.value);
-      } else {
-        fetch('/default-menu.json')
-          .then(r => r.json())
-          .then(items => { if (Array.isArray(items)) setMenuItems(items); })
-          .catch(() => {});
-      }
-      if (storeRes.status === 'fulfilled' && storeRes.value) setStore(storeRes.value);
+      setMenuItems(menuRes.status === 'fulfilled' ? menuRes.value : []);
+      setStore(storeRes.status === 'fulfilled' ? storeRes.value : null);
       if (loyaltyRes.status === 'fulfilled' && loyaltyRes.value) {
         setCustomerPoints(loyaltyRes.value.points || 0);
       }
-      setLoading(false);
+      setLoadedSlug(slug);
     });
   }, [slug, ready]);
 
   useEffect(() => { load(); }, [load]);
 
-  const storeOpen = !store || store.store_status === 'open';
-  const canOrder = !store || store.can_accept_orders !== false;
+  const loading = !ready || loadedSlug !== slug;
+  const canOrder = canStoreAcceptOrders(store);
 
-  const publicMenuItems = menuItems
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => publicCategoryKey(item.category) && !isStagingSmokeTest(item))
-    .sort((a, b) => {
-      const categoryDifference = PUBLIC_CATEGORY_TABS.findIndex(tab => tab.key === publicCategoryKey(a.item.category))
-        - PUBLIC_CATEGORY_TABS.findIndex(tab => tab.key === publicCategoryKey(b.item.category));
-      if (categoryDifference !== 0) return categoryDifference;
-
-      // Keep the order supplied by the catalog when no explicit order exists.
-      // This preserves the iFood-imported sequence instead of alphabetizing products.
-      const aOrder = typeof a.item.sort_order === 'number' ? a.item.sort_order : Number.POSITIVE_INFINITY;
-      const bOrder = typeof b.item.sort_order === 'number' ? b.item.sort_order : Number.POSITIVE_INFINITY;
-      return aOrder !== bOrder ? aOrder - bOrder : a.index - b.index;
-    })
-    .map(({ item }) => item);
-
-  const availableCategoryKeys = new Set(publicMenuItems.map(item => publicCategoryKey(item.category)).filter(Boolean));
-  const categoryTabs = PUBLIC_CATEGORY_TABS.filter(tab => availableCategoryKeys.has(tab.key));
-
-  const filtered = publicMenuItems.filter(m =>
-    m.hidden !== 1 &&
-    (!category || publicCategoryKey(m.category) === category) &&
-    (!searchTerm || m.name.toLowerCase().includes(searchTerm.toLowerCase()) || m.description?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const popularItems = publicMenuItems.filter(m => m.tags?.includes('popular') || m.tags?.includes('promo')).slice(0, 5);
-  const highlights = popularItems.length > 0 ? popularItems : publicMenuItems.filter(m => m.hidden !== 1 && m.available !== 0 && m.out_of_stock !== 1).slice(0, 4);
+  const publicMenuItems = sortPublicMenuItems(menuItems);
+  const categoryTabs = getMenuCategoryTabs(publicMenuItems);
+  const activeCategory = categoryTabs.some(tab => tab.key === category) ? category : getInitialMenuCategory(publicMenuItems);
+  const query = normalizeMenuText(searchTerm);
+  const filtered = filterMenuItems(publicMenuItems, activeCategory, searchTerm);
+  const highlights = getEditorialHighlights(publicMenuItems);
+  const waterBundles = publicMenuItems.flatMap(item => {
+    const bundles = [getWaterBundle(menuItems, item.id, 'water'), getWaterBundle(menuItems, item.id, 'two-waters')];
+    return bundles.filter(bundle => bundle !== null);
+  });
+  const visibleBundles = waterBundles.filter(bundle => query
+    ? normalizeMenuText(`${bundle.title} ${bundle.description} Açaí Combos`).includes(query)
+    : activeCategory === 'acai combos');
 
   const R = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
+  const isXAcaiStore = slug === 'default' || normalizeMenuText(store?.name || '').includes('x acai');
+  const brandPrimary = isXAcaiStore
+    ? '#41134d'
+    : store?.primary_color || '#41134d';
+
   const themeVars = {
-    '--primary': store?.primary_color || '#9333ea',
-    '--primary-hover': (store?.primary_color || '#9333ea') + 'ee',
-    'fontFamily': store?.font_family ? `'${store.font_family}', sans-serif` : 'inherit',
+    '--primary': brandPrimary,
+    '--primary-hover': brandPrimary + 'ee',
+    'fontFamily': isXAcaiStore ? 'var(--font-inter), sans-serif' : store?.font_family ? `'${store.font_family}', sans-serif` : 'inherit',
   } as React.CSSProperties;
 
   if (loading) return (
@@ -168,55 +90,56 @@ export default function Home() {
   );
 
   return (
-    <div className="bg-gray-50">
-      <div className="max-w-md mx-auto bg-white shadow-sm min-h-screen pb-24 relative" style={themeVars}>
+    <div className="bg-[#FFF5E8]">
+      <div className={`relative mx-auto min-h-screen max-w-md bg-[#FFFDFA] shadow-[0_8px_40px_rgba(65,19,77,0.055)] ${cartCount > 0 ? 'pb-44' : 'pb-24'}`} style={themeVars}>
         {/* Store Banner / Header */}
         <div
-          className="text-white p-5 pt-8 pb-16 relative bg-cover bg-center"
+          className="relative bg-cover bg-center px-5 pb-16 pt-8 text-white"
           style={{
             backgroundColor: 'var(--primary)',
             backgroundImage: store?.banner_url ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${store.banner_url})` : undefined
           }}
         >
           <div className="flex items-center gap-3">
-            {store?.logo_url && (
-              <img src={store.logo_url} className="w-12 h-12 rounded-xl object-contain bg-white p-1" alt="Logo" />
+            {store?.logo_url && !isXAcaiStore && (
+              <img src={store.logo_url} className="h-12 w-12 rounded-xl border border-white/20 bg-[#FFF5E8] p-1 object-contain" alt={`Logo ${store.name || 'da loja'}`} />
             )}
-            <h1 className="text-2xl font-black">{store?.name || '🍇 X-Açaí Delivery'}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{store?.name || 'X-Açaí Delivery'}</h1>
           </div>
-          {store?.description && <p className="text-white/80 text-sm mt-1">{store.description}</p>}
-          <div className="flex gap-3 mt-3 flex-wrap">
+          {store?.description
+            ? <p className="mt-1 text-sm text-white/80">{store.description}</p>
+            : <p className="mt-1 text-sm text-white/80">Explore o cardápio e encontre sua próxima combinação.</p>}
+          <div className="mt-4 flex flex-wrap gap-2">
             {store?.prep_time_minutes && (
-              <span className="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">⏱ {store.prep_time_minutes} min</span>
+              <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">Preparo aprox. {store.prep_time_minutes} min</span>
             )}
-            {store?.delivery_fee_cents !== undefined && (
-              <span className="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
-                {store.delivery_fee_cents === 0 ? '🚚 Grátis' : `🚚 ${R(store.delivery_fee_cents)}`}
-              </span>
-            )}
+            <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">Entrega calculada no checkout</span>
             {store?.min_order_cents ? (
-              <span className="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">🛒 Mín. {R(store.min_order_cents)}</span>
+              <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">Pedido mínimo {R(store.min_order_cents)}</span>
             ) : null}
           </div>
         </div>
 
         {/* Store Status Banner */}
-        {!storeOpen && (
-          <div className={`mx-4 -mt-8 relative z-10 rounded-2xl p-4 shadow-lg ${store?.store_status === 'closed' ? 'bg-red-600 text-white' : 'bg-yellow-400 text-yellow-900'
+        {!canOrder && (
+          <div role="status" className={`relative z-10 mx-4 -mt-8 rounded-2xl border p-3.5 ${!store
+              ? 'border-[#41134D]/12 bg-[#F3EAF1] text-[#41134D]'
+              : store.store_status === 'closed'
+                ? 'border-red-800/10 bg-red-600 text-white'
+                : 'border-amber-900/10 bg-amber-100 text-amber-950'
             }`}>
-            <div className="font-black text-lg">
-              {store?.store_status === 'closed' ? '🔴 Loja Fechada' :
+            <div className="text-sm font-bold">
+              {!store ? 'Prévia — pedidos indisponíveis' : store.store_status === 'closed' ? '🔴 Loja Fechada' :
                 store?.store_status === 'paused' ? '⏸️ Pedidos Pausados' :
-                  store?.store_status === 'busy' ? '🟠 Estamos Lotados' : '🔴 Loja Fechada'}
+                  store?.store_status === 'busy' ? '🟠 Estamos Lotados' : 'Pedidos indisponíveis'}
             </div>
-            <p className="text-sm mt-1 opacity-90">
-              {store?.temp_close_reason || 'Volte em breve!'}
+            <p className="mt-1 text-xs leading-relaxed opacity-90">
+              {storeUnavailableMessage(store)}
             </p>
           </div>
         )}
 
         <WelcomeBanner />
-        <FlashDealBanner />
 
         <div className="p-4">
           {/* Phase 63: Fidelity Progress */}
@@ -226,35 +149,41 @@ export default function Home() {
             </div>
           )}
           {/* Search Bar */}
-          <div className="mb-6 relative">
+          <div className="relative mb-6">
             <input
               type="text"
+              aria-label="Buscar em todo o cardápio"
               placeholder="Buscar açaí, suco, acompanhamento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded-2xl py-3 px-4 pl-12 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+              className="w-full rounded-2xl border border-[#41134D]/15 bg-[#FFFDFA] py-3 pl-11 pr-11 font-medium text-gray-800 shadow-[0_3px_14px_rgba(65,19,77,0.035)] transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
             />
-            <span className="absolute left-4 top-3 text-xl opacity-50">🔍</span>
+            <Search aria-hidden="true" size={19} strokeWidth={1.8} className="pointer-events-none absolute left-4 top-3.5 text-gray-500" />
             {searchTerm && (
-              <button onClick={() => setSearchTerm('')} className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 font-bold">✕</button>
+              <button type="button" aria-label="Limpar busca" onClick={() => setSearchTerm('')} className="absolute right-3 top-3 rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"><X aria-hidden="true" size={17} /></button>
             )}
           </div>
 
-          {/* Highlights / Popular Items Slider */}
-          {!searchTerm && highlights.length > 0 && (
+          {/* Editorial suggestions; these do not represent a sales ranking. */}
+          {!query && highlights.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-black text-gray-800 mb-3 flex items-center gap-2">⭐ Mais Pedidos</h2>
+              <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-gray-800"><Sparkles aria-hidden="true" size={17} className="text-purple-600" />Escolhas para começar</h2>
+              <p className="mb-3 mt-1 text-sm text-gray-500">Algumas opções do cardápio.</p>
               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x">
                 {highlights.map(item => (
-                  <Link href={`/product/${item.id}`} key={`high-${item.id}`} className="shrink-0 w-48 bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden snap-start flex flex-col transition hover:shadow-md">
-                    <div className="h-32 bg-purple-50 relative flex items-center justify-center text-5xl">
+                  <Link href={`/product/${item.id}`} key={`high-${item.id}`}
+                    className="flex w-56 max-w-[85%] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[#41134D]/10 bg-white shadow-[0_5px_18px_rgba(65,19,77,0.04)] transition hover:shadow-md">
+                    <div className="relative flex h-32 items-center justify-center bg-[#F4EEE7] text-5xl">
                       {item.image_url
-                        ? <img src={item.image_url} alt={item.name} className="object-cover w-full h-full" />
-                        : '🍇'}
+                        ? <img src={item.image_url} alt={getMenuDisplayName(item)} className="object-cover w-full h-full" />
+                        : <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-11 w-11 opacity-70" />}
                     </div>
                     <div className="p-3 flex flex-col flex-1">
-                      <h3 className="font-bold text-gray-800 text-sm truncate">{item.name}</h3>
-                      <div className="mt-auto font-black text-purple-700">{R(item.price_cents)}</div>
+                      <h3 className="font-bold text-gray-800 text-sm leading-snug break-words">{getMenuDisplayName(item)}</h3>
+                      <div className="mt-auto pt-3">
+                        {getMenuPriceLabel(item) && <p className="text-xs text-gray-600 mb-0.5">{getMenuPriceLabel(item)}</p>}
+                        <div className="font-black text-purple-700">{R(item.price_cents)}</div>
+                      </div>
                     </div>
                   </Link>
                 ))}
@@ -263,10 +192,11 @@ export default function Home() {
           )}
 
           {/* Categories Slider */}
-          <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide snap-x">
+          <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide snap-x" aria-label="Categorias do cardápio">
             {categoryTabs.map(tab => (
-              <button key={tab.key} onClick={() => { setCategory(tab.key); setSearchTerm(''); }}
-                className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${category === tab.key ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-105' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
+              <button type="button" key={tab.key} onClick={() => { setCategory(tab.key); setSearchTerm(''); }}
+                aria-pressed={!query && activeCategory === tab.key}
+                className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${!query && activeCategory === tab.key ? 'bg-purple-600 text-white border-purple-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
                   }`}>
                 {tab.label}
               </button>
@@ -274,21 +204,50 @@ export default function Home() {
           </div>
 
           {/* Menu Items */}
+          <h2 className="font-black text-lg text-gray-800 mb-3">
+            {query ? 'Resultados em todo o cardápio' : categoryTabs.find(tab => tab.key === activeCategory)?.label}
+          </h2>
           <div className="flex flex-col gap-4">
+            {visibleBundles.map(bundle => (
+              <Link href={bundle.href} key={bundle.href}
+                className="flex rounded-xl border border-purple-100 bg-purple-50/50 p-3 gap-3 items-start transition hover:shadow-md active:scale-[0.98]">
+                <div className="w-20 h-24 shrink-0 relative">
+                  <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center overflow-hidden text-3xl">
+                    {bundle.baseProduct.image_url
+                      ? <img src={bundle.baseProduct.image_url} alt={getMenuDisplayName(bundle.baseProduct)} className="object-cover w-full h-full" />
+                      : <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-8 w-8 opacity-70" />}
+                  </div>
+                  <div className="absolute bottom-0 right-0 w-9 h-12 rounded-lg bg-white border border-purple-100 flex items-center justify-center overflow-hidden">
+                    {bundle.waterProduct.image_url
+                      ? <img src={bundle.waterProduct.image_url} alt={bundle.waterProduct.name} className="object-contain w-full h-full" />
+                      : <Droplets aria-hidden="true" size={18} className="text-purple-700" />}
+                  </div>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-purple-700 mb-1">{bundle.waterQty === 1 ? '1 água incluída' : `${bundle.waterQty} águas incluídas`}</p>
+                  <h3 className="font-bold text-gray-800 text-base leading-snug break-words">{bundle.title}</h3>
+                  <p className="text-xs text-gray-600 mt-1 leading-relaxed">{bundle.description}</p>
+                  <p className="text-xs text-gray-600 mt-3">Preço do conjunto</p>
+                  <p className="font-black text-purple-700 text-lg">A partir de {R(bundle.price_cents)}</p>
+                </div>
+              </Link>
+            ))}
             {filtered.map(item => {
-              const unavailable = item.available === 0 || item.out_of_stock === 1;
+              const unavailable = !isMenuItemAvailable(item);
+              const outOfStock = item.out_of_stock === 1 || item.out_of_stock === true;
               return (
                 <Link
-                  href={unavailable || !canOrder ? '#' : `/product/${item.id}`}
+                  href={unavailable ? '#' : `/product/${item.id}`}
                   key={item.id}
-                  className={`flex bg-white rounded-xl shadow-sm border border-gray-100 p-4 gap-4 items-center transition ${unavailable || !canOrder ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-md active:scale-[0.98]'}`}
-                  onClick={(e) => { if (unavailable || !canOrder) e.preventDefault(); }}
+                  aria-disabled={unavailable}
+                  className={`flex bg-white rounded-xl shadow-sm border border-gray-100 p-3 gap-3 items-start transition ${unavailable ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-md active:scale-[0.98]'}`}
+                  onClick={(e) => { if (unavailable) e.preventDefault(); }}
                 >
-                  <div className="w-24 h-24 bg-purple-50 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 text-3xl relative">
+                  <div className="w-20 h-20 bg-purple-50 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 text-3xl relative">
                     {item.image_url
-                      ? <img src={item.image_url} alt={item.name} className="object-cover w-full h-full" />
-                      : '🍇'}
-                    {item.out_of_stock === 1 && (
+                      ? <img src={item.image_url} alt={getMenuDisplayName(item)} className="object-cover w-full h-full" />
+                      : <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-8 w-8 opacity-70" />}
+                    {outOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <span className="text-white text-xs font-black">ESGOTADO</span>
                       </div>
@@ -296,53 +255,33 @@ export default function Home() {
                   </div>
 
                   <div className="flex-1 min-w-0 flex flex-col py-1">
-                    <h3 className="font-bold text-gray-800 text-base leading-tight truncate">{item.name}</h3>
-                    {item.description && <p className="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed">{item.description}</p>}
-                    <div className="mt-auto pt-2 flex items-center justify-between">
-                      <div className="font-black text-purple-700 text-lg">
-                        {R(item.price_cents)}
+                    <h3 className="font-bold text-gray-800 text-base leading-snug break-words">{getMenuDisplayName(item)}</h3>
+                    {getMenuCardDescription(item) && <p className="text-xs text-gray-500 mt-1 line-clamp-3 leading-relaxed">{getMenuCardDescription(item)}</p>}
+                    <div className="mt-auto pt-2 flex items-end justify-between gap-2 flex-wrap">
+                      <div>
+                        {getMenuPriceLabel(item) && <p className="text-xs text-gray-600 mb-0.5">{getMenuPriceLabel(item)}</p>}
+                        <div className="font-black text-purple-700 text-lg">{R(item.price_cents)}</div>
                       </div>
-                      {item.available === 0 && !item.out_of_stock && (
-                        <span className="text-[10px] uppercase tracking-wider text-orange-500 font-bold bg-orange-50 px-2 py-1 rounded">Indisponível hoje</span>
+                      {unavailable && !outOfStock && (
+                        <span className="text-xs text-orange-700 font-bold bg-orange-50 px-2 py-1 rounded">Indisponível hoje</span>
                       )}
                     </div>
-                  </div>
-
-                  <div className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm shadow-sm transition-all duration-200 ${unavailable || !canOrder
-                    ? 'bg-gray-100 text-gray-400'
-                    : 'bg-purple-100 text-purple-700'
-                    }`}>
-                    ➔
                   </div>
                 </Link>
               );
             })}
 
-            {filtered.length === 0 && (
+            {filtered.length === 0 && visibleBundles.length === 0 && (
               <div className="text-center text-gray-400 mt-16">
                 <div className="text-5xl mb-4">🥣</div>
                 <p className="font-semibold">
-                  {menuItems.length === 0 ? 'Cardápio vazio ou servidor offline.' : 'Nenhum item nessa categoria.'}
+                  {menuItems.length === 0 ? 'Cardápio vazio ou servidor offline.' : query ? 'Nenhum item encontrado para sua busca.' : 'Nenhum item nessa categoria.'}
                 </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* Sticky Cart Button */}
-        {cartCount > 0 && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-full max-w-[calc(448px-32px)] z-50">
-            <Link href="/cart"
-              style={{ backgroundColor: 'var(--primary)' }}
-              className="w-full text-white font-black py-4 px-6 rounded-2xl shadow-xl flex items-center justify-between transition hover:opacity-90">
-              <span className="bg-white/20 px-2 py-0.5 rounded-lg text-sm">{cartCount} {cartCount === 1 ? 'item' : 'itens'}</span>
-              <span>Ver Sacola 🛍️</span>
-              <span className="w-8" />
-            </Link>
-          </div>
-        )}
-        {/* Social Proof Popup */}
-        <LiveSalesPopup />
       </div>
     </div>
   );

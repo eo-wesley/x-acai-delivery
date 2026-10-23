@@ -20,7 +20,7 @@ try {
     assert.equal(approvedBasePrice('Açaí X-Paçokita'), 1290);
     assert.equal(approvedBasePrice('Açaí X-Chocolá'), 1490);
     assert.equal(approvedBasePrice('Açaí 700ml Grátis 4 Complementos'), 3890);
-    assert.equal(approvedBasePrice('Açaí Marmitex 700ml Grátis 4 Complementos'), null);
+    assert.equal(approvedBasePrice('Açaí Marmitex 700ml Grátis 4 Complementos'), 3890);
     assert.equal(approvedOptionPrice('Açaí X-Tella', 'Tamanho do Copo', 'Copo de 700ml', 1500), 1900);
     const fallbackGroup = 'fallback-product-1-tamanho';
     assert.equal(resolveFallbackOption(

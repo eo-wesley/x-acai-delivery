@@ -21,6 +21,7 @@ const approvedFamilies: Record<string, ApprovedFamily> = {
 
 const approvedSingles: Array<{ pattern: RegExp; price: number }> = [
     { pattern: /acai (?:de )?700ml.*4 complementos/, price: 3890 },
+    { pattern: /acai (?:marmitex 700ml.*4 complementos|marmitex 700ml)/, price: 3890 },
     { pattern: /acai (?:700ml escolha 2|escolha 2 opcoes de 700ml)/, price: 4990 },
     { pattern: /acai (?:500ml escolha 2|escolha 2 opcoes de 500ml)/, price: 3690 },
     { pattern: /acai (?:400ml escolha 2|escolha 2 opcoes de 400ml)/, price: 2990 },

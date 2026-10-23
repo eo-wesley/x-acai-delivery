@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+const DEFAULT_API_BASE = 'https://x-acai-api.srv2043482.hstgr.cloud';
+
 function isValidSlug(value: string | null | undefined): value is string {
     return Boolean(value && value !== 'undefined' && value !== 'null');
 }
@@ -90,8 +92,6 @@ export function useTenant() {
  * getApiBase — returns the backend API base URL
  */
 export function getApiBase(): string {
-    if (typeof window !== 'undefined') {
-        return process.env.NEXT_PUBLIC_API_URL || '';
-    }
-    return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3002';
+    const raw = process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_BASE;
+    return raw.replace(/^\uFEFF/, '').trim();
 }

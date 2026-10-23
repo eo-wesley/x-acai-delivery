@@ -120,7 +120,7 @@ function PixQRBlock({
         <div className="space-y-5">
             {/* QR Code com efeito de gradiente */}
             <div className="relative group">
-                <div className="absolute -inset-1 bg-gradient-to-r from-purple-600 to-emerald-500 rounded-3xl blur opacity-20 group-hover:opacity-40 transition duration-700" />
+                <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-purple-600 to-purple-300 opacity-20 blur transition duration-700 group-hover:opacity-35" />
                 <div className="relative rounded-[28px] border border-slate-200 bg-slate-50 p-4 shadow-inner">
                     <div className="mx-auto flex w-full max-w-[320px] flex-col items-center rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
                         {qrBase64 ? (
@@ -318,9 +318,9 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
     // --- Estados de Renderização ---
     if (phase === 'loading') {
         return (
-            <div className="min-h-screen bg-[#f5f7fb] px-4 py-8">
+            <div className="min-h-screen bg-[#FFF5E8] px-4 py-8">
                 <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center rounded-[32px] bg-white px-6 text-center shadow-sm">
-                    <div className="h-14 w-14 animate-spin rounded-full border-4 border-emerald-600 border-t-transparent" />
+                    <div className="h-14 w-14 animate-spin rounded-full border-4 border-purple-600 border-t-transparent" />
                     <h1 className="mt-6 text-xl font-black text-slate-900">Preparando seu Pix</h1>
                     <p className="mt-2 text-sm text-slate-500">
                         Estamos carregando o QR Code e o status mais recente do pagamento.
@@ -354,7 +354,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                     </div>
                     <Link
                         href={`/order/${id}?paid=1`}
-                        className="mt-5 w-full rounded-2xl bg-emerald-600 px-4 py-4 text-base font-black text-white transition hover:bg-emerald-700"
+                        className="mt-5 w-full rounded-2xl bg-purple-700 px-4 py-4 text-base font-black text-white transition hover:bg-purple-800"
                     >
                         Ver pedido agora
                     </Link>
@@ -365,7 +365,7 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
 
     if (phase === 'error' || !pixData) {
         return (
-            <div className="min-h-screen bg-[#f5f7fb] px-4 py-8">
+            <div className="min-h-screen bg-[#FFF5E8] px-4 py-8">
                 <div className="mx-auto flex min-h-[70vh] max-w-md flex-col items-center justify-center rounded-[32px] bg-white px-6 text-center shadow-sm">
                     <div className="flex h-20 w-20 items-center justify-center rounded-full bg-rose-100 text-4xl text-rose-500">!</div>
                     <h1 className="mt-6 text-2xl font-black text-slate-900">Não foi possível abrir o Pix</h1>
@@ -394,16 +394,16 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
 
     // --- Tela principal de pagamento ---
     return (
-        <div className="min-h-screen bg-[#f5f7fb] px-4 py-5">
+            <div className="min-h-screen bg-[#FFF5E8] px-4 py-5">
             <div className="mx-auto max-w-md pb-10">
                 <div className="overflow-hidden rounded-[32px] bg-white shadow-sm">
                     {/* Header escuro premium */}
-                    <div className="bg-[linear-gradient(135deg,#0f172a,#14532d)] px-5 pb-8 pt-6 text-white">
+                <div className="bg-[linear-gradient(135deg,#2B0B35,#41134D)] px-5 pb-8 pt-6 text-white">
                         <div className="flex items-center justify-between gap-3">
-                            <Link href={`/order/${id}`} className="text-sm font-bold text-emerald-100">
+                            <Link href={`/order/${id}`} className="text-sm font-semibold text-[#DCEB83]">
                                 ← Voltar ao pedido
                             </Link>
-                            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-100">
+                            <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#DCEB83]">
                                 Pix
                             </span>
                         </div>
@@ -411,14 +411,14 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                         <h1 className="mt-5 text-[32px] font-black leading-none tracking-tight">
                             Pague com Pix
                         </h1>
-                        <p className="mt-3 max-w-sm text-sm leading-6 text-emerald-50/85">
+                        <p className="mt-3 max-w-sm text-sm leading-6 text-[#FFF5E8]/80">
                             Escaneie o QR Code ou copie o código. A confirmação acontece automaticamente a cada 3 segundos.
                         </p>
 
                         {pixData.totalCents ? (
                             <div className="mt-6 inline-flex rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
                                 <div>
-                                    <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-100/80">
+                                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#FFF5E8]/70">
                                         Total desta compra
                                     </p>
                                     <p className="mt-1 text-3xl font-black">{fmtCents(pixData.totalCents)}</p>
@@ -429,16 +429,16 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
 
                     <div className="space-y-5 px-5 py-6">
                         {/* Status Banner */}
-                        <div className="rounded-[28px] border border-emerald-100 bg-emerald-50 p-4 text-emerald-950">
+                        <div className={`rounded-[24px] border p-4 ${paymentStatus === 'paid' ? 'border-emerald-100 bg-emerald-50 text-emerald-950' : 'border-[#41134D]/10 bg-[#FFF5E8] text-[#28162D]'}`}>
                             <div className="flex items-start justify-between gap-4">
                                 <div>
-                                    <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
+                                    <p className={`text-xs font-bold uppercase tracking-[0.18em] ${paymentStatus === 'paid' ? 'text-emerald-700' : 'text-purple-700'}`}>
                                         Status do pagamento
                                     </p>
                                     <p className="mt-2 text-base font-black">
                                         {paymentStatus === 'paid' ? '✅ Pagamento confirmado' : '⏳ Aguardando confirmação'}
                                     </p>
-                                    <p className="mt-1 text-sm leading-6 text-emerald-900/80">
+                                    <p className={`mt-1 text-sm leading-6 ${paymentStatus === 'paid' ? 'text-emerald-900/80' : 'text-gray-600'}`}>
                                         {getWaitingLabel(paymentStatus)}
                                     </p>
                                 </div>
@@ -446,13 +446,13 @@ export default function PixPaymentPage({ params }: { params: Promise<{ id: strin
                                     {[0, 1, 2].map(index => (
                                         <span
                                             key={index}
-                                            className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-bounce"
+                                            className={`h-2.5 w-2.5 animate-bounce rounded-full ${paymentStatus === 'paid' ? 'bg-emerald-500' : 'bg-purple-600'}`}
                                             style={{ animationDelay: `${index * 0.18}s` }}
                                         />
                                     ))}
                                 </div>
                             </div>
-                            <p className="mt-3 text-xs font-medium text-emerald-800/80">
+                            <p className={`mt-3 text-xs font-medium ${paymentStatus === 'paid' ? 'text-emerald-800/80' : 'text-gray-500'}`}>
                                 {lastCheckedAt
                                     ? `Última verificação automática: ${lastCheckedAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`
                                     : 'Primeira verificação em andamento...'}

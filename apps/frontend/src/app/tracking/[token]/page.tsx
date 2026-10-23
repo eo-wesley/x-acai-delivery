@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
+import { Bike, MapPin } from 'lucide-react';
 
 interface TrackingData {
     status: string;
@@ -81,9 +82,10 @@ export default function TrackingPage() {
     return (
         <div className="min-h-screen bg-gray-50 pb-20">
             {/* Header */}
-            <header className="bg-purple-800 text-white p-6 rounded-b-3xl shadow-lg">
-                <h1 className="text-2xl font-bold">Acompanhe seu Açaí 🍇</h1>
-                <p className="opacity-90">{data?.status === 'delivering' ? 'Seu pedido está a caminho!' : 'Estamos preparando seu açaí...'}</p>
+            <header className="rounded-b-3xl bg-purple-800 p-6 text-white shadow-lg">
+                <img src="/brand/x-acai-principal-creme.svg" alt="X-Açaí" width={118} height={38} className="mb-5 h-auto w-[104px]" />
+                <h1 className="text-2xl font-semibold tracking-tight">Acompanhe seu pedido</h1>
+                <p className="mt-1 text-sm text-white/75">{data?.status === 'delivering' ? 'Seu pedido está a caminho.' : data?.status ? 'A loja está atualizando o pedido.' : 'Aguardando atualização do pedido.'}</p>
             </header>
 
             {/* Map Placeholder / Driver Card */}
@@ -96,16 +98,16 @@ export default function TrackingPage() {
                         {data?.driver_location ? (
                             <div className="relative z-10 text-center">
                                 <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center shadow-lg border-4 border-white mx-auto animate-bounce">
-                                    <span className="text-2xl">🏍️</span>
+                                    <Bike aria-hidden="true" size={25} strokeWidth={1.8} />
                                 </div>
                                 <div className="mt-2 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-sm font-bold text-purple-900 shadow-sm">
                                     Chega em {data.eta} min
                                 </div>
                             </div>
                         ) : (
-                            <div className="z-10 text-center text-gray-400">
-                                <div className="text-4xl mb-2">🥣</div>
-                                <p>Cozinha preparando seu mix...</p>
+                            <div className="z-10 text-center text-gray-500">
+                                <MapPin aria-hidden="true" size={28} className="mx-auto mb-2 text-purple-500" />
+                                <p>A localização aparece quando houver atualização.</p>
                             </div>
                         )}
                     </div>

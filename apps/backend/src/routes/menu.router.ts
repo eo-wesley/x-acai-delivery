@@ -4,7 +4,8 @@ import { tenantMiddleware } from '../middlewares/tenant.middleware';
 import { menuCacheService } from '../services/cache/menu.cache';
 import { getDb } from '../db/db.client';
 import { PricingService } from '../services/pricing.service';
-import { applyApprovedBasePrice, approvedOptionPrice } from '../services/approved-menu-prices';
+import { getCounterPrice } from '../services/counter-prices';
+import { loadProductOptionGroups } from '../services/menu-options';
 
 export const menuRouter = Router();
 
@@ -16,7 +17,13 @@ menuRouter.get('/menu', async (req, res) => {
         const items = category
             ? await menuRepo.getMenuByCategory(tenantId, category, true)
             : await menuCacheService.getMenu(tenantId, true);
-        res.json(items.map(applyApprovedBasePrice));
+        res.json(await Promise.all(items.map(async (item: any) => {
+            // The legacy route did not apply Happy Hour. Do not change prices
+            // for products outside the explicitly approved counter-price IDs.
+            if (!getCounterPrice(item.id)) return item;
+            const pricing = await PricingService.calculateItemPrice(tenantId, item);
+            return { ...item, price_cents: pricing.finalPriceCents, original_price_cents: getCounterPrice(item.id)?.price_cents ?? item.price_cents, is_happy_hour: pricing.isHappyHour };
+        })));
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
@@ -33,11 +40,10 @@ menuRouter.get('/:slug/menu', tenantMiddleware, async (req: any, res: any) => {
 
         // Apply Dynamic Pricing (Happy Hour)
         const enrichedItems = await Promise.all(items.map(async (item: any) => {
-            const approvedItem = applyApprovedBasePrice(item);
-            const pricing = await PricingService.calculateItemPrice(tenantId, approvedItem);
+            const pricing = await PricingService.calculateItemPrice(tenantId, item);
             return {
-                ...approvedItem,
-                original_price_cents: item.price_cents,
+                ...item,
+                original_price_cents: getCounterPrice(item.id)?.price_cents ?? item.price_cents,
                 price_cents: pricing.finalPriceCents,
                 is_happy_hour: pricing.isHappyHour
             };
@@ -60,31 +66,13 @@ menuRouter.get('/:slug/menu/item/:id', tenantMiddleware, async (req: any, res: a
         );
         if (!item) return res.status(404).json({ error: 'Item not found' });
 
-        const groups = await db.all(
-            `SELECT * FROM option_groups WHERE menu_item_id = ? ORDER BY sort_order ASC`,
-            [req.params.id]
-        );
+        const enrichedGroups = await loadProductOptionGroups(db, item);
 
-        const enrichedGroups = await Promise.all(groups.map(async (g: any) => {
-            const options = await db.all(
-                `SELECT * FROM option_items WHERE option_group_id = ? AND available = 1 ORDER BY sort_order ASC`,
-                [g.id]
-            );
-            return {
-                ...g,
-                options: options.map((option: any) => ({
-                    ...option,
-                    price_cents: approvedOptionPrice(item.name, g.name, option.name, option.price_cents),
-                })),
-            };
-        }));
-
-        const approvedItem = applyApprovedBasePrice(item);
-        const pricing = await PricingService.calculateItemPrice(tenantId, approvedItem);
+        const pricing = await PricingService.calculateItemPrice(tenantId, item);
         res.json({
-            ...approvedItem,
+            ...item,
             price_cents: pricing.finalPriceCents,
-            original_price_cents: item.price_cents,
+            original_price_cents: getCounterPrice(item.id)?.price_cents ?? item.price_cents,
             is_happy_hour: pricing.isHappyHour,
             option_groups: enrichedGroups
         });

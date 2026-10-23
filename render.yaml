@@ -5,10 +5,9 @@ services:
     runtime: node
     name: x-acai-production-backend
     rootDir: apps/backend
-    plan: starter
+    plan: free
     buildCommand: npm ci --include=dev
-    preDeployCommand: npm run db:migrate
-    startCommand: npx tsx src/server.ts
+    startCommand: npm run db:migrate && npx tsx src/server.ts
     healthCheckPath: /health
     autoDeployTrigger: 'off'
     buildFilter:

@@ -40,54 +40,24 @@ exports.createOrder = createOrder;
 exports.updateOrderStatus = updateOrderStatus;
 exports.getCustomerByPhone = getCustomerByPhone;
 const admin = __importStar(require("firebase-admin"));
-// Attempt to initialize Firebase Admin using credentials from environment variables.
-// If something goes wrong (e.g. env vars missing), we catch the error so the
-// whole application can still start and the /health endpoint remains usable.
-let serviceAccount = null;
-if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    try {
-        serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-    }
-    catch (err) {
-        console.error('❌ FIREBASE_SERVICE_ACCOUNT_JSON is malformed or invalid JSON.');
-    }
-}
-else if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY) {
-    serviceAccount = {
-        projectId: process.env.FIREBASE_PROJECT_ID,
-        privateKeyId: process.env.FIREBASE_PRIVATE_KEY_ID,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        clientId: process.env.FIREBASE_CLIENT_ID,
-        authUri: process.env.FIREBASE_AUTH_URI,
-        tokenUri: process.env.FIREBASE_TOKEN_URI,
-        authProviderX509CertUrl: 'https://www.googleapis.com/oauth2/v1/certs',
-        clientX509CertUrl: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(process.env.FIREBASE_CLIENT_EMAIL || '')}`,
-    };
-}
-else {
-    console.warn('⚠️ Missing Firebase Admin credentials in environment variables.');
-    console.warn('Please provide FIREBASE_SERVICE_ACCOUNT_JSON or (FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY).');
-}
+const firebase_admin_1 = require("../lib/firebase-admin");
 let db = null;
 exports.db = db;
 let firebaseInitialized = false;
 exports.firebaseInitialized = firebaseInitialized;
 try {
-    if (serviceAccount && !admin.apps.length) {
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-        });
-        exports.db = db = admin.firestore();
+    if ((0, firebase_admin_1.isFirebaseAdminReady)()) {
+        exports.db = db = (0, firebase_admin_1.getFirebaseFirestore)();
         exports.firebaseInitialized = firebaseInitialized = true;
-        console.log(`✅ Firebase Admin initialized successfully. ProjectID: ${serviceAccount.projectId || process.env.FIREBASE_PROJECT_ID || 'Unknown'}`);
+        console.log(`Firebase Admin initialized successfully. ProjectID: ${process.env.FIREBASE_PROJECT_ID || 'Unknown'}`);
     }
-    else if (!serviceAccount) {
-        console.warn(`⚠️ Firebase credentials missing. Running strictly Local/SQLite mode.`);
+    else {
+        const initError = (0, firebase_admin_1.getFirebaseAdminInitError)();
+        console.warn(`Firebase credentials missing or invalid. Firestore disabled. ${initError?.message || ''}`.trim());
     }
 }
 catch (error) {
-    console.warn(`⚠️ Firebase Admin initialization failed [${error?.code || 'ERROR'}]: ${error?.message || error}. Continuing without Firestore.`);
+    console.warn(`Firebase Admin initialization failed [${error?.code || 'ERROR'}]: ${error?.message || error}. Continuing without Firestore.`);
 }
 async function saveIncomingMessage(phone, message, type = 'text') {
     if (!firebaseInitialized || !db) {
