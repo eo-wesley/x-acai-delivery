@@ -14,6 +14,7 @@ import {
 import { getWaterBundle } from '../lib/water-bundles';
 import { loadMenuCatalog } from '../lib/load-menu';
 import { canStoreAcceptOrders, loadStoreInfo, storeUnavailableMessage, type StoreInfo } from '../lib/store-availability';
+import { Droplets, Search, Sparkles, X } from 'lucide-react';
 
 interface MenuItem extends MenuPresentationItem {
   price_cents: number;
@@ -70,10 +71,15 @@ export default function Home() {
 
   const R = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
 
+  const isXAcaiStore = slug === 'default' || normalizeMenuText(store?.name || '').includes('x acai');
+  const brandPrimary = isXAcaiStore
+    ? '#41134d'
+    : store?.primary_color || '#41134d';
+
   const themeVars = {
-    '--primary': store?.primary_color || '#9333ea',
-    '--primary-hover': (store?.primary_color || '#9333ea') + 'ee',
-    'fontFamily': store?.font_family ? `'${store.font_family}', sans-serif` : 'inherit',
+    '--primary': brandPrimary,
+    '--primary-hover': brandPrimary + 'ee',
+    'fontFamily': isXAcaiStore ? 'var(--font-inter), sans-serif' : store?.font_family ? `'${store.font_family}', sans-serif` : 'inherit',
   } as React.CSSProperties;
 
   if (loading) return (
@@ -84,44 +90,50 @@ export default function Home() {
   );
 
   return (
-    <div className="bg-gray-50">
-      <div className={`max-w-md mx-auto bg-white shadow-sm min-h-screen relative ${cartCount > 0 ? 'pb-44' : 'pb-24'}`} style={themeVars}>
+    <div className="bg-[#FFF5E8]">
+      <div className={`relative mx-auto min-h-screen max-w-md bg-[#FFFDFA] shadow-[0_8px_40px_rgba(65,19,77,0.055)] ${cartCount > 0 ? 'pb-44' : 'pb-24'}`} style={themeVars}>
         {/* Store Banner / Header */}
         <div
-          className="text-white p-5 pt-8 pb-16 relative bg-cover bg-center"
+          className="relative bg-cover bg-center px-5 pb-16 pt-8 text-white"
           style={{
             backgroundColor: 'var(--primary)',
             backgroundImage: store?.banner_url ? `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${store.banner_url})` : undefined
           }}
         >
           <div className="flex items-center gap-3">
-            {store?.logo_url && (
-              <img src={store.logo_url} className="w-12 h-12 rounded-xl object-contain bg-white p-1" alt="Logo" />
+            {store?.logo_url && !isXAcaiStore && (
+              <img src={store.logo_url} className="h-12 w-12 rounded-xl border border-white/20 bg-[#FFF5E8] p-1 object-contain" alt={`Logo ${store.name || 'da loja'}`} />
             )}
-            <h1 className="text-2xl font-black">{store?.name || '🍇 X-Açaí Delivery'}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{store?.name || 'X-Açaí Delivery'}</h1>
           </div>
-          {store?.description && <p className="text-white/80 text-sm mt-1">{store.description}</p>}
-          <div className="flex gap-3 mt-3 flex-wrap">
+          {store?.description
+            ? <p className="mt-1 text-sm text-white/80">{store.description}</p>
+            : <p className="mt-1 text-sm text-white/80">Explore o cardápio e encontre sua próxima combinação.</p>}
+          <div className="mt-4 flex flex-wrap gap-2">
             {store?.prep_time_minutes && (
-              <span className="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">⏱ {store.prep_time_minutes} min</span>
+              <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">Preparo aprox. {store.prep_time_minutes} min</span>
             )}
-            <span className="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">🚚 Frete calculado no checkout</span>
+            <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">Entrega calculada no checkout</span>
             {store?.min_order_cents ? (
-              <span className="text-xs bg-white/20 px-3 py-1 rounded-full backdrop-blur-sm">🛒 Mín. {R(store.min_order_cents)}</span>
+              <span className="rounded-full border border-white/20 bg-black/10 px-3 py-1.5 text-xs font-medium backdrop-blur-sm">Pedido mínimo {R(store.min_order_cents)}</span>
             ) : null}
           </div>
         </div>
 
         {/* Store Status Banner */}
         {!canOrder && (
-          <div role="status" className={`mx-4 -mt-8 relative z-10 rounded-2xl p-4 shadow-lg ${store?.store_status === 'closed' ? 'bg-red-600 text-white' : 'bg-yellow-400 text-yellow-900'
+          <div role="status" className={`relative z-10 mx-4 -mt-8 rounded-2xl border p-3.5 ${!store
+              ? 'border-[#41134D]/12 bg-[#F3EAF1] text-[#41134D]'
+              : store.store_status === 'closed'
+                ? 'border-red-800/10 bg-red-600 text-white'
+                : 'border-amber-900/10 bg-amber-100 text-amber-950'
             }`}>
-            <div className="font-black text-lg">
+            <div className="text-sm font-bold">
               {!store ? 'Prévia — pedidos indisponíveis' : store.store_status === 'closed' ? '🔴 Loja Fechada' :
                 store?.store_status === 'paused' ? '⏸️ Pedidos Pausados' :
                   store?.store_status === 'busy' ? '🟠 Estamos Lotados' : 'Pedidos indisponíveis'}
             </div>
-            <p className="text-sm mt-1 opacity-90">
+            <p className="mt-1 text-xs leading-relaxed opacity-90">
               {storeUnavailableMessage(store)}
             </p>
           </div>
@@ -137,34 +149,34 @@ export default function Home() {
             </div>
           )}
           {/* Search Bar */}
-          <div className="mb-6 relative">
+          <div className="relative mb-6">
             <input
               type="text"
               aria-label="Buscar em todo o cardápio"
               placeholder="Buscar açaí, suco, acompanhamento..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 text-gray-800 rounded-2xl py-3 px-10 pl-12 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+              className="w-full rounded-2xl border border-[#41134D]/15 bg-[#FFFDFA] py-3 pl-11 pr-11 font-medium text-gray-800 shadow-[0_3px_14px_rgba(65,19,77,0.035)] transition focus:border-purple-500 focus:outline-none focus:ring-2 focus:ring-purple-100"
             />
-            <span className="absolute left-4 top-3 text-xl opacity-50">🔍</span>
+            <Search aria-hidden="true" size={19} strokeWidth={1.8} className="pointer-events-none absolute left-4 top-3.5 text-gray-500" />
             {searchTerm && (
-              <button aria-label="Limpar busca" onClick={() => setSearchTerm('')} className="absolute right-4 top-3.5 text-gray-400 hover:text-gray-600 font-bold">✕</button>
+              <button type="button" aria-label="Limpar busca" onClick={() => setSearchTerm('')} className="absolute right-3 top-3 rounded-full p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"><X aria-hidden="true" size={17} /></button>
             )}
           </div>
 
           {/* Editorial suggestions; these do not represent a sales ranking. */}
           {!query && highlights.length > 0 && (
             <div className="mb-8">
-              <h2 className="text-lg font-black text-gray-800 flex items-center gap-2">⭐ Destaques da X-Açaí</h2>
-              <p className="text-sm text-gray-500 mt-1 mb-3">Sugestões para começar seu pedido.</p>
+              <h2 className="flex items-center gap-2 text-lg font-bold tracking-tight text-gray-800"><Sparkles aria-hidden="true" size={17} className="text-purple-600" />Escolhas para começar</h2>
+              <p className="mb-3 mt-1 text-sm text-gray-500">Algumas opções do cardápio.</p>
               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide snap-x">
                 {highlights.map(item => (
                   <Link href={`/product/${item.id}`} key={`high-${item.id}`}
-                    className="shrink-0 w-56 max-w-[85%] bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden snap-start flex flex-col transition hover:shadow-md">
-                    <div className="h-32 bg-purple-50 relative flex items-center justify-center text-5xl">
+                    className="flex w-56 max-w-[85%] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border border-[#41134D]/10 bg-white shadow-[0_5px_18px_rgba(65,19,77,0.04)] transition hover:shadow-md">
+                    <div className="relative flex h-32 items-center justify-center bg-[#F4EEE7] text-5xl">
                       {item.image_url
                         ? <img src={item.image_url} alt={getMenuDisplayName(item)} className="object-cover w-full h-full" />
-                        : '🍇'}
+                        : <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-11 w-11 opacity-70" />}
                     </div>
                     <div className="p-3 flex flex-col flex-1">
                       <h3 className="font-bold text-gray-800 text-sm leading-snug break-words">{getMenuDisplayName(item)}</h3>
@@ -182,7 +194,7 @@ export default function Home() {
           {/* Categories Slider */}
           <div className="flex gap-2 mb-4 overflow-x-auto pb-1 scrollbar-hide snap-x" aria-label="Categorias do cardápio">
             {categoryTabs.map(tab => (
-              <button key={tab.key} onClick={() => { setCategory(tab.key); setSearchTerm(''); }}
+              <button type="button" key={tab.key} onClick={() => { setCategory(tab.key); setSearchTerm(''); }}
                 aria-pressed={!query && activeCategory === tab.key}
                 className={`flex-shrink-0 snap-start px-5 py-2.5 rounded-full text-sm font-black border transition-all ${!query && activeCategory === tab.key ? 'bg-purple-600 text-white border-purple-600 shadow-md' : 'bg-white text-gray-600 border-gray-200 hover:border-purple-300'
                   }`}>
@@ -203,12 +215,12 @@ export default function Home() {
                   <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center overflow-hidden text-3xl">
                     {bundle.baseProduct.image_url
                       ? <img src={bundle.baseProduct.image_url} alt={getMenuDisplayName(bundle.baseProduct)} className="object-cover w-full h-full" />
-                      : '🍇'}
+                      : <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-8 w-8 opacity-70" />}
                   </div>
                   <div className="absolute bottom-0 right-0 w-9 h-12 rounded-lg bg-white border border-purple-100 flex items-center justify-center overflow-hidden">
                     {bundle.waterProduct.image_url
                       ? <img src={bundle.waterProduct.image_url} alt={bundle.waterProduct.name} className="object-contain w-full h-full" />
-                      : '💧'}
+                      : <Droplets aria-hidden="true" size={18} className="text-purple-700" />}
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
@@ -234,7 +246,7 @@ export default function Home() {
                   <div className="w-20 h-20 bg-purple-50 rounded-xl flex items-center justify-center overflow-hidden flex-shrink-0 text-3xl relative">
                     {item.image_url
                       ? <img src={item.image_url} alt={getMenuDisplayName(item)} className="object-cover w-full h-full" />
-                      : '🍇'}
+                      : <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-8 w-8 opacity-70" />}
                     {outOfStock && (
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                         <span className="text-white text-xs font-black">ESGOTADO</span>

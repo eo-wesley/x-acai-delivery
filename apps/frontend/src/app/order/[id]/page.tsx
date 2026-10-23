@@ -2,8 +2,10 @@
 
 import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
+import { ShoppingBag } from 'lucide-react';
+import { getApiBase } from '@/hooks/useTenant';
 
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API = getApiBase();
 
 const STATUS_TIMELINE = [
     { key: 'pending', label: 'Recebido', icon: '📋', msg: 'Pedido recebido! Aguardando confirmação.' },
@@ -241,9 +243,10 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
     const pixPending = (order.payment_method === 'pix' || String(order.payment_provider || '').includes('pix'))
         && order.status === 'pending_payment';
 
-    const supportLink = order.restaurant_phone
-        ? `https://wa.me/${order.restaurant_phone.replace(/\D/g, '')}?text=Olá! Preciso de ajuda com meu pedido #${id.slice(0, 8).toUpperCase()}`
-        : '#';
+    const rawPhone = order.restaurant_phone || '11987470862';
+    const cleanPhone = rawPhone.replace(/\D/g, '');
+    const fullPhone = cleanPhone.startsWith('55') ? cleanPhone : `55${cleanPhone}`;
+    const supportLink = `https://wa.me/${fullPhone}?text=${encodeURIComponent(`Olá! Gostaria de acompanhar o meu pedido #${id?.slice(0, 8).toUpperCase()} do X-Açaí.`)}`;
 
     return (
         <div className="min-h-screen bg-[#FDFCFE] font-sans">
@@ -465,12 +468,9 @@ export default function OrderStatusPage({ params }: { params: Promise<{ id: stri
 
                 {/* Sticky Floating Action Button */}
                 <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md bg-white/90 backdrop-blur-2xl border-t border-purple-50 p-6 z-40 shadow-[0_-20px_50px_rgba(0,0,0,0.08)]">
-                    <Link href="/">
-                        <button className="w-full bg-gradient-to-r from-purple-700 to-purple-800 hover:from-purple-800 hover:to-purple-900 text-white font-black py-5 rounded-[28px] shadow-2xl shadow-purple-200 transition active:scale-[0.98] flex items-center justify-center gap-3 group overflow-hidden relative">
-                            <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000 skew-x-12"></div>
-                            <span className="text-xl group-hover:rotate-12 transition-transform">🍇</span>
-                            NOVO PEDIDO
-                        </button>
+                    <Link href="/" className="flex w-full items-center justify-center gap-2 rounded-2xl bg-purple-700 py-4 text-sm font-bold uppercase tracking-wide text-white shadow-[0_8px_22px_rgba(65,19,77,0.18)] transition hover:bg-purple-800 active:scale-[0.99]">
+                        <ShoppingBag aria-hidden="true" size={17} strokeWidth={1.8} />
+                        Fazer novo pedido
                     </Link>
                 </div>
             </div>

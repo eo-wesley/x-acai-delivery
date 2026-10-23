@@ -575,6 +575,17 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
             }));
     }, [product, bundle]);
 
+    const primaryAccompanimentGroup = useMemo(() => {
+        return optionGroups.find(g => {
+            const name = (g.name || '').toLowerCase();
+            return (name.includes('acompanhamento') || name.includes('complemento')) && g.max_select > 1;
+        }) || optionGroups.find(g => g.max_select > 1);
+    }, [optionGroups]);
+
+    const accompanimentSelectedCount = primaryAccompanimentGroup ? (selections[primaryAccompanimentGroup.id] || []).length : 0;
+    const accompanimentTargetCount = primaryAccompanimentGroup?.max_select || 0;
+    const isAccompanimentComplete = primaryAccompanimentGroup ? accompanimentSelectedCount >= (primaryAccompanimentGroup.min_select || accompanimentTargetCount) : true;
+
     const validationErrors = useMemo(
         () =>
             optionGroups
@@ -739,6 +750,43 @@ export default function ProductPage({ params }: { params: Promise<{ id: string }
                             {productUnavailable ? 'Este produto está indisponível no momento.' : 'Este conjunto não está disponível com o cadastro atual. Escolha o produto avulso no cardápio.'}
                         </p>
                     ) : null}
+
+                    {/* 🎮 Barra de Progresso Gamificada no "Monte o Seu" */}
+                    {primaryAccompanimentGroup && accompanimentTargetCount > 1 && (
+                        <div className={`p-4 rounded-3xl border-2 transition-all duration-300 ${
+                            isAccompanimentComplete 
+                                ? 'bg-gradient-to-r from-emerald-50 via-teal-50 to-green-50 border-emerald-300 shadow-sm' 
+                                : 'bg-gradient-to-r from-purple-50 via-fuchsia-50 to-pink-50 border-purple-200 shadow-sm'
+                        }`}>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-black uppercase tracking-wider text-purple-900 flex items-center gap-1.5">
+                                    {isAccompanimentComplete ? '🎉 Cota Completa!' : '🍧 Monte seu Açaí'}
+                                </span>
+                                <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-white text-purple-800 shadow-xs border border-purple-100">
+                                    {accompanimentSelectedCount} de {accompanimentTargetCount} grátis
+                                </span>
+                            </div>
+                            <div className="h-3.5 w-full bg-white/80 rounded-full overflow-hidden p-0.5 border border-purple-100">
+                                <div 
+                                    className={`h-full rounded-full transition-all duration-500 ${
+                                        isAccompanimentComplete 
+                                            ? 'bg-gradient-to-r from-emerald-500 to-green-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' 
+                                            : 'bg-gradient-to-r from-purple-600 to-pink-500'
+                                    }`}
+                                    style={{ width: `${Math.min(100, (accompanimentSelectedCount / accompanimentTargetCount) * 100)}%` }}
+                                />
+                            </div>
+                            {isAccompanimentComplete ? (
+                                <p className="mt-2 text-xs font-bold text-emerald-800 flex items-center gap-1">
+                                    ✨ Todos os {accompanimentTargetCount} complementos grátis preenchidos! Quer turbinar com Nutella ou Morango extra abaixo?
+                                </p>
+                            ) : (
+                                <p className="mt-2 text-xs font-medium text-purple-700">
+                                    Faltam apenas <strong className="font-black text-purple-900">{accompanimentTargetCount - accompanimentSelectedCount}</strong> {accompanimentTargetCount - accompanimentSelectedCount === 1 ? 'complemento grátis' : 'complementos grátis'}!
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {optionGroups.length > 0 ? (
                         <section className="space-y-4">

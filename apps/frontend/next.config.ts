@@ -1,31 +1,38 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  // Enable standalone output for Docker deployment
-  // This creates a self-contained server with minimal dependencies
-  output: "standalone",
+const DEFAULT_BACKEND_URL = "https://x-acai-api.srv2043482.hstgr.cloud";
 
-  // Desativa o botão vermelho do Turbopack / Next.js Dev Overlay
+function sanitizeUrl(raw?: string): string {
+  if (!raw) return DEFAULT_BACKEND_URL;
+  // Remove UTF-8 BOM (\uFEFF), quebras de linha e espaços
+  const cleaned = raw.replace(/^\uFEFF/, '').trim();
+  if (cleaned.startsWith("http://") || cleaned.startsWith("https://")) {
+    return cleaned;
+  }
+  return DEFAULT_BACKEND_URL;
+}
+
+const backendUrl = sanitizeUrl(process.env.NEXT_PUBLIC_API_URL || process.env.API_URL);
+
+const nextConfig: NextConfig = {
+  output: "standalone",
   devIndicators: false,
 
-  // Environment variables exposed to the browser
   env: {
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || "",
+    NEXT_PUBLIC_API_URL: backendUrl,
   },
 
-  // Allow cross-origin image sources (for menu item images from external CDNs)
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "**" },
     ],
   },
 
-  // Rewrites para redirecionar chamadas /api para o backend local (porta 3002)
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://127.0.0.1:3002/api/:path*",
+        destination: `${backendUrl}/api/:path*`,
       },
     ];
   },

@@ -6,11 +6,12 @@ import Link from 'next/link';
 import { useCart } from '../../components/CartContext';
 import { useTenant, getApiBase } from '../../hooks/useTenant';
 import { canStoreAcceptOrders, loadStoreInfo, storeUnavailableMessage, type StoreInfo } from '../../lib/store-availability';
+import { Banknote, Bike, ClipboardList, CreditCard, MapPin, Store, UserRound, Zap } from 'lucide-react';
 
 const PAYMENT_METHODS = [
-    { value: 'pix', label: 'PIX', emoji: '⚡', hint: 'QR Code instantâneo com confirmação na hora' },
-    { value: 'card', label: 'Cartão', emoji: '💳', hint: 'Cartão de crédito ou débito via Mercado Pago' },
-    { value: 'cash', label: 'Dinheiro', emoji: '💵', hint: 'Pague ao receber (informe troco se precisar)' },
+    { value: 'pix', label: 'Pix', Icon: Zap, hint: 'QR Code com confirmação automática' },
+    { value: 'card', label: 'Cartão', Icon: CreditCard, hint: 'Crédito ou débito via Mercado Pago' },
+    { value: 'cash', label: 'Dinheiro', Icon: Banknote, hint: 'Pague ao receber; informe o troco se precisar' },
 ];
 
 export default function CheckoutPage() {
@@ -373,19 +374,19 @@ export default function CheckoutPage() {
                             ? 'bg-white text-purple-700 shadow-sm'
                             : 'text-gray-500 hover:text-gray-800'}`}
                     >
-                        <span>🛵</span>
+                        <Bike aria-hidden="true" size={17} />
                         <span>Receber em Casa</span>
                     </button>
                     <button
                         type="button"
                         onClick={() => setOrderType('pickup')}
                         className={`flex items-center justify-center gap-2 py-3 rounded-xl font-black text-sm transition-all ${orderType === 'pickup'
-                            ? 'bg-white text-emerald-700 shadow-sm'
+                            ? 'bg-white text-purple-700 shadow-sm'
                             : 'text-gray-500 hover:text-gray-800'}`}
                     >
-                        <span>🛍️</span>
+                        <Store aria-hidden="true" size={17} />
                         <span>Retirar no Local</span>
-                        <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded-full font-bold">Grátis</span>
+                        <span className="rounded-full bg-[#DCEB83] px-2 py-0.5 text-[10px] font-bold text-[#2B0B35]">Grátis</span>
                     </button>
                 </div>
 
@@ -401,7 +402,7 @@ export default function CheckoutPage() {
 
                     {/* Personal Info */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-700 mb-3 text-xs uppercase tracking-widest">👤 Seus Dados</h3>
+                        <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-700"><UserRound aria-hidden="true" size={15} />Seus Dados</h3>
                         <div className="flex flex-col gap-3">
                             <input
                                 type="text"
@@ -436,24 +437,24 @@ export default function CheckoutPage() {
 
                     {/* Se for Retirada no Balcão */}
                     {orderType === 'pickup' ? (
-                        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-xl space-y-2">
-                            <div className="flex items-center gap-2 text-emerald-800 font-black text-sm">
-                                <span>🏬</span>
+                        <div className="space-y-2 rounded-2xl border border-[#41134D]/10 bg-[#FFF5E8] p-4">
+                            <div className="flex items-center gap-2 text-sm font-bold text-purple-800">
+                                <Store aria-hidden="true" size={17} />
                                 <span>Retirada no Balcão da Loja</span>
                             </div>
-                            <p className="text-xs text-emerald-700 leading-relaxed font-medium">
-                                Você retira seu pedido diretamente na loja assim que estiver pronto. Avisaremos pelo WhatsApp!
+                            <p className="text-xs leading-relaxed text-gray-600">
+                                Retire o pedido na loja quando estiver pronto. A previsão aparece quando estiver disponível.
                             </p>
-                            <div className="flex items-center gap-3 pt-2 text-xs font-bold text-emerald-900 border-t border-emerald-100">
-                                <span>⏱️ Tempo de preparo: ~20 a 30 min</span>
-                                <span className="bg-emerald-200 px-2 py-0.5 rounded-full text-[11px]">Taxa: R$ 0,00</span>
+                            <div className="flex flex-wrap items-center gap-2 border-t border-[#41134D]/10 pt-2 text-xs font-semibold text-purple-800">
+                                {store?.prep_time_minutes ? <span>Preparo aproximado: {store.prep_time_minutes} min</span> : null}
+                                <span className="rounded-full bg-[#DCEB83] px-2 py-0.5 text-[11px] text-[#2B0B35]">Taxa R$ 0,00</span>
                             </div>
                         </div>
                     ) : (
                         /* Se for Entrega em Casa */
                         <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-3">
                             <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-gray-700 text-xs uppercase tracking-widest">📍 Endereço de Entrega</h3>
+                                <h3 className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-700"><MapPin aria-hidden="true" size={15} />Endereço de Entrega</h3>
                                 {deliveryInfo.distanceKm > 0 && (
                                     <span className="text-[11px] font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-full">
                                         ~{deliveryInfo.distanceKm} km · {deliveryInfo.estimatedMinutes} min
@@ -552,10 +553,11 @@ export default function CheckoutPage() {
 
                     {/* Payment */}
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-                        <h3 className="font-bold text-gray-700 mb-3 text-xs uppercase tracking-widest">💳 Forma de Pagamento</h3>
+                        <h3 className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-700"><CreditCard aria-hidden="true" size={15} />Forma de Pagamento</h3>
                         <div className="grid grid-cols-3 gap-2">
-                            {PAYMENT_METHODS.map(m => (
-                                <button
+                            {PAYMENT_METHODS.map(m => {
+                                const PaymentIcon = m.Icon;
+                                return <button
                                     key={m.value}
                                     type="button"
                                     onClick={() => setForm({ ...form, paymentMethod: m.value })}
@@ -563,10 +565,10 @@ export default function CheckoutPage() {
                                         ? 'border-purple-600 bg-purple-50 text-purple-700 shadow-sm'
                                         : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white'}`}
                                 >
-                                    <span className="text-2xl mb-1">{m.emoji}</span>
+                                    <PaymentIcon aria-hidden="true" size={20} strokeWidth={1.8} className="mb-1" />
                                     {m.label}
-                                </button>
-                            ))}
+                                </button>;
+                            })}
                         </div>
                         <p className="text-xs text-gray-400 mt-2">
                             {PAYMENT_METHODS.find(m => m.value === form.paymentMethod)?.hint}
@@ -632,7 +634,7 @@ export default function CheckoutPage() {
 
                     {/* Order Summary */}
                     <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-2 text-sm">
-                        <p className="font-bold text-gray-700 text-xs uppercase tracking-widest mb-2">🧾 Resumo do Pedido</p>
+                        <p className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-gray-700"><ClipboardList aria-hidden="true" size={15} />Resumo do Pedido</p>
                         {items.map(item => (
                             <div key={item.menuItemId} className="flex justify-between text-gray-600">
                                 <span>{item.qty}x {item.name}</span>
@@ -668,12 +670,12 @@ export default function CheckoutPage() {
                         <button
                             type="submit"
                             disabled={loading || !canOrder}
-                            className="w-full bg-green-600 hover:bg-green-700 active:bg-green-800 text-white font-black py-4 rounded-xl shadow-lg transition active:scale-95 disabled:opacity-60 text-base"
+                            className="w-full bg-purple-600 hover:bg-purple-700 active:bg-purple-800 text-white font-black py-4 rounded-2xl shadow-[0_8px_22px_rgba(65,19,77,0.18)] transition active:scale-[0.99] disabled:opacity-60 text-base"
                         >
                             {loading
-                                ? '⏳ Confirmando pedido...'
+                            ? 'Confirmando pedido...'
                                 : !canOrder ? (checkingStore ? 'Verificando loja...' : 'Pedidos indisponíveis')
-                                    : `✅ Confirmar Pedido · R$ ${(totalCents / 100).toFixed(2).replace('.', ',')}`}
+                                    : `Confirmar pedido · R$ ${(totalCents / 100).toFixed(2).replace('.', ',')}`}
                         </button>
                     </div>
 

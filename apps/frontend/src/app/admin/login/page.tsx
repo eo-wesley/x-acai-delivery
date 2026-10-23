@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { sendPasswordResetEmail, signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../../../lib/firebase';
 import { useRouter } from 'next/navigation';
 import { Shield } from 'lucide-react';
@@ -10,14 +10,17 @@ export default function AdminLoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [slug, setSlug] = useState('');
+    const [slug, setSlug] = useState('default');
     const [loading, setLoading] = useState(false);
+    const [resetLoading, setResetLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState('');
+    const [successMsg, setSuccessMsg] = useState('');
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setErrorMsg('');
+        setSuccessMsg('');
 
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -25,11 +28,35 @@ export default function AdminLoginPage() {
             localStorage.setItem('admin_token', token);
             localStorage.setItem('admin_slug', slug.toLowerCase());
             router.push('/admin');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error("Login failed:", error);
             setErrorMsg('Falha na autenticação. Verifique e-mail e senha.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handlePasswordReset = async () => {
+        const normalizedEmail = email.trim().toLowerCase();
+
+        if (!normalizedEmail) {
+            setSuccessMsg('');
+            setErrorMsg('Digite o e-mail da conta para receber o link de redefinição.');
+            return;
+        }
+
+        setResetLoading(true);
+        setErrorMsg('');
+        setSuccessMsg('');
+
+        try {
+            await sendPasswordResetEmail(auth, normalizedEmail);
+            setSuccessMsg('Se este e-mail estiver cadastrado, o link de redefinição foi enviado. Confira também a caixa de spam.');
+        } catch (error) {
+            console.error('Password reset failed:', error);
+            setErrorMsg('Não foi possível solicitar a redefinição agora. Confira o e-mail e tente novamente.');
+        } finally {
+            setResetLoading(false);
         }
     };
 
@@ -48,6 +75,12 @@ export default function AdminLoginPage() {
                     {errorMsg && (
                         <div className="bg-red-50 text-red-600 p-3 rounded-xl font-bold text-center text-sm border border-red-100">
                             {errorMsg}
+                        </div>
+                    )}
+
+                    {successMsg && (
+                        <div className="bg-emerald-50 text-emerald-700 p-3 rounded-xl font-bold text-center text-sm border border-emerald-100">
+                            {successMsg}
                         </div>
                     )}
 
@@ -89,10 +122,19 @@ export default function AdminLoginPage() {
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || resetLoading}
                         className="bg-purple-600 text-white font-black py-4 mt-2 rounded-2xl hover:bg-purple-700 transition-all shadow-xl shadow-purple-200 disabled:opacity-50 ring-offset-2 active:scale-95"
                     >
                         {loading ? 'VALIDANDO ACESSO...' : 'ENTRAR NO PAINEL'}
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={handlePasswordReset}
+                        disabled={loading || resetLoading}
+                        className="text-sm font-black text-purple-700 py-2 rounded-xl hover:bg-purple-50 transition-colors disabled:opacity-50"
+                    >
+                        {resetLoading ? 'ENVIANDO LINK...' : 'ESQUECI MINHA SENHA'}
                     </button>
                 </form>
             </div>

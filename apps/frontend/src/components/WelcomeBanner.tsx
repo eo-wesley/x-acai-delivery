@@ -34,36 +34,33 @@ const WelcomeBanner: React.FC = () => {
 
     return (
         <div className={`transition-all duration-700 ease-out p-4 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'}`}>
-            <div className="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-3xl p-6 text-white shadow-xl relative overflow-hidden">
-                {/* Background Decor */}
-                <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-2xl" />
-                <div className="absolute -left-4 -bottom-4 w-32 h-32 bg-purple-400/20 rounded-full blur-3xl" />
-
+            <div className="relative overflow-hidden rounded-[24px] bg-purple-800 p-5 text-white shadow-[0_14px_36px_rgba(43,11,53,0.14)]">
+                <div className="absolute -right-10 -top-16 h-40 w-40 rounded-full border-[24px] border-white/[0.04]" aria-hidden="true" />
                 <div className="relative z-10">
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        {customerName ? `Olá, ${customerName.split(' ')[0]}! 👋` : 'Que bom te ver de novo! 👋'}
+                    <h2 className="text-lg font-semibold tracking-tight">
+                        {customerName ? `Oi, ${customerName.split(' ')[0]}.` : 'Que bom ter você de volta.'}
                     </h2>
-                    <p className="text-white/80 text-sm mt-1">
-                        Bom te ver por aqui. Esperamos que seu dia esteja sendo incrível!
+                    <p className="mt-1 text-sm text-white/75">
+                        Continue escolhendo o que vai na sua próxima tigela.
                     </p>
 
                     {lastItem && (
-                        <div className="mt-5 bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20">
-                            <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center text-xl shadow-inner">
-                                        🍇
+                        <div className="mt-4 rounded-2xl border border-white/15 bg-white/[0.07] p-3">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#DCEB83] p-2">
+                                        <img src="/brand/x-acai-micro-amora.svg" alt="" className="h-full w-full object-contain" />
                                     </div>
-                                    <div>
-                                        <div className="text-[10px] uppercase tracking-widest text-white/60 font-black">Sugestão Real-Time</div>
-                                        <div className="text-sm font-bold truncate">Repetir o {lastItem.name}?</div>
+                                    <div className="min-w-0">
+                                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">Seu último item</div>
+                                        <div className="truncate text-sm font-semibold">{lastItem.name}</div>
                                     </div>
                                 </div>
                                 <Link
                                     href={`/product/${lastItem.id}`}
-                                    className="bg-white text-purple-700 text-xs font-black px-4 py-2 rounded-xl shadow-lg hover:scale-105 transition-transform active:scale-95"
+                                    className="shrink-0 rounded-full bg-[#DCEB83] px-4 py-2.5 text-xs font-bold text-[#2B0B35] transition hover:brightness-95 active:scale-95"
                                 >
-                                    PEDIR AGORA
+                                    Ver item
                                 </Link>
                             </div>
                         </div>
