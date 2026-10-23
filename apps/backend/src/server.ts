@@ -93,38 +93,6 @@ app.get('/test', (req, res) => res.send('ok_from_server'));
 // Enable Enterprise Monitoring (Prometheus & Sentry)
 monitoringService.setupMetrics(app);
 
-// Start Background Workers
-if (process.env.NODE_ENV !== 'test') {
-  import('./services/campaign.worker').then(() => console.log('👷 Campaign Workers started.'));
-  import('./services/whatsapp.worker').then(() => console.log('📱 WhatsApp Workers started.'));
-}
-
-// Set up subscribers only if not in test
-if (process.env.NODE_ENV !== 'test') {
-  try {
-  setupEventSubscribers();
-  marketingService.startAutomatedMarketing();
-  console.log('✅ Event subscribers active.');
-
-  // Funil de Carrinho Abandonado (Enterprise Automation)
-  eventBus.on('order_created', async (data) => {
-    try {
-    const { orderId, customerId, restaurantId } = data;
-    await queueService.addJob('whatsapp-automation', 'abandoned_cart_check', {
-      type: 'abandoned_cart',
-      orderId,
-      customerId,
-      restaurantId
-    }, { delay: 1000 * 60 * 30 }); // 30 minutos de delay
-    } catch (error) {
-      logStartupError('Abandoned cart queue scheduling', error);
-    }
-  });
-  } catch (error) {
-    logStartupError('Event subscribers startup', error);
-  }
-}
-
 app.use(cors({
   origin: corsOrigin,
   credentials: true,
@@ -188,8 +156,39 @@ app.use('/api/super-admin', superAdminRouter);
 app.use('/api/migration', migrationRouter);
 app.use('/api/dev', devRouter);
 
-// Database initialization
-void setupDatabase().then(() => {
+async function startServer() {
+  await setupDatabase();
+
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      setupEventSubscribers();
+      await marketingService.startAutomatedMarketing();
+      console.log('✅ Event subscribers active.');
+
+      // Funil de Carrinho Abandonado (Enterprise Automation)
+      eventBus.on('order_created', async (data) => {
+        try {
+          const { orderId, customerId, restaurantId } = data;
+          await queueService.addJob('whatsapp-automation', 'abandoned_cart_check', {
+            type: 'abandoned_cart',
+            orderId,
+            customerId,
+            restaurantId
+          }, { delay: 1000 * 60 * 30 }); // 30 minutos de delay
+        } catch (error) {
+          logStartupError('Abandoned cart queue scheduling', error);
+        }
+      });
+    } catch (error) {
+      logStartupError('Event subscribers startup', error);
+    }
+
+    await Promise.all([
+      import('./services/campaign.worker').then(() => console.log('👷 Campaign Workers started.')),
+      import('./services/whatsapp.worker').then(() => console.log('📱 WhatsApp Workers started.')),
+    ]);
+  }
+
   try {
     InventoryAlertService.start();
   } catch (error) {
@@ -203,18 +202,21 @@ void setupDatabase().then(() => {
   }
 
   logger.info('Database initialized and synchronized');
-}).catch(err => {
-  logger.error('Failed to initialize database', err);
-});
+
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Backend server running on port ${PORT}`);
+  });
+}
 
 // Enable Sentry Error Handling (Should be after all controllers)
 monitoringService.setupErrorHandling(app);
 
 app.use(errorMiddleware);
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Backend server running on port ${PORT}`);
+void startServer().catch(err => {
+  logger.error('Failed to initialize server', err);
+  process.exitCode = 1;
 });
 
 export default app;

@@ -164,14 +164,39 @@ ordersRouter.get('/:slug/orders/:id', async (req, res) => {
 ordersRouter.post('/orders', async (req, res) => {
     try {
         const data = createOrderSchema.parse(req.body);
+        const orderType = data.orderType || (data.deliveryAddress ? 'delivery' : 'pickup');
+
+        let verifiedAddress;
+        if (orderType === 'delivery') {
+            if (!data.deliveryAddress) {
+                return res.status(422).json({ error: 'Confirme o endereço completo pelo CEP antes de finalizar.' });
+            }
+            try {
+                verifiedAddress = await deliveryQuoteService.calculate('default_tenant', data.deliveryAddress);
+            } catch (e: any) {
+                if (e instanceof DeliveryQuoteError) return res.status(e.statusCode).json({ error: e.message });
+                throw e;
+            }
+        }
+
+        const surge = orderType === 'delivery'
+            ? await PricingService.calculateDeliveryFee('default_tenant', verifiedAddress!.feeCents)
+            : { finalFeeCents: 0, isSurge: false };
+        const finalDeliveryFee = surge.finalFeeCents;
         const processedItems = await priceOrderItems('default_tenant', data.items);
         const subtotalCents = processedItems.reduce((sum, item) => sum + item.qty * item.unitPriceCents, 0);
-        const totalCents = subtotalCents + data.deliveryFeeCents;
+        const totalCents = subtotalCents + finalDeliveryFee;
+        const finalAddress = verifiedAddress
+            ? deliveryQuoteService.formatAddress(verifiedAddress)
+            : 'Retirada no Balcão (Loja)';
         const order = await ordersRepo.createOrder({
             ...data,
             subtotalCents,
             totalCents,
             items: processedItems,
+            deliveryFeeCents: finalDeliveryFee,
+            addressText: finalAddress,
+            deliveryAddress: verifiedAddress,
             restaurantId: 'default_tenant',
             paymentMethod: data.paymentMethod,
         });
