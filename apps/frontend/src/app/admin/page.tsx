@@ -99,7 +99,58 @@ export default function AdminDashboard() {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* SEÇÃO MODELADA DO JÁ PRECIFIQUEI · ENGENHARIA DE LUCRO & COCKPIT OPERACIONAL */}
+            <div className="bg-gradient-to-br from-[#3b0d3e] via-[#5c1352] to-[#240826] rounded-[40px] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                    <div className="space-y-3">
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-black uppercase tracking-widest text-amber-300">
+                            <Sparkles size={14} /> Suíte Já Precifiquei · Método Caixa Preta
+                        </div>
+                        <h2 className="text-2xl md:text-4xl font-black tracking-tight">
+                            Cockpit de Lucratividade & Preço Ideal
+                        </h2>
+                        <p className="text-purple-200 text-sm md:text-base max-w-2xl font-medium">
+                            Acompanhe o termômetro de CMV em tempo real, simule markups de venda e aplique repasse exato de taxas de marketplaces (iFood / 99Food) sem sangrar o lucro da loja.
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-white/10 min-w-[300px]">
+                        <div>
+                            <span className="text-[10px] font-black uppercase text-purple-300 block">CMV Geral</span>
+                            <span className="text-2xl font-black text-emerald-300">31,5%</span>
+                            <span className="text-[10px] text-emerald-200 block">🟢 Zona Ideal (25%-35%)</span>
+                        </div>
+                        <div>
+                            <span className="text-[10px] font-black uppercase text-purple-300 block">Break-Even</span>
+                            <span className="text-2xl font-black text-amber-300">685</span>
+                            <span className="text-[10px] text-amber-200 block">pedidos/mês mínimo</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="mt-8 pt-8 border-t border-white/10 flex flex-wrap gap-4 items-center justify-between">
+                    <div className="flex flex-wrap gap-3">
+                        <Link 
+                            href="/admin/costing" 
+                            className="bg-white text-purple-950 font-black px-6 py-3.5 rounded-2xl flex items-center gap-2 hover:bg-purple-100 transition active:scale-95 shadow-xl text-xs uppercase tracking-wider"
+                        >
+                            <LayoutDashboard size={16} /> Acessar Cockpit Completo
+                        </Link>
+                        <Link 
+                            href="/precificacao" 
+                            className="bg-purple-600/40 border border-white/20 text-white font-black px-6 py-3.5 rounded-2xl hover:bg-purple-600 transition active:scale-95 text-xs uppercase tracking-wider flex items-center gap-2"
+                        >
+                            <span>🎯</span> Simulador de Markup
+                        </Link>
+                    </div>
+                    <span className="text-xs text-purple-200 font-medium">
+                        Fórmula: <code>(Custo + Fixo) × (1 + Markup) ÷ (1 − Taxas)</code>
+                    </span>
+                </div>
+            </div>
+
+<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* AI Growth Oracle Widget */}
                 <div className="lg:col-span-2 bg-gradient-to-br from-purple-700 via-indigo-800 to-indigo-950 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden group">
                     {/* Decorative Elements */}

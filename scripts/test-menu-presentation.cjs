@@ -56,7 +56,10 @@ check('custom formats group cups, marmitex, boats, litre and roleta', () => {
 
 check('double cups use clear display names without altering catalog names or prices', () => {
   const combos = sorted.filter(item => item.category === 'Açaí Combos');
-  assert.deepEqual(plain(combos.map(getMenuDisplayName)), [300, 400, 500, 700].map(size => `Dupla X-Açaí — 2 copos de ${size} ml`));
+  assert.deepEqual(plain(combos.map(getMenuDisplayName)), [
+    ...[300, 400, 500, 700].map(size => `Dupla X-Açaí — 2 copos de ${size} ml`),
+    'Combo Casal Perfeito — Marmitex 700ml + 2 Bebidas',
+  ]);
   const beverage = menu.find(item => item.category.includes('Bebida'));
   assert.equal(getMenuDisplayName(beverage), beverage.name);
   assert.equal(getMenuDisplayName({ name: 'Combo individual 300 ml', category: 'Açaí Combos' }), 'Combo individual 300 ml');
@@ -100,7 +103,7 @@ check('search crosses category boundaries, supports accents and finds displayed 
   assert.equal(water.length, 2);
   assert.ok(water.every(item => item.category.includes('Bebida')));
   assert.equal(filterMenuItems(sorted, 'acai monte o seu', 'dupla').length, 4);
-  assert.equal(filterMenuItems(sorted, 'acai combos', '   ').length, 4);
+  assert.equal(filterMenuItems(sorted, 'acai combos', '   ').length, 5);
   assert.equal(filterMenuItems(menu, null, 'smoke test').length, 0);
 });
 
