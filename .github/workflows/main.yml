@@ -16,9 +16,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: apps/backend/package-lock.json
       
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
         working-directory: ./apps/backend
 
       - name: TypeScript Build
@@ -34,9 +35,10 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
+          cache-dependency-path: apps/frontend/package-lock.json
       
       - name: Install Dependencies
-        run: npm install
+        run: npm ci
         working-directory: ./apps/frontend
 
       - name: Next.js Build

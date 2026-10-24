@@ -4,6 +4,7 @@ import { deliveryVerificationMigration } from './002_delivery_verification';
 import { inventoryPurchaseProfilesMigration } from './003_inventory_purchase_profiles';
 import { orderIdempotencyMigration } from './004_order_idempotency';
 import { canonicalTropicalMigration } from './005_canonical_tropical';
+import { defaultStoreConfigMigration } from './006_default_store_config';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -11,4 +12,5 @@ export const postgresMigrations: Migration[] = [
     inventoryPurchaseProfilesMigration,
     orderIdempotencyMigration,
     canonicalTropicalMigration,
+    defaultStoreConfigMigration,
 ];

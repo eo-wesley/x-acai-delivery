@@ -12,7 +12,8 @@
     "db:seed": "tsx src/seeds/seed-demo-v2.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "npm run test:pricing",
+    "test": "npm run test:pricing && npm run test:store-config",
+    "test:store-config": "tsx scripts/test-default-store-config.ts",
     "test:pricing": "tsx scripts/test-costing-engine.ts && tsx scripts/test-costing-report.ts && tsx scripts/test-inventory-purchase-profile-migration.ts && tsx scripts/test-approved-order-integration.ts"
   },
   "keywords": [

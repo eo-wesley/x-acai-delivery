@@ -1,4 +1,5 @@
 import type { IDatabase } from '../db.types';
+import { DEFAULT_STORE_CONFIG, backfillDefaultStoreConfig } from './default-store-config';
 
 const DEFAULT_TENANT_ID = 'default_tenant';
 const DEFAULT_MENU_ITEM_ID = 'seed_menu_acai_classico';
@@ -38,12 +39,12 @@ export async function ensureMinimalSeed(db: IDatabase, options: { includeMenuIte
                 DEFAULT_TENANT_ID,
                 'X-Açaí Delivery',
                 'default',
-                '11987470862',
-                '11987470862',
-                'Avenida Jornalista Roberto Marinho, 3610',
-                'São Paulo',
-                -23.6145544,
-                -46.6924344,
+                DEFAULT_STORE_CONFIG.phone,
+                DEFAULT_STORE_CONFIG.whatsapp,
+                DEFAULT_STORE_CONFIG.address,
+                DEFAULT_STORE_CONFIG.city,
+                DEFAULT_STORE_CONFIG.delivery_origin_lat,
+                DEFAULT_STORE_CONFIG.delivery_origin_lng,
                 'active',
                 'open',
                 '#9333ea',
@@ -53,7 +54,7 @@ export async function ensureMinimalSeed(db: IDatabase, options: { includeMenuIte
                 150,
                 8,
                 25,
-                "1312828416414575",
+                DEFAULT_STORE_CONFIG.facebook_pixel_id,
             ]
         );
         console.log('[DB Seed] Default restaurant ensured.');
@@ -62,20 +63,14 @@ export async function ensureMinimalSeed(db: IDatabase, options: { includeMenuIte
             `UPDATE restaurants
              SET status = COALESCE(status, 'active'),
                  store_status = COALESCE(store_status, 'open'),
-                 phone = COALESCE(phone, '11987470862'),
-                 whatsapp = COALESCE(whatsapp, '11987470862'),
-                 address = COALESCE(address, 'Avenida Jornalista Roberto Marinho, 3610'),
-                 city = COALESCE(city, 'São Paulo'),
-                 delivery_origin_lat = COALESCE(delivery_origin_lat, -23.6145544),
-                 delivery_origin_lng = COALESCE(delivery_origin_lng, -46.6924344),
                  delivery_fee_cents = COALESCE(delivery_fee_cents, 500),
                  delivery_included_km = COALESCE(delivery_included_km, 3),
                  delivery_fee_per_km_cents = COALESCE(delivery_fee_per_km_cents, 150),
-                 delivery_max_distance_km = COALESCE(delivery_max_distance_km, 8),
-                 facebook_pixel_id = COALESCE(facebook_pixel_id, "1312828416414575")
+                 delivery_max_distance_km = COALESCE(delivery_max_distance_km, 8)
              WHERE id = ?`,
             [DEFAULT_TENANT_ID]
         );
+        await db.transaction(tx => backfillDefaultStoreConfig(tx));
     }
 
     if (!includeMenuItem) {
