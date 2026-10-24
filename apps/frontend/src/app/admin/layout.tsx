@@ -165,8 +165,38 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                     <Link href="/admin/kitchen" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/kitchen' ? 'bg-orange-100 text-orange-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>🍳</span> Cozinha (KDS)
                     </Link>
+                    <Link href="/admin/pdv" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/pdv' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🛒</span> PDV Balcão
+                    </Link>
                     <Link href="/admin/live" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/live' ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>🔴</span> Live Hub (War Room)
+                    </Link>
+
+                    <div className="border-t my-2 border-dashed border-gray-200"></div>
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-1">Logística & Despacho</div>
+                    <Link href="/admin/logistics" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/logistics' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🚚</span> Rotas & Logística
+                    </Link>
+                    <Link href="/admin/drivers" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/drivers' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🛵</span> Gestão de Motoboys
+                    </Link>
+                    <Link href="/driver/dashboard" target="_blank" className="p-3 rounded-lg font-semibold flex items-center gap-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100">
+                        <span>📱</span> App do Motoboy (Suit Express)
+                    </Link>
+
+                    <div className="border-t my-2 border-dashed border-gray-200"></div>
+                    <div className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-1">Canais & Vendas Externas</div>
+                    <Link href="/admin/marketplaces" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/marketplaces' ? 'bg-amber-100 text-amber-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🛍️</span> 99Food / iFood / Keeta
+                    </Link>
+                    <Link href="/admin/whatsapp" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/whatsapp' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>💬</span> Robô de WhatsApp
+                    </Link>
+                    <Link href="/admin/settings/pixels" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/settings/pixels' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>🎯</span> Meta Pixel (Anúncios)
+                    </Link>
+                    <Link href="/admin/ratings" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/ratings' ? 'bg-yellow-100 text-yellow-700' : 'text-gray-600 hover:bg-gray-50'}`}>
+                        <span>⭐</span> Avaliações (Suit Ratings)
                     </Link>
 
                     <div className="border-t my-2 border-dashed border-gray-200"></div>
@@ -178,19 +208,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                         <span>📦</span> Estoque
                     </Link>
                     <Link href="/admin/costing" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/costing' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <span>🧮</span> Precificação
+                        <span>🧮</span> Precificação & Custos
                     </Link>
                     <Link href="/admin/procurement" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/procurement' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>🛒</span> Compras
                     </Link>
                     <Link href="/admin/tables" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/tables' ? 'bg-emerald-100 text-emerald-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>🍽️</span> Mesas
-                    </Link>
-                    <Link href="/admin/logistics" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/logistics' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <span>🚚</span> Logística Hub
-                    </Link>
-                    <Link href="/admin/drivers" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/drivers' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <span>🛵</span> Entregadores
                     </Link>
 
                     <div className="border-t my-2 border-dashed border-gray-200"></div>
@@ -205,13 +229,13 @@ function AdminLayoutContent({ children }: { children: React.ReactNode }) {
                         <span>👥</span> Clientes (CRM)
                     </Link>
                     <Link href="/admin/marketing" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/marketing' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <span>📢</span> Marketing
+                        <span>📢</span> Marketing & Cupons
                     </Link>
 
                     <div className="border-t my-2 border-dashed border-gray-200"></div>
                     <div className="text-xs font-bold text-gray-400 uppercase tracking-widest px-2 mb-1">Configurações</div>
                     <Link href="/admin/settings" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/settings' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
-                        <span>⚙️</span> Configurações
+                        <span>⚙️</span> Configurações da Loja
                     </Link>
                     <Link href="/admin/team" className={`p-3 rounded-lg font-semibold flex items-center gap-2 ${pathname === '/admin/team' ? 'bg-purple-100 text-purple-700' : 'text-gray-600 hover:bg-gray-50'}`}>
                         <span>🛡️</span> Equipe
