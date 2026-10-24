@@ -31,8 +31,9 @@ export async function ensureMinimalSeed(db: IDatabase, options: { includeMenuIte
                 delivery_included_km,
                 delivery_fee_per_km_cents,
                 delivery_max_distance_km,
-                prep_time_minutes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                prep_time_minutes,
+                facebook_pixel_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 DEFAULT_TENANT_ID,
                 'X-Açaí Delivery',
@@ -52,6 +53,7 @@ export async function ensureMinimalSeed(db: IDatabase, options: { includeMenuIte
                 150,
                 8,
                 25,
+                "1312828416414575",
             ]
         );
         console.log('[DB Seed] Default restaurant ensured.');
@@ -69,7 +71,8 @@ export async function ensureMinimalSeed(db: IDatabase, options: { includeMenuIte
                  delivery_fee_cents = COALESCE(delivery_fee_cents, 500),
                  delivery_included_km = COALESCE(delivery_included_km, 3),
                  delivery_fee_per_km_cents = COALESCE(delivery_fee_per_km_cents, 150),
-                 delivery_max_distance_km = COALESCE(delivery_max_distance_km, 8)
+                 delivery_max_distance_km = COALESCE(delivery_max_distance_km, 8),
+                 facebook_pixel_id = COALESCE(facebook_pixel_id, "1312828416414575")
              WHERE id = ?`,
             [DEFAULT_TENANT_ID]
         );

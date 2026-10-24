@@ -86,6 +86,17 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
     const addToCart = useCallback((item: CartItem) => {
         const newItem = repriceCounterCartItem(item);
+        if (typeof window !== 'undefined' && (window as any).fbq) {
+            try {
+                (window as any).fbq('track', 'AddToCart', {
+                    content_name: newItem.name,
+                    content_ids: [newItem.menuItemId],
+                    content_type: 'product',
+                    value: (newItem.price_cents * newItem.qty) / 100,
+                    currency: 'BRL',
+                });
+            } catch {}
+        }
         setItems(prev => {
             // Deduplicate by cartKey (same product, modifier choices and notes)
             const existing = prev.find(i => i.cartKey === newItem.cartKey);

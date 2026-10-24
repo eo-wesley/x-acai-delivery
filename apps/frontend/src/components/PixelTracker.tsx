@@ -16,7 +16,9 @@ export default function PixelTracker() {
         facebook_pixel_id?: string;
         google_analytics_id?: string;
         tiktok_pixel_id?: string;
-    } | null>(null);
+    } | null>({
+        facebook_pixel_id: process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || "1312828416414575",
+    });
 
     // Ignorar admin e driver
     const isExcluded = pathname?.startsWith('/admin') || pathname?.startsWith('/driver');
@@ -31,7 +33,7 @@ export default function PixelTracker() {
                 if (res.ok) {
                     const data = await res.json();
                     setConfig({
-                        facebook_pixel_id: data.facebook_pixel_id,
+                        facebook_pixel_id: data.facebook_pixel_id || process.env.NEXT_PUBLIC_FACEBOOK_PIXEL_ID || "1312828416414575",
                         google_analytics_id: data.google_analytics_id,
                         tiktok_pixel_id: data.tiktok_pixel_id,
                     });

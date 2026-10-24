@@ -330,6 +330,19 @@ export default function CheckoutPage() {
 
             if (res.ok) {
                 const data = await res.json();
+
+                // Track Purchase on Meta Pixel
+                if (typeof window !== 'undefined' && (window as any).fbq) {
+                    try {
+                        (window as any).fbq('track', 'Purchase', {
+                            value: totalCents / 100,
+                            currency: 'BRL',
+                            order_id: data.id,
+                            num_items: items.reduce((acc, i) => acc + i.qty, 0),
+                        });
+                    } catch {}
+                }
+
                 clearCart();
 
                 try {

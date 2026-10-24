@@ -20,6 +20,7 @@ const nextConfig: NextConfig = {
 
   env: {
     NEXT_PUBLIC_API_URL: backendUrl,
+    NEXT_PUBLIC_FACEBOOK_PIXEL_ID: "1312828416414575",
   },
 
   images: {
