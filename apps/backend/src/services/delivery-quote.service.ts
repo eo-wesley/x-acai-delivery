@@ -220,9 +220,26 @@ export class DeliveryQuoteService {
 
         if (!restaurant) throw new DeliveryQuoteError('Loja não encontrada.', 404);
 
-        const destination = await geocode(
+        let destination: GeocodedPoint | undefined;
+        const candidateQueries = [
             `${cepAddress.logradouro}, ${number}, ${cepAddress.bairro}, ${cepAddress.localidade}, ${cepAddress.uf}, Brazil`,
-        );
+            `${cepAddress.logradouro}, ${number}, ${cepAddress.localidade}, Brazil`,
+            `${cepAddress.logradouro}, ${cepAddress.localidade}, Brazil`,
+            `${cep}, Brazil`,
+        ];
+
+        for (const candidate of candidateQueries) {
+            try {
+                destination = await geocode(candidate);
+                if (destination) break;
+            } catch {
+                // Fallback to next query
+            }
+        }
+
+        if (!destination) {
+            throw new DeliveryQuoteError('Não consegui localizar esse número nessa rua. Confira rua, número e CEP.');
+        }
 
         let origin: GeocodedPoint;
         const originLatitude = parseCoordinate(restaurant.delivery_origin_lat, 90);

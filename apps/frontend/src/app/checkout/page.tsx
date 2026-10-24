@@ -112,6 +112,27 @@ export default function CheckoutPage() {
     const updateAddressField = (field: 'cep' | 'street' | 'number' | 'neighborhood' | 'city' | 'state' | 'complement', value: string) => {
         setForm(f => ({ ...f, [field]: value }));
         resetDeliveryQuote();
+
+        if (field === 'cep') {
+            const clean = value.replace(/\D/g, '');
+            if (clean.length === 8) {
+                fetch(`https://viacep.com.br/ws/${clean}/json/`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && !data.erro) {
+                            setForm(f => ({
+                                ...f,
+                                cep: clean,
+                                street: data.logradouro || f.street,
+                                neighborhood: data.bairro || f.neighborhood,
+                                city: data.localidade || f.city,
+                                state: data.uf || f.state,
+                            }));
+                        }
+                    })
+                    .catch(() => {});
+            }
+        }
     };
 
     const handleCalculateDelivery = async (rawCep: string = form.cep) => {
