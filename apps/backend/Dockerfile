@@ -25,6 +25,7 @@ RUN npm ci --omit=dev
 
 # Copy compiled dist
 COPY --from=builder /app/backend/dist ./dist
+COPY --from=builder /app/backend/ifood-normalized-augmented.json ./ifood-normalized-augmented.json
 
 # Create data directory for SQLite
 RUN mkdir -p /data
