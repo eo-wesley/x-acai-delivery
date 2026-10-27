@@ -6,6 +6,7 @@ import { orderIdempotencyMigration } from './004_order_idempotency';
 import { canonicalTropicalMigration } from './005_canonical_tropical';
 import { defaultStoreConfigMigration } from './006_default_store_config';
 import { ifoodCatalogSyncMigration } from './007_ifood_catalog_sync';
+import { inventorySeedMigration } from './008_seed_inventory_costs';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -15,4 +16,5 @@ export const postgresMigrations: Migration[] = [
     canonicalTropicalMigration,
     defaultStoreConfigMigration,
     ifoodCatalogSyncMigration,
+    inventorySeedMigration,
 ];
