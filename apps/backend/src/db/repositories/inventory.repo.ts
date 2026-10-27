@@ -105,7 +105,7 @@ export class InventoryRepo {
         const db = await getDb();
         return db.all(
             `SELECT * FROM inventory_items 
-             WHERE restaurant_id = ? AND active = 1 AND current_qty <= min_stock 
+             WHERE restaurant_id = ? AND active = 1 AND min_stock > 0 AND current_qty <= min_stock 
              ORDER BY current_qty ASC`,
             [restaurantId]
         );

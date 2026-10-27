@@ -207,7 +207,9 @@ export default function InventoryPage() {
                         <h2 className="text-xl font-bold text-gray-800">Insumos Cadastrados</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {items.map(item => {
-                                const isAlert = item.current_qty <= item.min_stock;
+                                // A zero minimum means "not configured"; it must not
+                                // paint every empty item as a low-stock alert.
+                                const isAlert = item.min_stock > 0 && item.current_qty <= item.min_stock;
                                 return (
                                     <div key={item.id} className={`bg-white border-l-4 p-5 rounded-xl shadow-sm hover:shadow-md transition ${isAlert ? 'border-red-500' : 'border-green-500'}`}>
                                         <div className="flex justify-between items-start mb-2">

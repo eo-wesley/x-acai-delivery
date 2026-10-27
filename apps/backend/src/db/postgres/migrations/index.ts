@@ -14,6 +14,7 @@ import { reconcileOpenAndSealedStockMigration } from './012_reconcile_open_and_s
 import { addAcaiPurchaseStockMigration } from './013_add_acai_purchase_stock';
 import { mergeAmendoimDuplicatesMigration } from './014_merge_amendoim_duplicates';
 import { updateBananaPurchaseMigration } from './015_update_banana_purchase';
+import { inventoryNamingAndAlertsMigration } from './016_inventory_naming_and_alerts';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -31,4 +32,5 @@ export const postgresMigrations: Migration[] = [
     addAcaiPurchaseStockMigration,
     mergeAmendoimDuplicatesMigration,
     updateBananaPurchaseMigration,
+    inventoryNamingAndAlertsMigration,
 ];
