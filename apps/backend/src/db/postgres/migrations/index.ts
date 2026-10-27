@@ -10,6 +10,7 @@ import { inventorySeedMigration } from './008_seed_inventory_costs';
 import { receiptCostProfilesMigration } from './009_update_receipt_cost_profiles';
 import { currentStockCountsMigration } from './010_seed_current_stock_counts';
 import { correctConfeteStockMigration } from './011_correct_confete_stock';
+import { reconcileOpenAndSealedStockMigration } from './012_reconcile_open_and_sealed_stock';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -23,4 +24,5 @@ export const postgresMigrations: Migration[] = [
     receiptCostProfilesMigration,
     currentStockCountsMigration,
     correctConfeteStockMigration,
+    reconcileOpenAndSealedStockMigration,
 ];
