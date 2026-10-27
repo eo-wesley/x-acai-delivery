@@ -13,6 +13,7 @@ import { correctConfeteStockMigration } from './011_correct_confete_stock';
 import { reconcileOpenAndSealedStockMigration } from './012_reconcile_open_and_sealed_stock';
 import { addAcaiPurchaseStockMigration } from './013_add_acai_purchase_stock';
 import { mergeAmendoimDuplicatesMigration } from './014_merge_amendoim_duplicates';
+import { updateBananaPurchaseMigration } from './015_update_banana_purchase';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -29,4 +30,5 @@ export const postgresMigrations: Migration[] = [
     reconcileOpenAndSealedStockMigration,
     addAcaiPurchaseStockMigration,
     mergeAmendoimDuplicatesMigration,
+    updateBananaPurchaseMigration,
 ];
