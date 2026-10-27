@@ -149,8 +149,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd /opt/xacai-delivery
-            docker compose pull
-            docker compose up -d --remove-orphans
+            cd /docker/x-acai-delivery/source-main
+            git pull --ff-only origin main
+            cd /docker/x-acai-delivery
+            docker compose up -d --build --remove-orphans
             docker image prune -f
             echo "✅ Deployment complete at $(date)"
