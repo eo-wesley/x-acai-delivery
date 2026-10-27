@@ -16,6 +16,7 @@ import { mergeAmendoimDuplicatesMigration } from './014_merge_amendoim_duplicate
 import { updateBananaPurchaseMigration } from './015_update_banana_purchase';
 import { inventoryNamingAndAlertsMigration } from './016_inventory_naming_and_alerts';
 import { backfillConfirmedInventoryPricesMigration } from './017_backfill_confirmed_inventory_prices';
+import { updateCocaColaPurchasePriceMigration } from './018_update_coca_cola_purchase_price';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -35,4 +36,5 @@ export const postgresMigrations: Migration[] = [
     updateBananaPurchaseMigration,
     inventoryNamingAndAlertsMigration,
     backfillConfirmedInventoryPricesMigration,
+    updateCocaColaPurchasePriceMigration,
 ];
