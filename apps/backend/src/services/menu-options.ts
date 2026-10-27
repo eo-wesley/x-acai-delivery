@@ -1,4 +1,4 @@
-import { applyCounterOptionGroups, getCounterPrice, normalizeCounterLabel } from './counter-prices';
+import { getCounterPrice, normalizeCounterLabel } from './counter-prices';
 
 export interface MenuOption {
     id: string; name: string; price_cents: number; sort_order: number; available: number | boolean;
@@ -85,29 +85,29 @@ export function buildFallbackOptionGroups(product: OptionProduct): MenuOptionGro
             group('colher', 'Colher', 1, 1, 1, 20, [['Sim', 0], ['Não', 0]]),
         ];
     }
-    return applyCounterOptionGroups(product.id, groups);
+    return groups;
 }
 
 export function resolveProductOptionGroups(product: OptionProduct): MenuOptionGroup[] {
     const groups = product.option_groups;
     if (!groups?.length) return buildFallbackOptionGroups(product);
-    if (!getCounterPrice(product.id) || !isMonte(product)) return applyCounterOptionGroups(product.id, groups);
+    if (!isMonte(product)) return groups;
     const hasMass = groups.some(group => {
         const name = label(group.name);
         return name.includes('massa') || name.includes('base') || name === 'vaioque'
             || (group.options.some(option => label(option.name) === 'acai') && group.options.some(option => label(option.name) === 'cupuacu'));
     });
     const hasSpoon = groups.some(group => /colher|talher/.test(label(group.name)));
-    if (hasMass && hasSpoon) return applyCounterOptionGroups(product.id, groups);
+    if (hasMass && hasSpoon) return groups;
     const fallback = buildFallbackOptionGroups(product);
     const beverage = groups.find(group => label(group.name).includes('bebida'));
     const spoonOrder = /barca\s+m\b/i.test(product.name) && beverage
         ? (beverage.sort_order ?? 0) - 0.5 : Math.max(...groups.map(group => group.sort_order ?? 0)) + 1;
-    return applyCounterOptionGroups(product.id, [
+    return [
         ...(!hasMass ? [{ ...fallback[0], sort_order: Math.min(...groups.map(group => group.sort_order ?? 0)) - 1 }] : []),
         ...groups,
         ...(!hasSpoon ? [{ ...fallback[fallback.length - 1], sort_order: spoonOrder }] : []),
-    ]);
+    ];
 }
 
 export class MenuSelectionError extends Error {

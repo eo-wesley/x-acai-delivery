@@ -1,6 +1,5 @@
 import { getDb } from '../db/db.client';
 import { forecastingService } from './forecasting.service';
-import { getCounterPrice } from './counter-prices';
 
 export interface PricingRules {
     surge: {
@@ -85,8 +84,6 @@ export class PricingService {
     }
 
     static async calculateItemPrice(tenantId: string, item: { id?: string, price_cents: number, category: string | null }): Promise<{ finalPriceCents: number, isHappyHour: boolean }> {
-        const counterPrice = item.id ? getCounterPrice(item.id) : undefined;
-        if (counterPrice) return { finalPriceCents: counterPrice.price_cents, isHappyHour: false };
         const rules = await this.getRules(tenantId);
         const isHH = this.isHappyHour(rules);
 
