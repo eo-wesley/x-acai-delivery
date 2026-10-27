@@ -8,6 +8,7 @@ import { defaultStoreConfigMigration } from './006_default_store_config';
 import { ifoodCatalogSyncMigration } from './007_ifood_catalog_sync';
 import { inventorySeedMigration } from './008_seed_inventory_costs';
 import { receiptCostProfilesMigration } from './009_update_receipt_cost_profiles';
+import { currentStockCountsMigration } from './010_seed_current_stock_counts';
 
 export const postgresMigrations: Migration[] = [
     initialSchemaMigration,
@@ -19,4 +20,5 @@ export const postgresMigrations: Migration[] = [
     ifoodCatalogSyncMigration,
     inventorySeedMigration,
     receiptCostProfilesMigration,
+    currentStockCountsMigration,
 ];
