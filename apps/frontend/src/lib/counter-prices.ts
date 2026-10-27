@@ -36,30 +36,16 @@ interface PriceOption { name: string; price_cents: number }
 interface PriceGroup { name: string; options: PriceOption[] }
 
 export function applyCounterOptionGroups<T extends PriceGroup>(productId: string, groups: T[]): T[] {
-    return groups.map(group => ({
-        ...group,
-        options: group.options.map(option => ({
-            ...option,
-            price_cents: getCounterOptionPrice(productId, group.name, option.name) ?? option.price_cents,
-        })),
-    }));
+    // The live iFood snapshot is authoritative for the public catalog.
+    return groups;
 }
 
 export function applyCounterProduct<T extends { id: string; price_cents: number; option_groups?: PriceGroup[] }>(product: T): T {
-    const price = counterPrices.products[product.id];
-    if (!price) return product;
-    return {
-        ...product,
-        price_cents: price.price_cents,
-        // Normal counter prices do not inherit an old marketplace/happy-hour label.
-        original_price_cents: price.price_cents,
-        is_happy_hour: false,
-        ...(product.option_groups ? { option_groups: applyCounterOptionGroups(product.id, product.option_groups) } : {}),
-    };
+    return product;
 }
 
 export function applyCounterCatalog<T extends { id: string; price_cents: number; option_groups?: PriceGroup[] }>(products: T[]): T[] {
-    return products.map(applyCounterProduct);
+    return products;
 }
 
 interface SavedOption { groupName: string; optionName: string; price_cents: number }
