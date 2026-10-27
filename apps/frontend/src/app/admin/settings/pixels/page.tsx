@@ -15,15 +15,18 @@ export default function PixelsSettingsPage() {
         tiktok_pixel_id: '',
     });
 
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+
     useEffect(() => {
         const token = localStorage.getItem('admin_token');
+        const slug = localStorage.getItem('admin_slug') || 'default';
         if (!token) {
             router.push('/admin/login');
             return;
         }
         
         // Fetch existing profile including pixels
-        fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/admin/profile`, {
+        fetch(`${apiBase}/api/admin/profile?slug=${encodeURIComponent(slug)}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         })
         .then(res => res.json())
@@ -46,8 +49,9 @@ export default function PixelsSettingsPage() {
         setMessage('');
 
         const token = localStorage.getItem('admin_token');
+        const slug = localStorage.getItem('admin_slug') || 'default';
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3002'}/admin/profile`, {
+            const res = await fetch(`${apiBase}/api/admin/profile?slug=${encodeURIComponent(slug)}`, {
                 method: 'PATCH',
                 headers: {
                     'Authorization': `Bearer ${token}`,
