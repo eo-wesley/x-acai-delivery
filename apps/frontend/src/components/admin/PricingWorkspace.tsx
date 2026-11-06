@@ -89,7 +89,7 @@ function Toolbar({ search, onSearch, status, onStatus, count, statuses }: { sear
 }
 
 export default function PricingWorkspace() {
-    const [tab, setTab] = useState<Tab>('cockpit');
+    const [tab, setTab] = useState<Tab>('marketplaces');
     const [search, setSearch] = useState('');
     const [status, setStatus] = useState('');
     const [componentPage, setComponentPage] = useState(1);
@@ -166,7 +166,7 @@ export default function PricingWorkspace() {
     const tabs: { id: Tab; label: string; count?: number; highlight?: boolean }[] = [
         { id: 'cockpit', label: '📊 Cockpit (Dashboard)', highlight: true },
         { id: 'simulator', label: '🎯 Simulador & Markup', highlight: true },
-        { id: 'marketplaces', label: '🛵 Engenharia Marketplaces', highlight: true },
+        { id: 'marketplaces', label: '💰 Custos completos & preços por app', count: 46, highlight: true },
         { id: 'fixed_costs', label: '🏢 Custos Fixos' },
         { id: 'matrix', label: '⭐ Matriz BCG' },
         { id: 'portion_control', label: '⚖️ Controle de Pesagem & Sangria', highlight: true },

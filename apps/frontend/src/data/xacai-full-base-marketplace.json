@@ -1,0 +1,723 @@
+{
+  "generatedAt": "2026-11-06",
+  "targetMarginPercent": 35,
+  "channels": {
+    "direct": {
+      "label": "Direto / próprio",
+      "feePercent": 0,
+      "confirmed": true
+    },
+    "ifoodOwn": {
+      "label": "iFood entrega própria",
+      "feePercent": 15.2,
+      "confirmed": false
+    },
+    "ifoodPartner": {
+      "label": "iFood entrega parceira",
+      "feePercent": 26.2,
+      "confirmed": false
+    },
+    "keeta": {
+      "label": "Keeta",
+      "feePercent": 13,
+      "confirmed": false
+    },
+    "food99": {
+      "label": "99Food",
+      "feePercent": 18,
+      "confirmed": false
+    }
+  },
+  "rows": [
+    {
+      "id": "x-tradicional-300",
+      "product": "X-Tradicional",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 7.58,
+      "prices": {
+        "direct": 11.9,
+        "ifoodOwn": 15.9,
+        "ifoodPartner": 19.9,
+        "keeta": 14.9,
+        "food99": 16.9
+      }
+    },
+    {
+      "id": "x-pacoleite-300",
+      "product": "X-Paçoleite",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 7.84,
+      "prices": {
+        "direct": 12.9,
+        "ifoodOwn": 15.9,
+        "ifoodPartner": 20.9,
+        "keeta": 15.9,
+        "food99": 16.9
+      }
+    },
+    {
+      "id": "x-king pacoca-300",
+      "product": "X-King Paçoca",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 7.97,
+      "prices": {
+        "direct": 12.9,
+        "ifoodOwn": 16.9,
+        "ifoodPartner": 20.9,
+        "keeta": 15.9,
+        "food99": 17.9
+      }
+    },
+    {
+      "id": "x-splash-300",
+      "product": "X-Splash",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 8,
+      "prices": {
+        "direct": 12.9,
+        "ifoodOwn": 16.9,
+        "ifoodPartner": 20.9,
+        "keeta": 15.9,
+        "food99": 17.9
+      }
+    },
+    {
+      "id": "x-pacokita-300",
+      "product": "X-Paçokita",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 8.41,
+      "prices": {
+        "direct": 13.9,
+        "ifoodOwn": 16.9,
+        "ifoodPartner": 21.9,
+        "keeta": 16.9,
+        "food99": 17.9
+      }
+    },
+    {
+      "id": "x-splash-400",
+      "product": "X-Splash",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 9.8,
+      "prices": {
+        "direct": 15.9,
+        "ifoodOwn": 19.9,
+        "ifoodPartner": 25.9,
+        "keeta": 18.9,
+        "food99": 20.9
+      }
+    },
+    {
+      "id": "x-chocola-300",
+      "product": "X-Chocolá",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 9.84,
+      "prices": {
+        "direct": 15.9,
+        "ifoodOwn": 19.9,
+        "ifoodPartner": 25.9,
+        "keeta": 19.9,
+        "food99": 21.9
+      }
+    },
+    {
+      "id": "x-tradicional-400",
+      "product": "X-Tradicional",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 9.9,
+      "prices": {
+        "direct": 15.9,
+        "ifoodOwn": 19.9,
+        "ifoodPartner": 25.9,
+        "keeta": 19.9,
+        "food99": 21.9
+      }
+    },
+    {
+      "id": "x-pacoleite-400",
+      "product": "X-Paçoleite",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 9.9,
+      "prices": {
+        "direct": 15.9,
+        "ifoodOwn": 19.9,
+        "ifoodPartner": 25.9,
+        "keeta": 19.9,
+        "food99": 21.9
+      }
+    },
+    {
+      "id": "x-king pacoca-400",
+      "product": "X-King Paçoca",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 9.94,
+      "prices": {
+        "direct": 15.9,
+        "ifoodOwn": 20.9,
+        "ifoodPartner": 25.9,
+        "keeta": 19.9,
+        "food99": 21.9
+      }
+    },
+    {
+      "id": "x-pacokita-400",
+      "product": "X-Paçokita",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 10.2,
+      "prices": {
+        "direct": 15.9,
+        "ifoodOwn": 20.9,
+        "ifoodPartner": 26.9,
+        "keeta": 19.9,
+        "food99": 21.9
+      }
+    },
+    {
+      "id": "monte-300",
+      "product": "Monte Seu",
+      "sizeMl": 300,
+      "kind": "mix seguro",
+      "detail": "base cheia + 3 complementos mais caros + embalagem completa",
+      "cost": 10.43,
+      "prices": {
+        "direct": 16.9,
+        "ifoodOwn": 21.9,
+        "ifoodPartner": 26.9,
+        "keeta": 20.9,
+        "food99": 22.9
+      }
+    },
+    {
+      "id": "x-king tella-300",
+      "product": "X-King Tella",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 10.72,
+      "prices": {
+        "direct": 16.9,
+        "ifoodOwn": 21.9,
+        "ifoodPartner": 27.9,
+        "keeta": 20.9,
+        "food99": 22.9
+      }
+    },
+    {
+      "id": "x-tella-300",
+      "product": "X-Tella",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 10.76,
+      "prices": {
+        "direct": 16.9,
+        "ifoodOwn": 21.9,
+        "ifoodPartner": 27.9,
+        "keeta": 20.9,
+        "food99": 22.9
+      }
+    },
+    {
+      "id": "x-creme-300",
+      "product": "X-Creme",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 10.88,
+      "prices": {
+        "direct": 16.9,
+        "ifoodOwn": 21.9,
+        "ifoodPartner": 28.9,
+        "keeta": 21.9,
+        "food99": 23.9
+      }
+    },
+    {
+      "id": "x-tropical-300",
+      "product": "X-Tropical",
+      "sizeMl": 300,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 11.44,
+      "prices": {
+        "direct": 17.9,
+        "ifoodOwn": 23.9,
+        "ifoodPartner": 29.9,
+        "keeta": 22.9,
+        "food99": 24.9
+      }
+    },
+    {
+      "id": "x-tradicional-500",
+      "product": "X-Tradicional",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 11.94,
+      "prices": {
+        "direct": 18.9,
+        "ifoodOwn": 24.9,
+        "ifoodPartner": 30.9,
+        "keeta": 23.9,
+        "food99": 25.9
+      }
+    },
+    {
+      "id": "x-pacokita-500",
+      "product": "X-Paçokita",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 11.95,
+      "prices": {
+        "direct": 18.9,
+        "ifoodOwn": 24.9,
+        "ifoodPartner": 30.9,
+        "keeta": 23.9,
+        "food99": 25.9
+      }
+    },
+    {
+      "id": "x-pacoleite-500",
+      "product": "X-Paçoleite",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 12.03,
+      "prices": {
+        "direct": 18.9,
+        "ifoodOwn": 24.9,
+        "ifoodPartner": 31.9,
+        "keeta": 23.9,
+        "food99": 25.9
+      }
+    },
+    {
+      "id": "x-chocola-400",
+      "product": "X-Chocolá",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 12.07,
+      "prices": {
+        "direct": 18.9,
+        "ifoodOwn": 24.9,
+        "ifoodPartner": 31.9,
+        "keeta": 23.9,
+        "food99": 25.9
+      }
+    },
+    {
+      "id": "monte-400",
+      "product": "Monte Seu",
+      "sizeMl": 400,
+      "kind": "mix seguro",
+      "detail": "base cheia + 3 complementos mais caros + embalagem completa",
+      "cost": 12.22,
+      "prices": {
+        "direct": 18.9,
+        "ifoodOwn": 24.9,
+        "ifoodPartner": 31.9,
+        "keeta": 23.9,
+        "food99": 26.9
+      }
+    },
+    {
+      "id": "x-king pacoca-500",
+      "product": "X-King Paçoca",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 12.3,
+      "prices": {
+        "direct": 19.9,
+        "ifoodOwn": 24.9,
+        "ifoodPartner": 31.9,
+        "keeta": 23.9,
+        "food99": 26.9
+      }
+    },
+    {
+      "id": "x-splash-500",
+      "product": "X-Splash",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 12.65,
+      "prices": {
+        "direct": 19.9,
+        "ifoodOwn": 25.9,
+        "ifoodPartner": 32.9,
+        "keeta": 24.9,
+        "food99": 27.9
+      }
+    },
+    {
+      "id": "x-king tella-400",
+      "product": "X-King Tella",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 13.12,
+      "prices": {
+        "direct": 20.9,
+        "ifoodOwn": 26.9,
+        "ifoodPartner": 33.9,
+        "keeta": 25.9,
+        "food99": 28.9
+      }
+    },
+    {
+      "id": "x-creme-400",
+      "product": "X-Creme",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 13.18,
+      "prices": {
+        "direct": 20.9,
+        "ifoodOwn": 26.9,
+        "ifoodPartner": 34.9,
+        "keeta": 25.9,
+        "food99": 28.9
+      }
+    },
+    {
+      "id": "x-tella-400",
+      "product": "X-Tella",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 13.29,
+      "prices": {
+        "direct": 20.9,
+        "ifoodOwn": 26.9,
+        "ifoodPartner": 34.9,
+        "keeta": 25.9,
+        "food99": 28.9
+      }
+    },
+    {
+      "id": "x-tropical-400",
+      "product": "X-Tropical",
+      "sizeMl": 400,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 13.58,
+      "prices": {
+        "direct": 20.9,
+        "ifoodOwn": 27.9,
+        "ifoodPartner": 35.9,
+        "keeta": 26.9,
+        "food99": 28.9
+      }
+    },
+    {
+      "id": "marmitex-500",
+      "product": "Marmitex",
+      "sizeMl": 500,
+      "kind": "mix seguro",
+      "detail": "base cheia + 3 complementos mais caros + embalagem completa",
+      "cost": 13.85,
+      "prices": {
+        "direct": 21.9,
+        "ifoodOwn": 27.9,
+        "ifoodPartner": 35.9,
+        "keeta": 26.9,
+        "food99": 29.9
+      }
+    },
+    {
+      "id": "monte-500",
+      "product": "Monte Seu",
+      "sizeMl": 500,
+      "kind": "mix seguro",
+      "detail": "base cheia + 3 complementos mais caros + embalagem completa",
+      "cost": 13.97,
+      "prices": {
+        "direct": 21.9,
+        "ifoodOwn": 28.9,
+        "ifoodPartner": 36.9,
+        "keeta": 26.9,
+        "food99": 29.9
+      }
+    },
+    {
+      "id": "x-chocola-500",
+      "product": "X-Chocolá",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 14.51,
+      "prices": {
+        "direct": 22.9,
+        "ifoodOwn": 29.9,
+        "ifoodPartner": 37.9,
+        "keeta": 28.9,
+        "food99": 30.9
+      }
+    },
+    {
+      "id": "x-king tella-500",
+      "product": "X-King Tella",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 15.54,
+      "prices": {
+        "direct": 24.9,
+        "ifoodOwn": 31.9,
+        "ifoodPartner": 40.9,
+        "keeta": 29.9,
+        "food99": 33.9
+      }
+    },
+    {
+      "id": "x-tella-500",
+      "product": "X-Tella",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 15.6,
+      "prices": {
+        "direct": 24.9,
+        "ifoodOwn": 31.9,
+        "ifoodPartner": 40.9,
+        "keeta": 30.9,
+        "food99": 33.9
+      }
+    },
+    {
+      "id": "x-pacokita-700",
+      "product": "X-Paçokita",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 15.64,
+      "prices": {
+        "direct": 24.9,
+        "ifoodOwn": 31.9,
+        "ifoodPartner": 40.9,
+        "keeta": 30.9,
+        "food99": 33.9
+      }
+    },
+    {
+      "id": "x-tropical-500",
+      "product": "X-Tropical",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 15.78,
+      "prices": {
+        "direct": 24.9,
+        "ifoodOwn": 31.9,
+        "ifoodPartner": 40.9,
+        "keeta": 30.9,
+        "food99": 33.9
+      }
+    },
+    {
+      "id": "x-tradicional-700",
+      "product": "X-Tradicional",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 16.23,
+      "prices": {
+        "direct": 25.9,
+        "ifoodOwn": 32.9,
+        "ifoodPartner": 41.9,
+        "keeta": 31.9,
+        "food99": 34.9
+      }
+    },
+    {
+      "id": "x-pacoleite-700",
+      "product": "X-Paçoleite",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 16.4,
+      "prices": {
+        "direct": 25.9,
+        "ifoodOwn": 33.9,
+        "ifoodPartner": 42.9,
+        "keeta": 31.9,
+        "food99": 34.9
+      }
+    },
+    {
+      "id": "x-king pacoca-700",
+      "product": "X-King Paçoca",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 16.43,
+      "prices": {
+        "direct": 25.9,
+        "ifoodOwn": 33.9,
+        "ifoodPartner": 42.9,
+        "keeta": 31.9,
+        "food99": 35.9
+      }
+    },
+    {
+      "id": "x-splash-700",
+      "product": "X-Splash",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 16.71,
+      "prices": {
+        "direct": 25.9,
+        "ifoodOwn": 33.9,
+        "ifoodPartner": 43.9,
+        "keeta": 32.9,
+        "food99": 35.9
+      }
+    },
+    {
+      "id": "x-creme-500",
+      "product": "X-Creme",
+      "sizeMl": 500,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 16.96,
+      "prices": {
+        "direct": 26.9,
+        "ifoodOwn": 34.9,
+        "ifoodPartner": 43.9,
+        "keeta": 32.9,
+        "food99": 36.9
+      }
+    },
+    {
+      "id": "marmitex-700",
+      "product": "Marmitex",
+      "sizeMl": 700,
+      "kind": "mix seguro",
+      "detail": "base cheia + 4 complementos mais caros + embalagem completa",
+      "cost": 18.82,
+      "prices": {
+        "direct": 29.9,
+        "ifoodOwn": 37.9,
+        "ifoodPartner": 48.9,
+        "keeta": 36.9,
+        "food99": 40.9
+      }
+    },
+    {
+      "id": "monte-700",
+      "product": "Monte Seu",
+      "sizeMl": 700,
+      "kind": "mix seguro",
+      "detail": "base cheia + 4 complementos mais caros + embalagem completa",
+      "cost": 18.83,
+      "prices": {
+        "direct": 29.9,
+        "ifoodOwn": 37.9,
+        "ifoodPartner": 48.9,
+        "keeta": 36.9,
+        "food99": 40.9
+      }
+    },
+    {
+      "id": "x-chocola-700",
+      "product": "X-Chocolá",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 19.39,
+      "prices": {
+        "direct": 29.9,
+        "ifoodOwn": 39.9,
+        "ifoodPartner": 50.9,
+        "keeta": 37.9,
+        "food99": 41.9
+      }
+    },
+    {
+      "id": "x-tella-700",
+      "product": "X-Tella",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 21.11,
+      "prices": {
+        "direct": 32.9,
+        "ifoodOwn": 42.9,
+        "ifoodPartner": 54.9,
+        "keeta": 40.9,
+        "food99": 45.9
+      }
+    },
+    {
+      "id": "x-king tella-700",
+      "product": "X-King Tella",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 21.36,
+      "prices": {
+        "direct": 32.9,
+        "ifoodOwn": 42.9,
+        "ifoodPartner": 55.9,
+        "keeta": 41.9,
+        "food99": 45.9
+      }
+    },
+    {
+      "id": "x-tropical-700",
+      "product": "X-Tropical",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 21.85,
+      "prices": {
+        "direct": 33.9,
+        "ifoodOwn": 43.9,
+        "ifoodPartner": 56.9,
+        "keeta": 42.9,
+        "food99": 46.9
+      }
+    },
+    {
+      "id": "x-creme-700",
+      "product": "X-Creme",
+      "sizeMl": 700,
+      "kind": "receita fixa",
+      "detail": "base cheia + receita fixa + embalagem completa",
+      "cost": 22.69,
+      "prices": {
+        "direct": 35.9,
+        "ifoodOwn": 45.9,
+        "ifoodPartner": 58.9,
+        "keeta": 43.9,
+        "food99": 48.9
+      }
+    }
+  ]
+}

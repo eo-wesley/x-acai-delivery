@@ -1,498 +1,152 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { 
-    Truck, 
-    Percent, 
-    ArrowRight, 
-    ShieldAlert, 
-    Sparkles, 
-    CheckCircle2, 
-    Layers,
-    DollarSign,
-    Calculator,
-    Zap,
-    ExternalLink,
-    Store,
-    Receipt
-} from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Calculator, Search, SlidersHorizontal, Store, Truck } from 'lucide-react';
+import snapshotJson from '@/data/xacai-pricing-snapshot.json';
 
-interface ChannelConfig {
-    id: string;
-    name: string;
-    subtitle: string;
-    feePercent: number;
-    type: 'loja' | 'ifood_basica' | 'ifood_parceira' | 'keeta' | '99food' | 'custom';
-    badge: string;
-    color: string;
-}
+type Recipe = { id: number; product: string; variant: string; ingredients: number | null; packaging: number | null };
+type Portion = { id: string; complement: string; menuType: string; inputPrice: number | null; packQuantity: number | null; portionQuantity?: number | null };
+type Snapshot = {
+    directCostBasis: {
+        acaiCostPerGram: number;
+        packagingCostBySize: Record<string, number>;
+        marmitex500PackagingCost: number;
+        marmitex700PackagingCost: number;
+    };
+    fichas: Recipe[];
+    portions: Portion[];
+};
+type CatalogItem = { id: string; product: string; sizeMl: number; cost: number; kind: 'fixo' | 'monte-seu'; detail: string };
+type Channel = { id: 'direct' | 'ifood-own' | 'ifood-partner' | 'keeta' | '99food'; label: string; fee: number };
+type SortMode = 'cost-asc' | 'cost-desc' | 'price-asc' | 'price-desc';
 
-const DEFAULT_CHANNELS: ChannelConfig[] = [
-    {
-        id: 'loja',
-        name: 'Loja Própria (Takeat / WhatsApp)',
-        subtitle: 'Taxa mínima de processamento Pix / Cartão',
-        feePercent: 5.0,
-        type: 'loja',
-        badge: 'Canal Mais Lucrativo',
-        color: 'emerald'
-    },
-    {
-        id: 'ifood_basica',
-        name: 'iFood — Entrega Própria',
-        subtitle: '12% comissão + 3.2% taxa transação',
-        feePercent: 15.2,
-        type: 'ifood_basica',
-        badge: 'iFood Básico',
-        color: 'orange'
-    },
-    {
-        id: 'ifood_parceira',
-        name: 'iFood — Entrega Parceira',
-        subtitle: '23% comissão + 3.2% taxa transação',
-        feePercent: 26.2,
-        type: 'ifood_parceira',
-        badge: 'iFood Logística',
-        color: 'rose'
-    },
-    {
-        id: 'keeta',
-        name: 'Keeta Delivery (Meituan)',
-        subtitle: 'Taxa promocional de expansão no Brasil',
-        feePercent: 13.0,
-        type: 'keeta',
-        badge: 'Novo Player Keeta',
-        color: 'amber'
-    },
-    {
-        id: '99food',
-        name: '99Food',
-        subtitle: 'Entrega parceira e rede 99',
-        feePercent: 18.0,
-        type: '99food',
-        badge: '99Food',
-        color: 'blue'
-    }
-];
-
-const CATALOG_ITEMS = [
-    // Copos
-    { sku: 'COPO-300', name: 'Copo Tradicional 300ml', cost: 5.20, storePrice: 19.90, family: 'Copos' },
-    { sku: 'COPO-400', name: 'Copo Tradicional 400ml', cost: 6.80, storePrice: 23.90, family: 'Copos' },
-    { sku: 'COPO-500', name: 'Copo Tradicional 500ml', cost: 8.20, storePrice: 28.90, family: 'Copos' },
-    { sku: 'COPO-700', name: 'Copo Tradicional 700ml', cost: 11.10, storePrice: 34.90, family: 'Copos' },
-    // Marmitas
-    { sku: 'MX500', name: 'Marmitex 500ml (Monte Seu)', cost: 10.90, storePrice: 37.65, family: 'Marmitex' },
-    { sku: 'MX700', name: 'Marmitex 700ml (Monte Seu)', cost: 14.80, storePrice: 38.90, family: 'Marmitex' },
-    // Especiais
-    { sku: 'FONDUE-500', name: 'Fondue de Açaí 500ml', cost: 12.40, storePrice: 36.90, family: 'Especiais' },
-    { sku: 'ROLETA-800', name: 'Roleta de Açaí 800ml', cost: 16.20, storePrice: 46.90, family: 'Especiais' },
-    { sku: 'BARCA-1000', name: 'Barca Especial 1 Litro', cost: 18.50, storePrice: 52.90, family: 'Especiais' },
-    // Combos
-    { sku: 'COMBO-CASAL', name: 'Combo Casal (Marmitex 700ml + 2 Bebidas)', cost: 18.80, storePrice: 49.90, family: 'Combos' },
-    { sku: 'COMBO-DUPLA', name: 'Combo Dupla (2 Copos 500ml)', cost: 16.40, storePrice: 49.90, family: 'Combos' }
-];
-
+const snapshot = snapshotJson as Snapshot;
 const money = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const percent = (v: number) => `${v.toFixed(1)}%`;
+const FIXED_PRODUCTS = new Set([
+    'Açaí X-Chocolá', 'Açaí X-Chocolã', 'Açaí X-Creme', 'Açaí X-King Paçoca', 'Açaí X-King Tella', 'Açaí X-Paçokita',
+    'Açaí X-Paçoleite', 'Açaí X-Splash', 'Açaí X-Tella', 'Açaí X-Tradicional', 'Açaí X-Tropical'
+]);
+const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+const nominalSize = (value: string) => {
+    const match = value.match(/\b(300|400|500|700)\s*ml\b/i);
+    return match ? Number(match[1]) : null;
+};
+const roundToNinety = (value: number) => Math.ceil(value + 0.1) - 0.1;
+const suggestedPrice = (cost: number, targetMargin: number, fee: number) => {
+    const divisor = 1 - ((targetMargin + fee) / 100);
+    return divisor <= 0.05 ? null : roundToNinety(cost / divisor);
+};
+const portionCost = (portion: Portion) => {
+    if (!portion.inputPrice || !portion.packQuantity || !portion.portionQuantity) return null;
+    return (portion.inputPrice / portion.packQuantity) * portion.portionQuantity;
+};
+
+const fixedCatalog = (): CatalogItem[] => {
+    const seen = new Set<string>();
+    return snapshot.fichas.filter(recipe => FIXED_PRODUCTS.has(recipe.product)).flatMap(recipe => {
+        const sizeMl = nominalSize(recipe.variant);
+        if (!sizeMl || recipe.ingredients === null || recipe.packaging === null) return [];
+        const id = `${normalize(recipe.product)}-${sizeMl}`;
+        if (seen.has(id)) return [];
+        seen.add(id);
+        return [{
+            id,
+            product: recipe.product.replace(/^Açaí\s+/i, '').replace('X-Chocolã', 'X-Chocolá'),
+            sizeMl,
+            cost: (sizeMl * snapshot.directCostBasis.acaiCostPerGram) + recipe.ingredients + recipe.packaging,
+            kind: 'fixo' as const,
+            detail: 'base cheia + receita fixa + embalagem completa'
+        }];
+    });
+};
+
+const variableCatalog = (): CatalogItem[] => {
+    const activePortions = snapshot.portions
+        .filter(portion => normalize(portion.complement) !== 'kiwi' && /gr[aá]tis/i.test(portion.menuType))
+        .map(portion => ({ name: portion.complement, cost: portionCost(portion) }))
+        .filter((portion): portion is { name: string; cost: number } => portion.cost !== null)
+        .sort((a, b) => b.cost - a.cost);
+    const definitions = [
+        { id: 'monte-300', product: 'Monte Seu', sizeMl: 300, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['300'] },
+        { id: 'monte-400', product: 'Monte Seu', sizeMl: 400, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['400'] },
+        { id: 'monte-500', product: 'Monte Seu', sizeMl: 500, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['500'] },
+        { id: 'monte-700', product: 'Monte Seu', sizeMl: 700, choices: 4, packaging: snapshot.directCostBasis.packagingCostBySize['700'] },
+        { id: 'marmitex-500', product: 'Marmitex', sizeMl: 500, choices: 3, packaging: snapshot.directCostBasis.marmitex500PackagingCost },
+        { id: 'marmitex-700', product: 'Marmitex', sizeMl: 700, choices: 4, packaging: snapshot.directCostBasis.marmitex700PackagingCost }
+    ];
+    return definitions.map(definition => {
+        const complementsCost = activePortions.slice(0, definition.choices).reduce((total, portion) => total + portion.cost, 0);
+        return {
+            id: definition.id,
+            product: definition.product,
+            sizeMl: definition.sizeMl,
+            cost: (definition.sizeMl * snapshot.directCostBasis.acaiCostPerGram) + definition.packaging + complementsCost,
+            kind: 'monte-seu' as const,
+            detail: `base cheia + ${definition.choices} complementos mais caros + embalagem completa`
+        };
+    });
+};
+const CATALOG = [...fixedCatalog(), ...variableCatalog()];
 
 export default function MarketplaceEngineering() {
-    // Calculadora individual interativa
-    const [calcCost, setCalcCost] = useState<number>(14.80); // Custo do Marmitex
-    const [calcStorePrice, setCalcStorePrice] = useState<number>(38.90); // Preço na Loja
-    
-    // IMPOSTO SIMPLES NACIONAL (DAS)
-    const [simplesRate, setSimplesRate] = useState<number>(4.5); // 4.5% de imposto Simples Nacional
-
-    // Taxas customizáveis de canais
-    const [keetaRate, setKeetaRate] = useState<number>(13.0);
-    const [ninetyNineRate, setNinetyNineRate] = useState<number>(18.0);
-    const [customChannelName, setCustomChannelName] = useState<string>('App Parceiro Local');
-    const [customChannelRate, setCustomChannelRate] = useState<number>(10.0);
-
-    const channels: ChannelConfig[] = useMemo(() => {
-        return [
-            ...DEFAULT_CHANNELS.map(ch => {
-                if (ch.id === 'keeta') return { ...ch, feePercent: keetaRate };
-                if (ch.id === '99food') return { ...ch, feePercent: ninetyNineRate };
-                return ch;
-            }),
-            {
-                id: 'custom',
-                name: customChannelName || 'Canal Personalizado',
-                subtitle: 'Taxa configurável para novos acordos',
-                feePercent: customChannelRate,
-                type: 'custom',
-                badge: 'Simulação Livre',
-                color: 'slate'
-            }
-        ];
-    }, [keetaRate, ninetyNineRate, customChannelName, customChannelRate]);
-
-    // Cálculos de repasse para o item selecionado blindando IMPOSTOS + COMISSÃO:
-    // Lucro na loja: Preço Loja - (Preço Loja * (5% taxa + simples% imposto)) - Custo
-    const singleResults = useMemo(() => {
-        const storeDeduction = calcStorePrice * ((5 + simplesRate) / 100);
-        const targetProfitReais = Math.max(0, calcStorePrice - storeDeduction - calcCost);
-
-        // Preço Marketplace = (Custo + Lucro Líquido Desejado) / [1 - (taxaMarketplace + simplesRate)]
-        return channels.map(ch => {
-            const channelFeeRate = ch.feePercent / 100;
-            const simplesTaxRate = simplesRate / 100;
-            const totalDeductionRate = channelFeeRate + simplesTaxRate;
-
-            const requiredPrice = (calcCost + targetProfitReais) / Math.max(0.01, 1 - totalDeductionRate);
-            const roundedPrice = Math.ceil(requiredPrice) - 0.10; // Arredonda pra x.90
-            
-            const channelFeeAmount = requiredPrice * channelFeeRate;
-            const simplesAmount = requiredPrice * simplesTaxRate;
-            const finalProfit = requiredPrice - channelFeeAmount - simplesAmount - calcCost;
-
-            return {
-                ...ch,
-                requiredPrice,
-                roundedPrice,
-                channelFeeAmount,
-                simplesAmount,
-                finalProfit
-            };
+    const [targetMargin, setTargetMargin] = useState(35);
+    const [directFee, setDirectFee] = useState(0);
+    const [ifoodOwnFee, setIfoodOwnFee] = useState(15.2);
+    const [ifoodPartnerFee, setIfoodPartnerFee] = useState(26.2);
+    const [keetaFee, setKeetaFee] = useState(13);
+    const [ninetyNineFee, setNinetyNineFee] = useState(18);
+    const [sortMode, setSortMode] = useState<SortMode>('cost-asc');
+    const [search, setSearch] = useState('');
+    const channels: Channel[] = [
+        { id: 'direct', label: 'Direto / próprio', fee: directFee },
+        { id: 'ifood-own', label: 'iFood entrega própria', fee: ifoodOwnFee },
+        { id: 'ifood-partner', label: 'iFood entrega parceira', fee: ifoodPartnerFee },
+        { id: 'keeta', label: 'Keeta', fee: keetaFee },
+        { id: '99food', label: '99Food', fee: ninetyNineFee }
+    ];
+    const rows = useMemo(() => {
+        const query = normalize(search.trim());
+        const filtered = CATALOG.filter(item => !query || normalize(`${item.product} ${item.sizeMl}`).includes(query));
+        return [...filtered].sort((a, b) => {
+            const priceA = suggestedPrice(a.cost, targetMargin, directFee) ?? Number.POSITIVE_INFINITY;
+            const priceB = suggestedPrice(b.cost, targetMargin, directFee) ?? Number.POSITIVE_INFINITY;
+            if (sortMode === 'cost-desc') return b.cost - a.cost;
+            if (sortMode === 'price-asc') return priceA - priceB;
+            if (sortMode === 'price-desc') return priceB - priceA;
+            return a.cost - b.cost;
         });
-    }, [calcCost, calcStorePrice, channels, simplesRate]);
+    }, [search, sortMode, targetMargin, directFee]);
+    const feeInputs = [
+        { label: 'Direto / próprio', value: directFee, setter: setDirectFee },
+        { label: 'iFood entrega própria', value: ifoodOwnFee, setter: setIfoodOwnFee },
+        { label: 'iFood entrega parceira', value: ifoodPartnerFee, setter: setIfoodPartnerFee },
+        { label: 'Keeta', value: keetaFee, setter: setKeetaFee },
+        { label: '99Food', value: ninetyNineFee, setter: setNinetyNineFee }
+    ];
 
-    // Tabela com todos os produtos do cardápio calculados
-    const catalogCalculations = useMemo(() => {
-        const simplesTaxRate = simplesRate / 100;
-
-        return CATALOG_ITEMS.map(item => {
-            const storeDeduction = item.storePrice * ((5 + simplesRate) / 100);
-            const targetProfit = item.storePrice - storeDeduction - item.cost;
-
-            // Fórmulas com Imposto Simples Nacional embutido em cada canal:
-            // iFood Básico (15.2% + Simples)
-            const ifoodBasicPrice = Math.ceil((item.cost + targetProfit) / Math.max(0.01, 1 - (0.152 + simplesTaxRate))) - 0.10;
-            // iFood Parceiro (26.2% + Simples)
-            const ifoodPartnerPrice = Math.ceil((item.cost + targetProfit) / Math.max(0.01, 1 - (0.262 + simplesTaxRate))) - 0.10;
-            // Keeta (Keeta% + Simples)
-            const keetaPrice = Math.ceil((item.cost + targetProfit) / Math.max(0.01, 1 - ((keetaRate / 100) + simplesTaxRate))) - 0.10;
-            // 99Food (99Food% + Simples)
-            const ninetyNinePrice = Math.ceil((item.cost + targetProfit) / Math.max(0.01, 1 - ((ninetyNineRate / 100) + simplesTaxRate))) - 0.10;
-
-            return {
-                ...item,
-                targetProfit,
-                ifoodBasicPrice,
-                ifoodPartnerPrice,
-                keetaPrice,
-                ninetyNinePrice
-            };
-        });
-    }, [keetaRate, ninetyNineRate, simplesRate]);
-
-    return (
-        <div className="space-y-8 animate-fade-in">
-            {/* Header explicativo do Método Caixa Preta com Keeta, iFood e Impostos */}
-            <div className="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 p-6 md:p-8 rounded-[32px] text-white shadow-xl relative overflow-hidden">
-                <div className="relative z-10">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/10 border border-white/20 rounded-full text-xs font-black uppercase tracking-widest text-purple-200 mb-3">
-                        <Truck size={14} /> Engenharia de Marketplaces & Blindagem Fiscal
-                    </div>
-                    <h2 className="text-2xl md:text-3xl font-black tracking-tight">
-                        Precificação de Delivery: iFood, Keeta, 99Food & Impostos
-                    </h2>
-                    <p className="mt-2 text-purple-200 text-sm md:text-base max-w-3xl font-medium">
-                        O fisco tributa a <strong>nota fiscal cheia</strong> do marketplace. Se você vende por R$ 50 no iFood, paga a comissão do canal <strong>MAIS o Simples Nacional ({simplesRate}%)</strong>. O simulador abaixo recalcula o repasse para o seu lucro permanecer 100% blindado.
-                    </p>
-                </div>
+    return <div className="space-y-6">
+        <header className="overflow-hidden rounded-[32px] bg-gradient-to-br from-purple-950 via-fuchsia-950 to-slate-950 p-6 text-white shadow-xl md:p-8">
+            <div className="flex flex-wrap items-start justify-between gap-5">
+                <div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-fuchsia-100"><Calculator size={14} /> custo cheio e preço sugerido</div><h2 className="text-2xl font-black md:text-4xl">Tabela interativa por aplicativo</h2><p className="mt-2 max-w-3xl text-sm text-fuchsia-100 md:text-base">Cada custo usa a base cheia do tamanho nominal, a receita ou os complementos e a embalagem completa. As taxas são editáveis; confirme os percentuais do seu contrato antes de publicar preços.</p></div>
+                <div className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm"><strong className="block text-emerald-200">Regra corrigida</strong><span>300 ml = 300 g de açaí + receita/complementos + embalagem.</span></div>
             </div>
+        </header>
 
-            {/* CONTROLES DE TAXAS E IMPOSTO SIMPLES NACIONAL */}
-            <div className="bg-white p-6 rounded-[28px] border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {/* Imposto Simples Nacional */}
-                <div className="p-3 bg-indigo-50/60 rounded-2xl border border-indigo-200">
-                    <label className="text-xs font-black uppercase text-indigo-950 flex items-center justify-between mb-2">
-                        <span className="flex items-center gap-1">
-                            <Receipt size={14} className="text-indigo-700" /> Simples Nacional (DAS)
-                        </span>
-                        <span className="text-indigo-800 font-black">{simplesRate}%</span>
-                    </label>
-                    <input 
-                        type="range" 
-                        min={0} 
-                        max={10} 
-                        step={0.5} 
-                        value={simplesRate} 
-                        onChange={(e) => setSimplesRate(Number(e.target.value))}
-                        className="w-full accent-indigo-700 h-2 bg-indigo-200 rounded-lg cursor-pointer"
-                    />
-                    <span className="text-[10px] text-indigo-900 mt-1 block">
-                        Alíquota do comércio de alimentos (Anexo I)
-                    </span>
-                </div>
-
-                <div>
-                    <label className="text-xs font-black uppercase text-slate-700 flex items-center justify-between mb-2">
-                        <span>Taxa Keeta Delivery</span>
-                        <span className="text-amber-600 font-black">{keetaRate}%</span>
-                    </label>
-                    <input 
-                        type="range" 
-                        min={8} 
-                        max={25} 
-                        step={0.5} 
-                        value={keetaRate} 
-                        onChange={(e) => setKeetaRate(Number(e.target.value))}
-                        className="w-full accent-amber-500 h-2 bg-slate-100 rounded-lg cursor-pointer"
-                    />
-                    <span className="text-[10px] text-slate-400 mt-1 block">
-                        Taxa de expansão Meituan/Keeta: 10% a 15%
-                    </span>
-                </div>
-
-                <div>
-                    <label className="text-xs font-black uppercase text-slate-700 flex items-center justify-between mb-2">
-                        <span>Taxa 99Food</span>
-                        <span className="text-blue-700 font-black">{ninetyNineRate}%</span>
-                    </label>
-                    <input 
-                        type="range" 
-                        min={12} 
-                        max={28} 
-                        step={0.5} 
-                        value={ninetyNineRate} 
-                        onChange={(e) => setNinetyNineRate(Number(e.target.value))}
-                        className="w-full accent-blue-600 h-2 bg-slate-100 rounded-lg cursor-pointer"
-                    />
-                    <span className="text-[10px] text-slate-400 mt-1 block">
-                        Padrão 99Food: 18% a 20%
-                    </span>
-                </div>
-
-                <div>
-                    <label className="text-xs font-black uppercase text-slate-700 flex items-center justify-between mb-2">
-                        <span>Canal Customizado</span>
-                        <span className="text-purple-700 font-black">{customChannelRate}%</span>
-                    </label>
-                    <input 
-                        type="range" 
-                        min={3} 
-                        max={30} 
-                        step={0.5} 
-                        value={customChannelRate} 
-                        onChange={(e) => setCustomChannelRate(Number(e.target.value))}
-                        className="w-full accent-purple-700 h-2 bg-slate-100 rounded-lg cursor-pointer"
-                    />
-                    <span className="text-[10px] text-slate-400 mt-1 block">
-                        Simule qualquer app novo digitando a taxa
-                    </span>
-                </div>
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="mb-5 flex items-center gap-2"><SlidersHorizontal className="text-purple-700" size={22} /><div><h3 className="font-black text-slate-900">Margem e taxas editáveis</h3><p className="text-xs text-slate-500">A venda direta começa em 0%. Os percentuais dos aplicativos são referências editáveis, não contratos confirmados.</p></div></div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
+                <label className="rounded-2xl border border-purple-200 bg-purple-50 p-4"><span className="text-xs font-black uppercase text-purple-900">Sobra desejada</span><div className="mt-2 flex items-center gap-2"><input aria-label="Margem desejada" type="number" min="0" max="60" step="0.5" value={targetMargin} onChange={event => setTargetMargin(Number(event.target.value))} className="w-full rounded-xl border border-purple-200 bg-white px-3 py-2 font-black" /><span className="font-black text-purple-900">%</span></div></label>
+                {feeInputs.map(input => <label key={input.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4"><span className="text-xs font-black uppercase text-slate-700">{input.label}</span><div className="mt-2 flex items-center gap-2"><input aria-label={`Taxa ${input.label}`} type="number" min="0" max="50" step="0.1" value={input.value} onChange={event => input.setter(Number(event.target.value))} className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 font-black" /><span className="font-black text-slate-700">%</span></div></label>)}
             </div>
+        </section>
 
-            {/* CALCULADORA DE REPASSE INTERATIVA */}
-            <section className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-6">
-                <div>
-                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                        <Percent className="text-purple-700" size={24} />
-                        Simulador de Repasse com Impostos por Produto
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-1">
-                        Informe o preço da loja física/app próprio e o custo direto para calcular o preço exato em cada marketplace.
-                    </p>
-                </div>
-
-                {/* Inputs de Preço e Custo */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-purple-50/50 p-6 rounded-2xl border border-purple-100">
-                    <div>
-                        <label className="text-xs font-black uppercase text-purple-950 block mb-2">
-                            Preço de Venda na Loja / Takeat
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-900 font-bold">R$</span>
-                            <input 
-                                type="number" 
-                                step="0.50" 
-                                min="0" 
-                                value={calcStorePrice} 
-                                onChange={(e) => setCalcStorePrice(Number(e.target.value))}
-                                className="w-full pl-12 pr-4 py-3 bg-white border border-purple-200 rounded-xl text-lg font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-600"
-                            />
-                        </div>
-                        <span className="text-[11px] text-slate-500 mt-1 block">
-                            Ex: Marmitex 700ml a R$ 38,90, Copo 500ml a R$ 28,90 ou Barca a R$ 52,90
-                        </span>
-                    </div>
-
-                    <div>
-                        <label className="text-xs font-black uppercase text-purple-950 block mb-2">
-                            Custo Direto Total (Insumos + Embalagem)
-                        </label>
-                        <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-purple-900 font-bold">R$</span>
-                            <input 
-                                type="number" 
-                                step="0.50" 
-                                min="0" 
-                                value={calcCost} 
-                                onChange={(e) => setCalcCost(Number(e.target.value))}
-                                className="w-full pl-12 pr-4 py-3 bg-white border border-purple-200 rounded-xl text-lg font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-600"
-                            />
-                        </div>
-                        <span className="text-[11px] text-slate-500 mt-1 block">
-                            Custo real da ficha técnica
-                        </span>
-                    </div>
-                </div>
-
-                {/* GRID COMPARATIVO DE CANAIS COM KEETA DEDICADA E IMPOSTO SIMPLES */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-                    {singleResults.map(ch => {
-                        const isStore = ch.type === 'loja';
-                        const isKeeta = ch.type === 'keeta';
-                        const isPartner = ch.type === 'ifood_parceira';
-                        
-                        return (
-                            <div 
-                                key={ch.id} 
-                                className={`p-6 rounded-[28px] border-2 flex flex-col justify-between transition ${
-                                    isStore 
-                                        ? 'bg-emerald-50/50 border-emerald-300 shadow-sm' 
-                                        : isKeeta
-                                        ? 'bg-amber-50/50 border-amber-300 shadow-sm'
-                                        : isPartner
-                                        ? 'bg-rose-50/40 border-rose-200 shadow-sm'
-                                        : 'bg-white border-slate-200 shadow-sm'
-                                }`}
-                            >
-                                <div>
-                                    <div className="flex items-center justify-between gap-2 mb-3">
-                                        <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full ${
-                                            isStore 
-                                                ? 'bg-emerald-200 text-emerald-900' 
-                                                : isKeeta 
-                                                ? 'bg-amber-200 text-amber-950 font-black' 
-                                                : isPartner 
-                                                ? 'bg-rose-200 text-rose-950'
-                                                : 'bg-slate-100 text-slate-700'
-                                        }`}>
-                                            {ch.badge}
-                                        </span>
-                                        <span className="text-xs font-black text-slate-600">
-                                            {ch.feePercent}% canal + {simplesRate}% DAS
-                                        </span>
-                                    </div>
-
-                                    <h4 className="font-black text-slate-900 text-base mb-1">
-                                        {ch.name}
-                                    </h4>
-                                    <p className="text-xs text-slate-500 mb-6">
-                                        {ch.subtitle}
-                                    </p>
-
-                                    <div className="space-y-1 mb-6">
-                                        <span className="text-xs font-black uppercase text-slate-400 block">
-                                            Preço Blindado no Canal
-                                        </span>
-                                        <div className="text-3xl font-black text-slate-900">
-                                            {money.format(ch.roundedPrice)}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="pt-4 border-t border-slate-200/60 space-y-2 text-xs">
-                                    <div className="flex justify-between text-slate-500">
-                                        <span>Taxa do Canal ({ch.feePercent}%):</span>
-                                        <strong className="text-rose-600">-{money.format(ch.channelFeeAmount)}</strong>
-                                    </div>
-                                    <div className="flex justify-between text-slate-500">
-                                        <span>Simples Nacional ({simplesRate}%):</span>
-                                        <strong className="text-indigo-700">-{money.format(ch.simplesAmount)}</strong>
-                                    </div>
-                                    <div className="flex justify-between text-slate-500">
-                                        <span>Custo dos Insumos:</span>
-                                        <strong>-{money.format(calcCost)}</strong>
-                                    </div>
-                                    <div className="flex justify-between pt-2 border-t border-slate-200/80 font-black text-sm text-emerald-800">
-                                        <span>Lucro Líquido Preservado:</span>
-                                        <span>{money.format(ch.finalProfit)}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Lição da Aula */}
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-950 text-xs leading-relaxed flex items-start gap-3">
-                    <ShieldAlert size={20} className="text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                        <strong>Comparativo Keeta vs iFood com Impostos:</strong> Na <strong>Keeta</strong> (taxa {keetaRate}% + {simplesRate}% Simples = {keetaRate + simplesRate}%), o Marmitex 700ml pode ser vendido a <strong>R$ 44,90</strong> entregando lucro líquido intacto, enquanto no <strong>iFood Parceiro</strong> (26,2% + {simplesRate}% = {26.2 + simplesRate}%) ele precisa ser vendido a <strong>R$ 53,90</strong> para pagar os R$ 2,42 de guia DAS que o fisco cobra sobre a nota emitida!
-                    </div>
-                </div>
-            </section>
-
-            {/* TABELA GERAL DE PREÇOS MULTICANAL COM TODO O MIX DA LOJA */}
-            <section className="bg-white p-6 md:p-8 rounded-[32px] border border-slate-200 shadow-sm space-y-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                            <Layers className="text-purple-700" size={24} />
-                            Tabela Multicanal Completa do Mix X-Açaí
-                        </h3>
-                        <p className="text-sm text-slate-500 mt-1">
-                            Preços recomendados para todos os produtos da loja com <strong>Simples Nacional ({simplesRate}%)</strong> embutido em cada marketplace.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead className="bg-purple-950 text-xs uppercase text-white">
-                            <tr>
-                                <th className="p-4 rounded-l-2xl">Produto & SKU</th>
-                                <th className="p-4">Custo Ficha</th>
-                                <th className="p-4">Preço Loja (Takeat)</th>
-                                <th className="p-4">Lucro Líquido</th>
-                                <th className="p-4">iFood Básico (15.2%)</th>
-                                <th className="p-4">iFood Parceiro (26.2%)</th>
-                                <th className="p-4 text-amber-300 font-black">Keeta ({keetaRate}%)</th>
-                                <th className="p-4 rounded-r-2xl">99Food ({ninetyNineRate}%)</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {catalogCalculations.map(item => (
-                                <tr key={item.sku} className="hover:bg-purple-50/40 transition">
-                                    <td className="p-4 font-black text-slate-800">
-                                        {item.name}
-                                        <span className="block text-xs font-normal text-slate-400">[{item.family}] · {item.sku}</span>
-                                    </td>
-                                    <td className="p-4 text-slate-600 font-bold">
-                                        {money.format(item.cost)}
-                                    </td>
-                                    <td className="p-4">
-                                        <span className="px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-900 font-black">
-                                            {money.format(item.storePrice)}
-                                        </span>
-                                    </td>
-                                    <td className="p-4 font-black text-emerald-700">
-                                        {money.format(item.targetProfit)}
-                                    </td>
-                                    <td className="p-4 font-bold text-slate-800">
-                                        {money.format(item.ifoodBasicPrice)}
-                                    </td>
-                                    <td className="p-4 font-bold text-rose-800">
-                                        {money.format(item.ifoodPartnerPrice)}
-                                    </td>
-                                    <td className="p-4 font-black text-amber-700 bg-amber-50/50">
-                                        {money.format(item.keetaPrice)}
-                                    </td>
-                                    <td className="p-4 font-bold text-slate-800">
-                                        {money.format(item.ninetyNinePrice)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-        </div>
-    );
+        <section className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+            <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+                <div><h3 className="flex items-center gap-2 text-xl font-black text-slate-900"><Truck className="text-purple-700" size={22} /> 46 produtos e bases em ordem</h3><p className="mt-1 text-sm text-slate-500">O Monte Seu e o Marmitex usam o mix mais caro permitido, para o preço sugerido proteger qualquer escolha.</p></div>
+                <div className="flex flex-col gap-2 sm:flex-row"><label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /><input aria-label="Buscar produto" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar produto" className="rounded-xl border border-slate-300 py-2.5 pl-9 pr-3 text-sm" /></label><select aria-label="Ordenar tabela" value={sortMode} onChange={event => setSortMode(event.target.value as SortMode)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold"><option value="cost-asc">Custo: menor → maior</option><option value="cost-desc">Custo: maior → menor</option><option value="price-asc">Preço sugerido: menor → maior</option><option value="price-desc">Preço sugerido: maior → menor</option></select></div>
+            </div>
+            <div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="min-w-[1180px] w-full text-left text-sm"><thead className="bg-purple-950 text-xs uppercase text-white"><tr><th className="p-4">Produto</th><th className="p-4">Tamanho</th><th className="p-4">Custo total</th>{channels.map(channel => <th key={channel.id} className="p-4">{channel.label}<span className="block text-[10px] font-normal text-purple-200">taxa {channel.fee.toFixed(1)}%</span></th>)}</tr></thead><tbody className="divide-y divide-slate-100">{rows.map(item => <tr key={item.id} className="align-top hover:bg-purple-50/50"><td className="p-4"><strong className="text-slate-900">{item.product}</strong><span className={`ml-2 rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.kind === 'fixo' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{item.kind === 'fixo' ? 'receita fixa' : 'mix seguro'}</span><p className="mt-1 max-w-72 text-xs text-slate-500">{item.detail}</p></td><td className="p-4 font-black text-slate-700">{item.sizeMl} ml</td><td className="p-4 text-lg font-black text-slate-950">{money.format(item.cost)}</td>{channels.map(channel => { const price = suggestedPrice(item.cost, targetMargin, channel.fee); return <td key={channel.id} className={`p-4 text-lg font-black ${channel.id === 'direct' ? 'bg-emerald-50 text-emerald-800' : 'text-purple-900'}`}>{price === null ? 'Taxa + margem inválidas' : money.format(price)}</td>; })}</tr>)}</tbody></table></div>
+            <div className="mt-4 grid gap-3 text-xs text-slate-600 md:grid-cols-2"><p className="rounded-xl bg-emerald-50 p-3"><Store className="mr-1 inline text-emerald-700" size={15} /><strong>Preço direto:</strong> custo total dividido pela parcela restante após a sobra desejada. Taxa direta padrão: 0%.</p><p className="rounded-xl bg-amber-50 p-3"><strong>Preço por aplicativo:</strong> custo ÷ (1 − sobra desejada − taxa do canal), arredondado sempre para cima em final 90.</p></div>
+        </section>
+    </div>;
 }
