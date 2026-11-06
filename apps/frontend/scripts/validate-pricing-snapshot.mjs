@@ -7,9 +7,44 @@ const snapshot = JSON.parse(await fs.readFile(snapshotUrl, 'utf8'));
 assert.equal(snapshot.products.length, 58, 'quantidade de produtos');
 assert.equal(snapshot.fichas.length, 64, 'quantidade de fichas');
 assert.equal(snapshot.components.length, 589, 'quantidade de componentes');
-assert.equal(snapshot.ingredients.length, 49, 'quantidade de insumos');
+assert.equal(snapshot.ingredients.length, 50, 'quantidade de insumos');
 assert.equal(snapshot.portions.length, 31, 'quantidade de porções');
 assert.equal(snapshot.collection.length, 31, 'quantidade de itens de coleta');
+
+assert.equal(snapshot.directCostBasis.acaiCostingWeightGrams, 9000, 'peso de custeio do açaí');
+assert.equal(snapshot.directCostBasis.acaiPhysicalWeightGrams, 9200, 'peso físico do açaí');
+assert.ok(Math.abs(snapshot.directCostBasis.acaiCostPerGram - 151.52 / 9000) < 0.000000001);
+assert.ok(Math.abs(snapshot.directCostBasis.pacocaCostPerGram - 28.9 / 1000) < 0.000000001);
+assert.ok(Math.abs(snapshot.directCostBasis.nutellaCostPerGram - 46.99 / 700) < 0.000000001);
+
+assert.equal(Object.keys(snapshot.initialPortionAnswers).length, 31, 'porções confirmadas');
+const portionByName = Object.fromEntries(snapshot.portions.map(item => [item.complement, item]));
+assert.equal(snapshot.initialPortionAnswers[portionByName.Bis.id], 4);
+assert.equal(portionByName.Bis.packQuantity, 16);
+assert.equal(portionByName.Bis.unit, 'un');
+assert.equal(snapshot.initialPortionAnswers[portionByName['Ouro Branco'].id], 1);
+assert.equal(snapshot.initialPortionAnswers[portionByName.Paçoca.id], 30);
+assert.equal(snapshot.initialPortionAnswers[portionByName['Creme De Bueno'].id], 50);
+assert.equal(snapshot.initialPortionAnswers[portionByName.Nutella.id], 60);
+assert.equal(snapshot.initialPortionAnswers[portionByName['Kit-Kat'].id], 1);
+assert.ok(Math.abs(portionByName['Kit-Kat'].inputPrice / portionByName['Kit-Kat'].packQuantity - 4.49) < 0.000001);
+
+const fixedProductsWithGrossRemainder = snapshot.products.filter(item => item.state.code === 'done' && item.cost !== null && item.grossRemainderMinimum !== null);
+assert.equal(fixedProductsWithGrossRemainder.length, 40, 'copos fixos com sobra bruta');
+for (const item of fixedProductsWithGrossRemainder) {
+    assert.ok(Math.abs(item.grossRemainderMinimum - (item.appPrice - item.cost)) < 0.000001, `${item.sku} com sobra bruta inconsistente`);
+    assert.equal(item.grossRemainderMinimum, item.grossRemainderMaximum, `${item.sku} deveria ter custo exato`);
+}
+
+const variableBySku = Object.fromEntries(snapshot.variableCupCosting.map(item => [item.sku, item]));
+assert.equal(snapshot.variableCupCosting.length, 6, 'produtos variáveis custeados');
+assert.ok(Math.abs(variableBySku['MONTE-300'].costMinimum - 5.17905037037037) < 0.000001);
+assert.ok(Math.abs(variableBySku['MONTE-700'].costMaximum - 16.980405925925925) < 0.000001);
+assert.ok(Math.abs(variableBySku['MARMITEX-500'].grossRemainderMinimum - 25.481349629629626) < 0.000001);
+assert.equal(variableBySku['MARMITEX-700'].appPrice, 46.9);
+assert.ok(Math.abs(variableBySku['MARMITEX-700'].grossRemainderMinimum - 29.92941451137885) < 0.000001);
+assert.equal(snapshot.liveSalePrices.variableBySku['MONTE-300'], 30.9);
+assert.equal(snapshot.liveSalePrices.variableBySku['MARMITEX-700'], 46.9);
 
 const policy = snapshot.pricingScope.paymentFeePolicy;
 assert.equal(policy.pricingReservePercent, 5);
@@ -20,10 +55,9 @@ assert.equal(monte700.price, 38.9);
 assert.match(monte700.status, /aprovado/i);
 assert.match(monte700.status, /não publicado/i);
 
-const marmitex700 = snapshot.pricingScope.approvedPrices.MX700;
-assert.equal(marmitex700.price, 38.9);
-assert.match(marmitex700.status, /aprovado/i);
-assert.match(marmitex700.status, /não publicado/i);
+const marmitex700 = snapshot.pricingScope.proposedPrices.MX700;
+assert.equal(marmitex700.proposedPrice, 38.9);
+assert.match(marmitex700.status, /aguardando confirmação/i);
 
 const duoPrices = ['DUO300', 'DUO400', 'DUO500', 'DUO700'].map(key => snapshot.pricingScope.approvedPrices[key].price);
 assert.deepEqual(duoPrices, [23.9, 29.9, 36.9, 49.9]);

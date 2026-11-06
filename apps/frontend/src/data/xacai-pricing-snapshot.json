@@ -1,13 +1,17 @@
 {
-  "asOf": "20/10/2026",
+  "asOf": "05/11/2026",
   "products": [
     {
       "sku": "X-KING-PACOCA-300",
       "family": "Copos da promoção",
       "product": "Açaí X-King Paçoca",
       "size": "300 ml",
-      "cost": 6.944411129864041,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 7.126077796530708,
+      "costMinimum": 7.126077796530708,
+      "costMaximum": 7.126077796530708,
+      "grossRemainderMinimum": 19.77392220346929,
+      "grossRemainderMaximum": 19.77392220346929,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 26.9,
       "ifood": 26.9,
       "keeta": 26.9,
@@ -25,8 +29,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Paçoca",
       "size": "400 ml",
-      "cost": 8.41384854195968,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.591781875293014,
+      "costMinimum": 8.591781875293014,
+      "costMaximum": 8.591781875293014,
+      "grossRemainderMinimum": 22.308218124706983,
+      "grossRemainderMaximum": 22.308218124706983,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 30.9,
       "ifood": 30.9,
       "keeta": 30.9,
@@ -44,8 +52,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Paçoca",
       "size": "500 ml",
-      "cost": 10.228285954055321,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.452585954055321,
+      "costMinimum": 10.452585954055321,
+      "costMaximum": 10.452585954055321,
+      "grossRemainderMinimum": 24.447414045944676,
+      "grossRemainderMaximum": 24.447414045944676,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 34.9,
       "ifood": 34.9,
       "keeta": 34.9,
@@ -63,9 +75,13 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Paçoca",
       "size": "700 ml",
-      "cost": 14.01328595405532,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
-      "appPrice": 41.9,
+      "cost": 14.23848595405532,
+      "costMinimum": 14.23848595405532,
+      "costMaximum": 14.23848595405532,
+      "grossRemainderMinimum": 28.661514045944678,
+      "grossRemainderMaximum": 28.661514045944678,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
+      "appPrice": 42.9,
       "ifood": 41.9,
       "keeta": 41.9,
       "food99": 41.9,
@@ -82,8 +98,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Splash",
       "size": "300 ml",
-      "cost": 6.836633352086263,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 6.824366685419597,
+      "costMinimum": 6.824366685419597,
+      "costMaximum": 6.824366685419597,
+      "grossRemainderMinimum": 20.0756333145804,
+      "grossRemainderMaximum": 20.0756333145804,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 26.9,
       "ifood": 26.9,
       "keeta": 26.9,
@@ -101,8 +121,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Splash",
       "size": "400 ml",
-      "cost": 8.635522240975153,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.617922240975153,
+      "costMinimum": 8.617922240975153,
+      "costMaximum": 8.617922240975153,
+      "grossRemainderMinimum": 22.282077759024844,
+      "grossRemainderMaximum": 22.282077759024844,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 30.9,
       "ifood": 30.9,
       "keeta": 30.9,
@@ -120,8 +144,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Splash",
       "size": "500 ml",
-      "cost": 10.823285954055322,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.794085954055321,
+      "costMinimum": 10.794085954055321,
+      "costMaximum": 10.794085954055321,
+      "grossRemainderMinimum": 24.10591404594468,
+      "grossRemainderMaximum": 24.10591404594468,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 34.9,
       "ifood": 34.9,
       "keeta": 34.9,
@@ -139,8 +167,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Splash",
       "size": "700 ml",
-      "cost": 14.772174842944208,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 14.684841509610877,
+      "costMinimum": 14.684841509610877,
+      "costMaximum": 14.684841509610877,
+      "grossRemainderMinimum": 27.215158490389122,
+      "grossRemainderMaximum": 27.215158490389122,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 41.9,
       "ifood": 41.9,
       "keeta": 41.9,
@@ -158,8 +190,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tradicional",
       "size": "300 ml",
-      "cost": 6.411633352086263,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 6.399366685419596,
+      "costMinimum": 6.399366685419596,
+      "costMaximum": 6.399366685419596,
+      "grossRemainderMinimum": 20.5006333145804,
+      "grossRemainderMaximum": 20.5006333145804,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 26.9,
       "ifood": 26.9,
       "keeta": 26.9,
@@ -177,8 +213,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tradicional",
       "size": "400 ml",
-      "cost": 8.400244463197375,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.383711129864041,
+      "costMinimum": 8.383711129864041,
+      "costMaximum": 8.383711129864041,
+      "grossRemainderMinimum": 22.51628887013596,
+      "grossRemainderMaximum": 22.51628887013596,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 30.9,
       "ifood": 30.9,
       "keeta": 30.9,
@@ -196,8 +236,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tradicional",
       "size": "500 ml",
-      "cost": 10.282959653070792,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.25322631973746,
+      "costMinimum": 10.25322631973746,
+      "costMaximum": 10.25322631973746,
+      "grossRemainderMinimum": 24.64677368026254,
+      "grossRemainderMaximum": 24.64677368026254,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 34.9,
       "ifood": 34.9,
       "keeta": 34.9,
@@ -215,8 +259,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tradicional",
       "size": "700 ml",
-      "cost": 14.12328595405532,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 14.03648595405532,
+      "costMinimum": 14.03648595405532,
+      "costMaximum": 14.03648595405532,
+      "grossRemainderMinimum": 27.863514045944676,
+      "grossRemainderMaximum": 27.863514045944676,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 41.9,
       "ifood": 41.9,
       "keeta": 41.9,
@@ -234,8 +282,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçoleite",
       "size": "300 ml",
-      "cost": 6.596633351938116,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 6.662366685419596,
+      "costMinimum": 6.662366685419596,
+      "costMaximum": 6.662366685419596,
+      "grossRemainderMinimum": 20.237633314580403,
+      "grossRemainderMaximum": 20.237633314580403,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 26.9,
       "ifood": 26.9,
       "keeta": 26.9,
@@ -253,8 +305,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçoleite",
       "size": "400 ml",
-      "cost": 8.50841112986404,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.584837796530708,
+      "costMinimum": 8.584837796530708,
+      "costMaximum": 8.584837796530708,
+      "grossRemainderMinimum": 22.315162203469292,
+      "grossRemainderMaximum": 22.315162203469292,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 30.9,
       "ifood": 30.9,
       "keeta": 30.9,
@@ -272,8 +328,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçoleite",
       "size": "500 ml",
-      "cost": 10.422633352086264,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.517166685419598,
+      "costMinimum": 10.517166685419598,
+      "costMaximum": 10.517166685419598,
+      "grossRemainderMinimum": 24.382833314580402,
+      "grossRemainderMaximum": 24.382833314580402,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 34.9,
       "ifood": 34.9,
       "keeta": 34.9,
@@ -291,8 +351,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçoleite",
       "size": "700 ml",
-      "cost": 14.476633352086262,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 14.544766685419596,
+      "costMinimum": 14.544766685419596,
+      "costMaximum": 14.544766685419596,
+      "grossRemainderMinimum": 27.355233314580403,
+      "grossRemainderMaximum": 27.355233314580403,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 41.9,
       "ifood": 43.9,
       "keeta": 41.9,
@@ -310,8 +374,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçokita",
       "size": "300 ml",
-      "cost": 6.576351495546179,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 6.721684828879512,
+      "costMinimum": 6.721684828879512,
+      "costMaximum": 6.721684828879512,
+      "grossRemainderMinimum": 22.178315171120488,
+      "grossRemainderMaximum": 22.178315171120488,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 28.9,
       "ifood": 28.9,
       "keeta": 28.9,
@@ -329,8 +397,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçokita",
       "size": "400 ml",
-      "cost": 8.375240384435068,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.515240384435067,
+      "costMinimum": 8.515240384435067,
+      "costMaximum": 8.515240384435067,
+      "grossRemainderMinimum": 24.38475961556493,
+      "grossRemainderMaximum": 24.38475961556493,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 32.9,
       "ifood": 32.9,
       "keeta": 32.9,
@@ -348,8 +420,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçokita",
       "size": "500 ml",
-      "cost": 10.144129273323957,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.270395939990623,
+      "costMinimum": 10.270395939990623,
+      "costMaximum": 10.270395939990623,
+      "grossRemainderMinimum": 26.629604060009378,
+      "grossRemainderMaximum": 26.629604060009378,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 36.9,
       "ifood": 36.9,
       "keeta": 36.9,
@@ -367,8 +443,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Paçokita",
       "size": "700 ml",
-      "cost": 13.891907051101734,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 13.959507051101733,
+      "costMinimum": 13.959507051101733,
+      "costMaximum": 13.959507051101733,
+      "grossRemainderMinimum": 29.940492948898267,
+      "grossRemainderMaximum": 29.940492948898267,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 43.9,
       "ifood": 43.9,
       "keeta": 43.9,
@@ -386,8 +466,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Chocolá",
       "size": "300 ml",
-      "cost": 7.964800018752929,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 7.954773352086263,
+      "costMinimum": 7.954773352086263,
+      "costMaximum": 7.954773352086263,
+      "grossRemainderMinimum": 21.945226647913735,
+      "grossRemainderMaximum": 21.945226647913735,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 29.9,
       "ifood": 29.9,
       "keeta": 29.9,
@@ -405,8 +489,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Chocolá",
       "size": "400 ml",
-      "cost": 10.03230001875293,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.017473352086263,
+      "costMinimum": 10.017473352086263,
+      "costMaximum": 10.017473352086263,
+      "grossRemainderMinimum": 23.882526647913735,
+      "grossRemainderMaximum": 23.882526647913735,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 33.9,
       "ifood": 33.9,
       "keeta": 33.9,
@@ -424,8 +512,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Chocolá",
       "size": "500 ml",
-      "cost": 12.180574983591185,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 12.152974983591188,
+      "costMinimum": 12.152974983591188,
+      "costMaximum": 12.152974983591188,
+      "grossRemainderMinimum": 25.747025016408813,
+      "grossRemainderMaximum": 25.747025016408813,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 37.9,
       "ifood": 37.9,
       "keeta": 37.9,
@@ -443,8 +535,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Chocolá",
       "size": "700 ml",
-      "cost": 16.478619287388653,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 16.394379287388656,
+      "costMinimum": 16.394379287388656,
+      "costMaximum": 16.394379287388656,
+      "grossRemainderMinimum": 28.505620712611343,
+      "grossRemainderMaximum": 28.505620712611343,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 44.9,
       "ifood": 44.9,
       "keeta": 44.9,
@@ -462,8 +558,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tropical",
       "size": "300 ml",
-      "cost": 8.889244463197372,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.88135112986404,
+      "costMinimum": 8.88135112986404,
+      "costMaximum": 8.88135112986404,
+      "grossRemainderMinimum": 22.01864887013596,
+      "grossRemainderMaximum": 22.01864887013596,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 30.9,
       "ifood": 30.9,
       "keeta": 30.9,
@@ -481,8 +581,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tropical",
       "size": "400 ml",
-      "cost": 10.903022240975153,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.890222240975154,
+      "costMinimum": 10.890222240975154,
+      "costMaximum": 10.890222240975154,
+      "grossRemainderMinimum": 24.009777759024843,
+      "grossRemainderMaximum": 24.009777759024843,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 34.9,
       "ifood": 34.9,
       "keeta": 34.9,
@@ -500,8 +604,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tropical",
       "size": "500 ml",
-      "cost": 12.940522240975152,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 12.914522240975154,
+      "costMinimum": 12.914522240975154,
+      "costMaximum": 12.914522240975154,
+      "grossRemainderMinimum": 25.985477759024846,
+      "grossRemainderMaximum": 25.985477759024846,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 38.9,
       "ifood": 38.9,
       "keeta": 38.9,
@@ -519,8 +627,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tropical",
       "size": "700 ml",
-      "cost": 17.890508176277546,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 17.809574842944212,
+      "costMinimum": 17.809574842944212,
+      "costMaximum": 17.809574842944212,
+      "grossRemainderMinimum": 28.090425157055787,
+      "grossRemainderMaximum": 28.090425157055787,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 45.9,
       "ifood": null,
       "keeta": null,
@@ -538,8 +650,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Creme",
       "size": "300 ml",
-      "cost": 9.037817037037037,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 9.027683703703703,
+      "costMinimum": 9.027683703703703,
+      "costMaximum": 9.027683703703703,
+      "grossRemainderMinimum": 22.872316296296297,
+      "grossRemainderMaximum": 22.872316296296297,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 31.9,
       "ifood": 31.9,
       "keeta": 31.9,
@@ -557,8 +673,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Creme",
       "size": "400 ml",
-      "cost": 11.14059925925926,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 11.125772592592593,
+      "costMinimum": 11.125772592592593,
+      "costMaximum": 11.125772592592593,
+      "grossRemainderMinimum": 24.774227407407405,
+      "grossRemainderMaximum": 24.774227407407405,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 35.9,
       "ifood": 35.9,
       "keeta": 35.9,
@@ -576,8 +696,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Creme",
       "size": "500 ml",
-      "cost": 14.125061481481483,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 14.099061481481483,
+      "costMinimum": 14.099061481481483,
+      "costMaximum": 14.099061481481483,
+      "grossRemainderMinimum": 25.800938518518514,
+      "grossRemainderMaximum": 25.800938518518514,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 39.9,
       "ifood": 41.9,
       "keeta": 39.9,
@@ -595,8 +719,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Creme",
       "size": "700 ml",
-      "cost": 19.102972592592593,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 19.02086592592593,
+      "costMinimum": 19.02086592592593,
+      "costMaximum": 19.02086592592593,
+      "grossRemainderMinimum": 27.87913407407407,
+      "grossRemainderMaximum": 27.87913407407407,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 46.9,
       "ifood": 54.9,
       "keeta": 49.9,
@@ -614,8 +742,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tella",
       "size": "300 ml",
-      "cost": 8.90632736918028,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.886380336213247,
+      "costMinimum": 8.886380336213247,
+      "costMaximum": 8.886380336213247,
+      "grossRemainderMinimum": 24.013619663786752,
+      "grossRemainderMaximum": 24.013619663786752,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 32.9,
       "ifood": 32.9,
       "keeta": 32.9,
@@ -633,8 +765,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tella",
       "size": "400 ml",
-      "cost": 11.26050001875293,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 11.233159066371977,
+      "costMinimum": 11.233159066371977,
+      "costMaximum": 11.233159066371977,
+      "grossRemainderMinimum": 25.666840933628023,
+      "grossRemainderMaximum": 25.666840933628023,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 36.9,
       "ifood": 36.9,
       "keeta": 36.9,
@@ -652,8 +788,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tella",
       "size": "500 ml",
-      "cost": 13.434064272783006,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 13.391544712343448,
+      "costMinimum": 13.391544712343448,
+      "costMaximum": 13.391544712343448,
+      "grossRemainderMinimum": 27.508455287656552,
+      "grossRemainderMaximum": 27.508455287656552,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 40.9,
       "ifood": 40.9,
       "keeta": 40.9,
@@ -671,8 +811,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-Tella",
       "size": "700 ml",
-      "cost": 18.287713304482672,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 18.184007223896593,
+      "costMinimum": 18.184007223896593,
+      "costMaximum": 18.184007223896593,
+      "grossRemainderMinimum": 29.715992776103406,
+      "grossRemainderMaximum": 29.715992776103406,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 47.9,
       "ifood": 52.9,
       "keeta": 47.9,
@@ -690,8 +834,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Tella",
       "size": "300 ml",
-      "cost": 8.507438480291391,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 8.683024780657693,
+      "costMinimum": 8.683024780657693,
+      "costMaximum": 8.683024780657693,
+      "grossRemainderMinimum": 24.216975219342306,
+      "grossRemainderMaximum": 24.216975219342306,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 32.9,
       "ifood": 32.9,
       "keeta": 32.9,
@@ -709,8 +857,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Tella",
       "size": "400 ml",
-      "cost": 10.760650446103357,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 10.92921747907039,
+      "costMinimum": 10.92921747907039,
+      "costMaximum": 10.92921747907039,
+      "grossRemainderMinimum": 25.97078252092961,
+      "grossRemainderMaximum": 25.97078252092961,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 36.9,
       "ifood": 36.9,
       "keeta": 36.9,
@@ -728,8 +880,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Tella",
       "size": "500 ml",
-      "cost": 13.034342753795665,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 13.187303193356106,
+      "costMinimum": 13.187303193356106,
+      "costMaximum": 13.187303193356106,
+      "grossRemainderMinimum": 27.71269680664389,
+      "grossRemainderMaximum": 27.71269680664389,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 40.9,
       "ifood": 40.9,
       "keeta": 40.9,
@@ -747,8 +903,12 @@
       "family": "Copos da promoção",
       "product": "Açaí X-King Tella",
       "size": "700 ml",
-      "cost": 17.930046637816005,
-      "costQuality": "Recalculado com custos operacionais atuais — não é preço de venda",
+      "cost": 18.080960557229925,
+      "costMinimum": 18.080960557229925,
+      "costMaximum": 18.080960557229925,
+      "grossRemainderMinimum": 29.819039442770073,
+      "grossRemainderMaximum": 29.819039442770073,
+      "costQuality": "Compra mais recente aplicada: açaí a R$ 151,52/9 kg, paçoca e Nutella atuais e embalagem por tamanho",
       "appPrice": 47.9,
       "ifood": 51.9,
       "keeta": 47.9,
@@ -767,15 +927,19 @@
       "product": "Açaí de 300ml 3 complementos grátis",
       "size": "300ml",
       "cost": null,
-      "costQuality": "Custo direto teórico — não é preço de venda: R$ 4,91–10,41",
-      "appPrice": 29.9,
+      "costMinimum": 5.17905037037037,
+      "costMaximum": 9.07825037037037,
+      "grossRemainderMinimum": 21.82174962962963,
+      "grossRemainderMaximum": 25.72094962962963,
+      "costQuality": "Faixa com 3 complementos de 30 g; kiwi pausado excluído do mix ativo",
+      "appPrice": 30.9,
       "ifood": 29.9,
       "keeta": 29.9,
       "food99": 29.9,
       "state": {
         "code": "variavel",
-        "label": "Receita variável confirmada",
-        "action": "Custo final depende dos complementos selecionados; kiwi está pausado.",
+        "label": "Custo variável fechado",
+        "action": "Sobra bruta calculada antes de taxas, descontos, frete, impostos e custos fixos.",
         "lot": 3
       },
       "released": false
@@ -786,15 +950,19 @@
       "product": "Açaí de 400ml 3 complementos grátis",
       "size": "400ml",
       "cost": null,
-      "costQuality": "Custo direto teórico — não é preço de venda: R$ 6,56–12,83",
+      "costMinimum": 6.972605925925925,
+      "costMaximum": 10.871805925925926,
+      "grossRemainderMinimum": 23.028194074074072,
+      "grossRemainderMaximum": 26.927394074074073,
+      "costQuality": "Faixa com 3 complementos de 30 g; kiwi pausado excluído do mix ativo",
       "appPrice": 33.9,
       "ifood": 33.9,
       "keeta": 33.9,
       "food99": 33.9,
       "state": {
         "code": "variavel",
-        "label": "Receita variável confirmada",
-        "action": "Custo final depende dos complementos selecionados; kiwi está pausado.",
+        "label": "Custo variável fechado",
+        "action": "Sobra bruta calculada antes de taxas, descontos, frete, impostos e custos fixos.",
         "lot": 3
       },
       "released": false
@@ -805,15 +973,19 @@
       "product": "Açaí de 500ml 3 complementos grátis",
       "size": "500ml",
       "cost": null,
-      "costQuality": "Custo direto teórico — não é preço de venda: R$ 8,02–15,86",
-      "appPrice": 36.9,
+      "costMinimum": 8.727761481481481,
+      "costMaximum": 12.626961481481482,
+      "grossRemainderMinimum": 25.27303851851852,
+      "grossRemainderMaximum": 29.17223851851852,
+      "costQuality": "Faixa com 3 complementos de 30 g; kiwi pausado excluído do mix ativo",
+      "appPrice": 37.9,
       "ifood": 36.9,
       "keeta": 36.9,
       "food99": 36.9,
       "state": {
         "code": "variavel",
-        "label": "Receita variável confirmada",
-        "action": "Custo final depende dos complementos selecionados; kiwi está pausado.",
+        "label": "Custo variável fechado",
+        "action": "Sobra bruta calculada antes de taxas, descontos, frete, impostos e custos fixos.",
         "lot": 3
       },
       "released": false
@@ -824,15 +996,19 @@
       "product": "Açaí de 700ml 4 complementos grátis",
       "size": "700ml",
       "cost": null,
-      "costQuality": "Custo direto teórico — não é preço de venda: R$ 11,25–21,71",
-      "appPrice": 44.9,
+      "costMinimum": 12.301505925925925,
+      "costMaximum": 16.980405925925925,
+      "grossRemainderMinimum": 28.919594074074073,
+      "grossRemainderMaximum": 33.598494074074075,
+      "costQuality": "Faixa com 4 complementos de 30 g; kiwi pausado excluído do mix ativo",
+      "appPrice": 45.9,
       "ifood": 54.9,
       "keeta": 54.9,
       "food99": 44.9,
       "state": {
         "code": "variavel",
-        "label": "Receita variável confirmada",
-        "action": "Confirmar separadamente a regra antiga de 30% do Monte 700.",
+        "label": "Custo variável fechado",
+        "action": "Sobra bruta calculada antes de taxas, descontos, frete, impostos e custos fixos.",
         "lot": 3
       },
       "released": false
@@ -843,16 +1019,20 @@
       "product": "Açaí Marmitex 500ml 3 complementos grátis",
       "size": "500ml",
       "cost": null,
-      "costQuality": "Sem custo válido",
-      "appPrice": 37.9,
+      "costMinimum": 8.26945037037037,
+      "costMaximum": 12.16865037037037,
+      "grossRemainderMinimum": 25.481349629629626,
+      "grossRemainderMaximum": 29.380549629629627,
+      "costQuality": "Faixa com 3 complementos de 30 g; kiwi pausado excluído do mix ativo",
+      "appPrice": 37.65,
       "ifood": 37.9,
       "keeta": 37.9,
       "food99": 37.9,
       "state": {
-        "code": "receita",
-        "label": "Receita e embalagem",
-        "action": "Pesar a base, registrar os complementos e confirmar o kit de embalagem próprio.",
-        "lot": 2
+        "code": "variavel",
+        "label": "Custo variável fechado",
+        "action": "Sobra bruta calculada antes de taxas, descontos, frete, impostos e custos fixos.",
+        "lot": 3
       },
       "released": false
     },
@@ -861,19 +1041,23 @@
       "family": "Monte seu copo",
       "product": "Açaí Marmitex 700ml 4 complementos grátis",
       "size": "700ml",
-      "cost": 21.64,
-      "costQuality": "Confirmado (40g/complemento)",
-      "appPrice": 38.9,
+      "cost": null,
+      "costMinimum": 12.29168548862115,
+      "costMaximum": 16.97058548862115,
+      "grossRemainderMinimum": 29.929414511378848,
+      "grossRemainderMaximum": 34.60831451137885,
+      "costQuality": "Faixa com 4 complementos de 30 g; kiwi pausado excluído do mix ativo",
+      "appPrice": 46.9,
       "ifood": 53.9,
       "keeta": 48.9,
       "food99": 41.9,
       "state": {
-        "code": "aprovado",
-        "label": "Preço e receita aprovados",
-        "action": "Publicado no cardápio público e Takeat.",
-        "lot": 2
+        "code": "variavel",
+        "label": "Custo variável fechado",
+        "action": "Sobra bruta calculada antes de taxas, descontos, frete, impostos e custos fixos.",
+        "lot": 3
       },
-      "released": true
+      "released": false
     },
     {
       "sku": "BARCA-P",
@@ -881,6 +1065,10 @@
       "product": "Açaí Barca P 6 complementos grátis",
       "size": "Barca P",
       "cost": 21.12718,
+      "costMinimum": 21.12718,
+      "costMaximum": 21.12718,
+      "grossRemainderMinimum": 31.77282,
+      "grossRemainderMaximum": 31.77282,
       "costQuality": "Custo provisório",
       "appPrice": 52.9,
       "ifood": 60.9,
@@ -900,6 +1088,10 @@
       "product": "Açaí Litrão 6 complementos grátis",
       "size": "1L",
       "cost": 25.709624,
+      "costMinimum": 25.709624,
+      "costMaximum": 25.709624,
+      "grossRemainderMinimum": 34.190376,
+      "grossRemainderMaximum": 34.190376,
       "costQuality": "Custo provisório",
       "appPrice": 59.9,
       "ifood": 73.9,
@@ -919,6 +1111,10 @@
       "product": "Açaí Roleta 6 complementos grátis",
       "size": "Roleta",
       "cost": 30.794069,
+      "costMinimum": 30.794069,
+      "costMaximum": 30.794069,
+      "grossRemainderMinimum": 36.105931000000005,
+      "grossRemainderMaximum": 36.105931000000005,
       "costQuality": "Custo provisório",
       "appPrice": 66.9,
       "ifood": 87.9,
@@ -938,6 +1134,10 @@
       "product": "Açaí Barca M 7 complementos grátis",
       "size": "Barca M",
       "cost": 32.344069,
+      "costMinimum": 32.344069,
+      "costMaximum": 32.344069,
+      "grossRemainderMinimum": 37.55593100000001,
+      "grossRemainderMaximum": 37.55593100000001,
       "costQuality": "Custo provisório",
       "appPrice": 69.9,
       "ifood": 91.9,
@@ -957,6 +1157,10 @@
       "product": "Açaí Escolha 2 opções de 300ml",
       "size": "300ml",
       "cost": null,
+      "costMinimum": null,
+      "costMaximum": null,
+      "grossRemainderMinimum": null,
+      "grossRemainderMaximum": null,
       "costQuality": "Sem custo válido",
       "appPrice": 46.9,
       "ifood": 46.9,
@@ -976,6 +1180,10 @@
       "product": "Açaí Escolha 2 opções de 400ml",
       "size": "400ml",
       "cost": null,
+      "costMinimum": null,
+      "costMaximum": null,
+      "grossRemainderMinimum": null,
+      "grossRemainderMaximum": null,
       "costQuality": "Sem custo válido",
       "appPrice": 53.9,
       "ifood": 60.9,
@@ -995,6 +1203,10 @@
       "product": "Açaí Escolha 2 opções de 500ml",
       "size": "500ml",
       "cost": null,
+      "costMinimum": null,
+      "costMaximum": null,
+      "grossRemainderMinimum": null,
+      "grossRemainderMaximum": null,
       "costQuality": "Sem custo válido",
       "appPrice": 64.9,
       "ifood": 70.9,
@@ -1014,6 +1226,10 @@
       "product": "Açaí Escolha 2 opções de 700ml",
       "size": "700ml",
       "cost": null,
+      "costMinimum": null,
+      "costMaximum": null,
+      "grossRemainderMinimum": null,
+      "grossRemainderMaximum": null,
       "costQuality": "Sem custo válido",
       "appPrice": 78.9,
       "ifood": 109.9,
@@ -1033,6 +1249,10 @@
       "product": "Água Mineral Crystal com Gás 500ml",
       "size": null,
       "cost": 1.8,
+      "costMinimum": 1.8,
+      "costMaximum": 1.8,
+      "grossRemainderMinimum": 5.2,
+      "grossRemainderMaximum": 5.2,
       "costQuality": "Custo estimado",
       "appPrice": 7,
       "ifood": 7,
@@ -1052,6 +1272,10 @@
       "product": "Água Mineral Crystal Sem Gás 500ml",
       "size": null,
       "cost": 1.99,
+      "costMinimum": 1.99,
+      "costMaximum": 1.99,
+      "grossRemainderMinimum": 4.01,
+      "grossRemainderMaximum": 4.01,
       "costQuality": "Custo estimado",
       "appPrice": 6,
       "ifood": 6,
@@ -1071,6 +1295,10 @@
       "product": "Coca-Cola 350ml",
       "size": null,
       "cost": 4.49,
+      "costMinimum": 4.49,
+      "costMaximum": 4.49,
+      "grossRemainderMinimum": 5.51,
+      "grossRemainderMaximum": 5.51,
       "costQuality": "Confirmado",
       "appPrice": 10,
       "ifood": 12.9,
@@ -1090,6 +1318,10 @@
       "product": "Pepsi 350ml",
       "size": null,
       "cost": 3.5,
+      "costMinimum": 3.5,
+      "costMaximum": 3.5,
+      "grossRemainderMinimum": 6.5,
+      "grossRemainderMaximum": 6.5,
       "costQuality": "Confirmado",
       "appPrice": 10,
       "ifood": 10.9,
@@ -1110,7 +1342,7 @@
       "product": "Açaí 300ML Grátis 3 Complementos",
       "variant": "MONTE SEU AÇAÍ 300ML",
       "units": 1,
-      "acai": 3.8168888888888888,
+      "acai": 3.703822222222222,
       "ingredients": null,
       "packaging": 0.7633281481481482,
       "total": null,
@@ -1122,7 +1354,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 226 g de açaí + 3 complementos de 28 g = 310 g; custo direto teórico entre R$ 4,91 e R$ 10,41. Não é preço de venda.",
+      "note": "Receita variável atual: 220 g de açaí + 3 complementos de 30 g = 310 g; custo direto teórico entre R$ 5,18 e R$ 9,08. Não é preço de venda.",
       "released": false
     },
     {
@@ -1130,7 +1362,7 @@
       "product": "Açaí 300ml Escolha 2 opções",
       "variant": "MONTE SEU AÇAÍ 300ML",
       "units": 1,
-      "acai": 3.8168888888888888,
+      "acai": 3.703822222222222,
       "ingredients": null,
       "packaging": 0.7633281481481482,
       "total": null,
@@ -1142,7 +1374,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 226 g de açaí + 3 complementos de 28 g = 310 g; custo direto teórico entre R$ 4,91 e R$ 10,41. Não é preço de venda.",
+      "note": "Receita variável atual: 220 g de açaí + 3 complementos de 30 g = 310 g; custo direto teórico entre R$ 5,18 e R$ 9,08. Não é preço de venda.",
       "released": false
     },
     {
@@ -1150,7 +1382,7 @@
       "product": "Açaí 400ML Grátis 3 Complementos",
       "variant": "MONTE SEU AÇAÍ 400ML",
       "units": 1,
-      "acai": 5.303111111111111,
+      "acai": 5.387377777777777,
       "ingredients": null,
       "packaging": 0.8733281481481481,
       "total": null,
@@ -1162,7 +1394,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 314 g de açaí + 3 complementos de 32 g = 410 g; custo direto teórico entre R$ 6,56 e R$ 12,83. Não é preço de venda.",
+      "note": "Receita variável atual: 320 g de açaí + 3 complementos de 30 g = 410 g; custo direto teórico entre R$ 6,97 e R$ 10,87. Não é preço de venda.",
       "released": false
     },
     {
@@ -1170,7 +1402,7 @@
       "product": "Açaí 400ml Escolha 2 opções",
       "variant": "MONTE SEU AÇAÍ 400ML",
       "units": 1,
-      "acai": 5.303111111111111,
+      "acai": 5.387377777777777,
       "ingredients": null,
       "packaging": 0.8733281481481481,
       "total": null,
@@ -1182,7 +1414,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 314 g de açaí + 3 complementos de 32 g = 410 g; custo direto teórico entre R$ 6,56 e R$ 12,83. Não é preço de venda.",
+      "note": "Receita variável atual: 320 g de açaí + 3 complementos de 30 g = 410 g; custo direto teórico entre R$ 6,97 e R$ 10,87. Não é preço de venda.",
       "released": false
     },
     {
@@ -1190,9 +1422,9 @@
       "product": "Açaí 500ML Grátis 3 Complementos",
       "variant": "MONTE SEU AÇAÍ 500ML",
       "units": 1,
-      "acai": 6.586666666666667,
+      "acai": 7.0709333333333335,
       "ingredients": null,
-      "packaging": 0.9533281481481481,
+      "packaging": 0.9449281481481481,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -1202,7 +1434,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 390 g de açaí + 3 complementos de 40 g = 510 g; custo direto teórico entre R$ 8,02 e R$ 15,86. Não é preço de venda.",
+      "note": "Receita variável atual: 420 g de açaí + 3 complementos de 30 g = 510 g; custo direto teórico entre R$ 8,73 e R$ 12,63. Não é preço de venda.",
       "released": false
     },
     {
@@ -1210,9 +1442,9 @@
       "product": "Açaí 500ml Escolha 2 opções",
       "variant": "MONTE SEU AÇAÍ 500ML",
       "units": 1,
-      "acai": 6.586666666666667,
+      "acai": 7.0709333333333335,
       "ingredients": null,
-      "packaging": 0.9533281481481481,
+      "packaging": 0.9449281481481481,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -1222,7 +1454,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 390 g de açaí + 3 complementos de 40 g = 510 g; custo direto teórico entre R$ 8,02 e R$ 15,86. Não é preço de venda.",
+      "note": "Receita variável atual: 420 g de açaí + 3 complementos de 30 g = 510 g; custo direto teórico entre R$ 8,73 e R$ 12,63. Não é preço de venda.",
       "released": false
     },
     {
@@ -1230,9 +1462,9 @@
       "product": "Açaí 700ML Grátis 4 Complementos",
       "variant": "MONTE SEU AÇAÍ 700ML",
       "units": 1,
-      "acai": 9.28888888888889,
+      "acai": 9.932977777777777,
       "ingredients": null,
-      "packaging": 1.3233281481481483,
+      "packaging": 1.2669281481481482,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -1242,7 +1474,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 550 g de açaí + 4 complementos de 40 g = 710 g; custo direto teórico entre R$ 11,25 e R$ 21,71. Não é preço de venda.",
+      "note": "Receita variável atual: 590 g de açaí + 4 complementos de 30 g = 710 g; custo direto teórico entre R$ 12,30 e R$ 16,98. Não é preço de venda.",
       "released": false
     },
     {
@@ -1250,9 +1482,9 @@
       "product": "Açaí 700ml Escolha 2 opções",
       "variant": "MONTE SEU AÇAÍ 700ML",
       "units": 1,
-      "acai": 9.28888888888889,
+      "acai": 9.932977777777777,
       "ingredients": null,
-      "packaging": 1.3233281481481483,
+      "packaging": 1.2669281481481482,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -1262,7 +1494,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 550 g de açaí + 4 complementos de 40 g = 710 g; custo direto teórico entre R$ 11,25 e R$ 21,71. Não é preço de venda.",
+      "note": "Receita variável atual: 590 g de açaí + 4 complementos de 30 g = 710 g; custo direto teórico entre R$ 12,30 e R$ 16,98. Não é preço de venda.",
       "released": false
     },
     {
@@ -1350,10 +1582,10 @@
       "product": "Açaí X-Chocolã",
       "variant": "X - CHOCOLÃ  300ML",
       "units": 1,
-      "acai": 3.1751111111111108,
+      "acai": 3.165084444444444,
       "ingredients": 4.02636075949367,
       "packaging": 0.7633281481481481,
-      "total": 7.964800018752929,
+      "total": 7.954773352086263,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1370,10 +1602,10 @@
       "product": "Açaí X-Chocolã",
       "variant": "X - CHOCOLÃ 400ML",
       "units": 1,
-      "acai": 4.69511111111111,
+      "acai": 4.680284444444444,
       "ingredients": 4.46386075949367,
       "packaging": 0.8733281481481482,
-      "total": 10.03230001875293,
+      "total": 10.017473352086263,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1390,10 +1622,10 @@
       "product": "Açaí X-Chocolã",
       "variant": "X - CHOCOLÃ 500ML",
       "units": 1,
-      "acai": 6.079999999999999,
+      "acai": 6.0607999999999995,
       "ingredients": 5.147246835443038,
-      "packaging": 0.9533281481481483,
-      "total": 12.180574983591185,
+      "packaging": 0.9449281481481481,
+      "total": 12.152974983591188,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1410,10 +1642,10 @@
       "product": "Açaí X-Chocolã",
       "variant": "X - CHOCOLÃ 700ML",
       "units": 1,
-      "acai": 8.815999999999999,
+      "acai": 8.78816,
       "ingredients": 6.3392911392405065,
-      "packaging": 1.3233281481481483,
-      "total": 16.478619287388653,
+      "packaging": 1.2669281481481482,
+      "total": 16.394379287388656,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1430,10 +1662,10 @@
       "product": "Açaí X-Creme",
       "variant": "X - NAPOLITANO 300ML",
       "units": 1,
-      "acai": 3.2088888888888887,
+      "acai": 3.1987555555555556,
       "ingredients": 5.0656,
       "packaging": 0.7633281481481481,
-      "total": 9.037817037037037,
+      "total": 9.027683703703703,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1450,10 +1682,10 @@
       "product": "Açaí X-Creme",
       "variant": "X - NAPOLITANO 400ML",
       "units": 1,
-      "acai": 4.69511111111111,
+      "acai": 4.680284444444444,
       "ingredients": 5.57216,
       "packaging": 0.8733281481481482,
-      "total": 11.14059925925926,
+      "total": 11.125772592592593,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1470,10 +1702,10 @@
       "product": "Açaí X-Creme",
       "variant": "X - NAPOLITANO 500ML",
       "units": 1,
-      "acai": 5.573333333333333,
+      "acai": 5.555733333333333,
       "ingredients": 7.598400000000001,
-      "packaging": 0.9533281481481483,
-      "total": 14.125061481481483,
+      "packaging": 0.9449281481481481,
+      "total": 14.099061481481483,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1490,10 +1722,10 @@
       "product": "Açaí X-Creme",
       "variant": "X - NAPOLITANO 700ML",
       "units": 1,
-      "acai": 8.140444444444444,
+      "acai": 8.114737777777778,
       "ingredients": 9.6392,
-      "packaging": 1.3233281481481483,
-      "total": 19.102972592592593,
+      "packaging": 1.2669281481481482,
+      "total": 19.02086592592593,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1510,10 +1742,10 @@
       "product": "Açaí X-King Paçoca",
       "variant": "X- KING PACOCA 300ML",
       "units": 1,
-      "acai": 4.222222222222221,
-      "ingredients": 1.9588607594936709,
+      "acai": 4.208888888888889,
+      "ingredients": 2.153860759493671,
       "packaging": 0.7633281481481481,
-      "total": 6.944411129864041,
+      "total": 7.126077796530708,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1530,10 +1762,10 @@
       "product": "Açaí X-King Paçoca",
       "variant": "X- KING PACOCA 400ML",
       "units": 1,
-      "acai": 5.404444444444444,
-      "ingredients": 2.136075949367089,
+      "acai": 5.387377777777777,
+      "ingredients": 2.3310759493670887,
       "packaging": 0.8733281481481482,
-      "total": 8.41384854195968,
+      "total": 8.591781875293014,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1550,10 +1782,10 @@
       "product": "Açaí X-King Paçoca",
       "variant": "X- KING PACOCA 500ML",
       "units": 1,
-      "acai": 6.586666666666666,
-      "ingredients": 2.6882911392405067,
-      "packaging": 0.9533281481481483,
-      "total": 10.228285954055321,
+      "acai": 6.5658666666666665,
+      "ingredients": 2.9417911392405065,
+      "packaging": 0.9449281481481481,
+      "total": 10.452585954055321,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1570,10 +1802,10 @@
       "product": "Açaí X-King Paçoca",
       "variant": "X- KING PACOCA 700ML",
       "units": 1,
-      "acai": 9.626666666666665,
-      "ingredients": 3.0632911392405067,
-      "packaging": 1.3233281481481483,
-      "total": 14.01328595405532,
+      "acai": 9.596266666666667,
+      "ingredients": 3.3752911392405065,
+      "packaging": 1.2669281481481482,
+      "total": 14.23848595405532,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1590,10 +1822,10 @@
       "product": "Açaí X-King Tella",
       "variant": "X - KING TELLA 300ML",
       "units": 1,
-      "acai": 3.0231111111111106,
-      "ingredients": 4.720999221032132,
+      "acai": 3.0135644444444445,
+      "ingredients": 4.9061321880651,
       "packaging": 0.7633281481481481,
-      "total": 8.507438480291391,
+      "total": 8.683024780657693,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1610,10 +1842,10 @@
       "product": "Açaí X-King Tella",
       "variant": "X - KING TELLA 400ML",
       "units": 1,
-      "acai": 4.56,
-      "ingredients": 5.3273222979552095,
+      "acai": 4.545599999999999,
+      "ingredients": 5.510289330922243,
       "packaging": 0.8733281481481482,
-      "total": 10.760650446103357,
+      "total": 10.92921747907039,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1630,10 +1862,10 @@
       "product": "Açaí X-King Tella",
       "variant": "X - KING TELLA 500ML",
       "units": 1,
-      "acai": 6.079999999999999,
-      "ingredients": 6.001014605647517,
-      "packaging": 0.9533281481481483,
-      "total": 13.034342753795665,
+      "acai": 6.0607999999999995,
+      "ingredients": 6.181575045207957,
+      "packaging": 0.9449281481481481,
+      "total": 13.187303193356106,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1650,10 +1882,10 @@
       "product": "Açaí X-King Tella",
       "variant": "X - KING TELLA 700ML",
       "units": 1,
-      "acai": 8.528888888888888,
-      "ingredients": 8.077829600778967,
-      "packaging": 1.3233281481481483,
-      "total": 17.930046637816005,
+      "acai": 8.501955555555556,
+      "ingredients": 8.312076853526221,
+      "packaging": 1.2669281481481482,
+      "total": 18.080960557229925,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1670,10 +1902,10 @@
       "product": "Açaí X-Paçokita",
       "variant": "X - PAÇOKITA 300ML",
       "units": 1,
-      "acai": 3.3777777777777773,
-      "ingredients": 2.4352455696202533,
+      "acai": 3.367111111111111,
+      "ingredients": 2.591245569620253,
       "packaging": 0.7633281481481481,
-      "total": 6.576351495546179,
+      "total": 6.721684828879512,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1690,10 +1922,10 @@
       "product": "Açaí X-Paçokita",
       "variant": "X - PAÇOKITA 400ML",
       "units": 1,
-      "acai": 5.066666666666666,
-      "ingredients": 2.4352455696202533,
+      "acai": 5.050666666666666,
+      "ingredients": 2.591245569620253,
       "packaging": 0.8733281481481482,
-      "total": 8.375240384435068,
+      "total": 8.515240384435067,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1710,10 +1942,10 @@
       "product": "Açaí X-Paçokita",
       "variant": "X - PAÇOKITA 500ML",
       "units": 1,
-      "acai": 6.755555555555555,
-      "ingredients": 2.4352455696202533,
-      "packaging": 0.9533281481481483,
-      "total": 10.144129273323957,
+      "acai": 6.734222222222222,
+      "ingredients": 2.591245569620253,
+      "packaging": 0.9449281481481481,
+      "total": 10.270395939990623,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1730,10 +1962,10 @@
       "product": "Açaí X-Paçokita",
       "variant": "X - PAÇOKITA 700ML",
       "units": 1,
-      "acai": 10.133333333333333,
-      "ingredients": 2.4352455696202533,
-      "packaging": 1.3233281481481483,
-      "total": 13.891907051101734,
+      "acai": 10.101333333333333,
+      "ingredients": 2.591245569620253,
+      "packaging": 1.2669281481481482,
+      "total": 13.959507051101733,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1750,10 +1982,10 @@
       "product": "Açaí X-Splash",
       "variant": "X - SPLASH 300ML",
       "units": 1,
-      "acai": 3.884444444444444,
+      "acai": 3.8721777777777775,
       "ingredients": 2.1888607594936706,
       "packaging": 0.7633281481481481,
-      "total": 6.836633352086263,
+      "total": 6.824366685419597,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1770,10 +2002,10 @@
       "product": "Açaí X-Splash",
       "variant": "X - SPLASH 400ML",
       "units": 1,
-      "acai": 5.573333333333333,
+      "acai": 5.555733333333333,
       "ingredients": 2.1888607594936706,
       "packaging": 0.8733281481481482,
-      "total": 8.635522240975153,
+      "total": 8.617922240975153,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1790,10 +2022,10 @@
       "product": "Açaí X-Splash",
       "variant": "X - SPLASH 500ML",
       "units": 1,
-      "acai": 6.586666666666666,
+      "acai": 6.5658666666666665,
       "ingredients": 3.2832911392405064,
-      "packaging": 0.9533281481481483,
-      "total": 10.823285954055322,
+      "packaging": 0.9449281481481481,
+      "total": 10.794085954055321,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1810,10 +2042,10 @@
       "product": "Açaí X-Splash",
       "variant": "X - SPLASH 700ML",
       "units": 1,
-      "acai": 9.795555555555554,
+      "acai": 9.764622222222222,
       "ingredients": 3.6532911392405065,
-      "packaging": 1.3233281481481483,
-      "total": 14.772174842944208,
+      "packaging": 1.2669281481481482,
+      "total": 14.684841509610877,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1830,10 +2062,10 @@
       "product": "Açaí X-Tella",
       "variant": "X - TELLA 300ML",
       "units": 1,
-      "acai": 3.1919999999999997,
-      "ingredients": 4.9509992210321325,
+      "acai": 3.18192,
+      "ingredients": 4.9411321880651,
       "packaging": 0.7633281481481481,
-      "total": 8.90632736918028,
+      "total": 8.886380336213247,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1850,10 +2082,10 @@
       "product": "Açaí X-Tella",
       "variant": "X - TELLA 400ML",
       "units": 1,
-      "acai": 4.69511111111111,
-      "ingredients": 5.69206075949367,
+      "acai": 4.680284444444444,
+      "ingredients": 5.679546473779385,
       "packaging": 0.8733281481481482,
-      "total": 11.26050001875293,
+      "total": 11.233159066371977,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1870,10 +2102,10 @@
       "product": "Açaí X-Tella",
       "variant": "X - TELLA 500ML",
       "units": 1,
-      "acai": 6.231999999999999,
-      "ingredients": 6.248736124634858,
-      "packaging": 0.9533281481481483,
-      "total": 13.434064272783006,
+      "acai": 6.21232,
+      "ingredients": 6.234296564195298,
+      "packaging": 0.9449281481481481,
+      "total": 13.391544712343448,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1890,10 +2122,10 @@
       "product": "Açaí X-Tella",
       "variant": "X - TELLA 700ML",
       "units": 1,
-      "acai": 8.883555555555555,
-      "ingredients": 8.080829600778968,
-      "packaging": 1.3233281481481483,
-      "total": 18.287713304482672,
+      "acai": 8.855502222222222,
+      "ingredients": 8.06157685352622,
+      "packaging": 1.2669281481481482,
+      "total": 18.184007223896593,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -1910,10 +2142,10 @@
       "product": "Açaí X-Tradicional",
       "variant": "X - TRADICIONAL 300ML",
       "units": 1,
-      "acai": 3.884444444444444,
+      "acai": 3.8721777777777775,
       "ingredients": 1.7638607594936708,
       "packaging": 0.7633281481481481,
-      "total": 6.411633352086263,
+      "total": 6.399366685419596,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1930,10 +2162,10 @@
       "product": "Açaí X-Tradicional",
       "variant": "X - TRADICIONAL 400ML",
       "units": 1,
-      "acai": 5.235555555555555,
+      "acai": 5.219022222222222,
       "ingredients": 2.2913607594936707,
       "packaging": 0.8733281481481482,
-      "total": 8.400244463197375,
+      "total": 8.383711129864041,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1950,10 +2182,10 @@
       "product": "Açaí X-Tradicional",
       "variant": "X - TRADICIONAL 500ML",
       "units": 1,
-      "acai": 6.755555555555555,
+      "acai": 6.734222222222222,
       "ingredients": 2.5740759493670886,
-      "packaging": 0.9533281481481483,
-      "total": 10.282959653070792,
+      "packaging": 0.9449281481481481,
+      "total": 10.25322631973746,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1970,10 +2202,10 @@
       "product": "Açaí X-Tradicional",
       "variant": "X - TRADICIONAL 700ML",
       "units": 1,
-      "acai": 9.626666666666665,
+      "acai": 9.596266666666667,
       "ingredients": 3.1732911392405065,
-      "packaging": 1.3233281481481483,
-      "total": 14.12328595405532,
+      "packaging": 1.2669281481481482,
+      "total": 14.03648595405532,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -1990,10 +2222,10 @@
       "product": "Açaí X-Tropical",
       "variant": "X - TROPICAL 300ML",
       "units": 1,
-      "acai": 2.4995555555555553,
+      "acai": 2.4916622222222222,
       "ingredients": 5.62636075949367,
       "packaging": 0.7633281481481481,
-      "total": 8.889244463197372,
+      "total": 8.88135112986404,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -2010,10 +2242,10 @@
       "product": "Açaí X-Tropical",
       "variant": "X - TROPICAL 400ML",
       "units": 1,
-      "acai": 4.053333333333333,
+      "acai": 4.040533333333333,
       "ingredients": 5.976360759493671,
       "packaging": 0.8733281481481482,
-      "total": 10.903022240975153,
+      "total": 10.890222240975154,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -2030,10 +2262,10 @@
       "product": "Açaí X-Tropical",
       "variant": "X - TROPICAL 500ML",
       "units": 1,
-      "acai": 5.573333333333333,
+      "acai": 5.555733333333333,
       "ingredients": 6.413860759493671,
-      "packaging": 0.9533281481481483,
-      "total": 12.940522240975152,
+      "packaging": 0.9449281481481481,
+      "total": 12.914522240975154,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -2050,10 +2282,10 @@
       "product": "Açaí X-Tropical",
       "variant": "X - TROPICAL 700 ML",
       "units": 1,
-      "acai": 7.768888888888888,
+      "acai": 7.744355555555555,
       "ingredients": 8.798291139240508,
-      "packaging": 1.3233281481481483,
-      "total": 17.890508176277546,
+      "packaging": 1.2669281481481482,
+      "total": 17.809574842944212,
       "sourceStatus": "Recalculado e aprovado até 20/10/2026",
       "state": {
         "code": "done",
@@ -2070,7 +2302,7 @@
       "product": "Açaí Monte Seu Copo De 300ml",
       "variant": "MONTE SEU AÇAÍ 300ML",
       "units": 1,
-      "acai": 3.8168888888888888,
+      "acai": 3.703822222222222,
       "ingredients": null,
       "packaging": 0.7633281481481482,
       "total": null,
@@ -2082,7 +2314,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 226 g de açaí + 3 complementos de 28 g = 310 g; custo direto teórico entre R$ 4,91 e R$ 10,41. Não é preço de venda.",
+      "note": "Receita variável atual: 220 g de açaí + 3 complementos de 30 g = 310 g; custo direto teórico entre R$ 5,18 e R$ 9,08. Não é preço de venda.",
       "released": false
     },
     {
@@ -2150,9 +2382,9 @@
       "product": "Açaí Monte Seu Copo De 500ml",
       "variant": "MONTE SEU AÇAÍ 500ML",
       "units": 1,
-      "acai": 6.586666666666667,
+      "acai": 7.0709333333333335,
       "ingredients": null,
-      "packaging": 0.9533281481481481,
+      "packaging": 0.9449281481481481,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -2162,7 +2394,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 390 g de açaí + 3 complementos de 40 g = 510 g; custo direto teórico entre R$ 8,02 e R$ 15,86. Não é preço de venda.",
+      "note": "Receita variável atual: 420 g de açaí + 3 complementos de 30 g = 510 g; custo direto teórico entre R$ 8,73 e R$ 12,63. Não é preço de venda.",
       "released": false
     },
     {
@@ -2190,9 +2422,9 @@
       "product": "Açaí Marmitex 500ML Grátis 3 Complementos",
       "variant": "MONTE SEU AÇAÍ 500ML",
       "units": 1,
-      "acai": 6.586666666666667,
+      "acai": 7.0709333333333335,
       "ingredients": null,
-      "packaging": 0.9533281481481481,
+      "packaging": 0.9449281481481481,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -2202,7 +2434,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 390 g de açaí + 3 complementos de 40 g = 510 g; custo direto teórico entre R$ 8,02 e R$ 15,86. Não é preço de venda.",
+      "note": "Receita variável atual: 420 g de açaí + 3 complementos de 30 g = 510 g; custo direto teórico entre R$ 8,73 e R$ 12,63. Não é preço de venda.",
       "released": false
     },
     {
@@ -2210,9 +2442,9 @@
       "product": "Açaí Monte Seu Copo De 700ml",
       "variant": "MONTE SEU AÇAÍ 700ML",
       "units": 1,
-      "acai": 9.28888888888889,
+      "acai": 9.932977777777777,
       "ingredients": null,
-      "packaging": 1.3233281481481483,
+      "packaging": 1.2669281481481482,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -2222,7 +2454,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 550 g de açaí + 4 complementos de 40 g = 710 g; custo direto teórico entre R$ 11,25 e R$ 21,71. Não é preço de venda.",
+      "note": "Receita variável atual: 590 g de açaí + 4 complementos de 30 g = 710 g; custo direto teórico entre R$ 12,30 e R$ 16,98. Não é preço de venda.",
       "released": false
     },
     {
@@ -2250,9 +2482,9 @@
       "product": "Açaí Marmitex 700ML Grátis 4 Complementos",
       "variant": "MONTE SEU AÇAÍ 700ML",
       "units": 1,
-      "acai": 9.28888888888889,
+      "acai": 9.932977777777777,
       "ingredients": null,
-      "packaging": 1.3233281481481483,
+      "packaging": 1.2669281481481482,
       "total": null,
       "sourceStatus": "Confirmado pelo proprietário em 18/10/2026",
       "state": {
@@ -2262,7 +2494,7 @@
         "lot": 3
       },
       "provisionalComponents": 0,
-      "note": "Receita variável atual: 550 g de açaí + 4 complementos de 40 g = 710 g; custo direto teórico entre R$ 11,25 e R$ 21,71. Não é preço de venda.",
+      "note": "Receita variável atual: 590 g de açaí + 4 complementos de 30 g = 710 g; custo direto teórico entre R$ 12,30 e R$ 16,98. Não é preço de venda.",
       "released": false
     },
     {
@@ -2310,10 +2542,10 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 300ML",
       "units": 1,
-      "acai": 3.8844444444444446,
-      "ingredients": 1.9488607594936709,
-      "packaging": 0.763328148,
-      "total": 6.596633351938116,
+      "acai": 3.8721777777777775,
+      "ingredients": 2.0268607594936707,
+      "packaging": 0.7633281481481481,
+      "total": 6.662366685419596,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -2330,10 +2562,10 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 400ML",
       "units": 1,
-      "acai": 5.438222222222222,
-      "ingredients": 2.1968607594936707,
-      "packaging": 0.8733281481481481,
-      "total": 8.50841112986404,
+      "acai": 5.421048888888889,
+      "ingredients": 2.2904607594936706,
+      "packaging": 0.8733281481481482,
+      "total": 8.584837796530708,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -2350,10 +2582,10 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 500ML",
       "units": 1,
-      "acai": 6.924444444444444,
-      "ingredients": 2.544860759493671,
-      "packaging": 0.9533281481481481,
-      "total": 10.422633352086264,
+      "acai": 6.902577777777777,
+      "ingredients": 2.669660759493671,
+      "packaging": 0.9449281481481481,
+      "total": 10.517166685419598,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -2370,10 +2602,10 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 700ML",
       "units": 1,
-      "acai": 9.964444444444444,
-      "ingredients": 3.1888607594936706,
-      "packaging": 1.3233281481481483,
-      "total": 14.476633352086262,
+      "acai": 9.932977777777777,
+      "ingredients": 3.3448607594936703,
+      "packaging": 1.2669281481481482,
+      "total": 14.544766685419596,
       "sourceStatus": "Recalculado em 20/10/2026; preço recomendado",
       "state": {
         "code": "done",
@@ -3668,8 +3900,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 188,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 3.1751111111111117,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.165084444444444,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -3798,8 +4030,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 278,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 4.695111111111111,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 4.680284444444444,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -3928,8 +4160,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 360,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 6.080000000000001,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.0607999999999995,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -4058,8 +4290,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 522,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 8.816,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 8.78816,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -4188,8 +4420,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 190,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 3.208888888888889,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.1987555555555556,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -4318,8 +4550,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 278,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 4.695111111111111,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 4.680284444444444,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -4448,8 +4680,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 330,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 5.573333333333334,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.555733333333333,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -4578,8 +4810,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 482,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 8.140444444444446,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 8.114737777777778,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -4708,11 +4940,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 250,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 4.21,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 4.208888888888889,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 180,
@@ -4773,11 +5005,11 @@
       "ingredient": "PACOCA",
       "quantity": 50,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.25,
+      "unitCost": 0.0289,
+      "totalCost": 1.4449999999999998,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 185,
@@ -4825,11 +5057,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 320,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 5.39,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.387377777777777,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 189,
@@ -4890,11 +5122,11 @@
       "ingredient": "PACOCA",
       "quantity": 50,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.25,
+      "unitCost": 0.0289,
+      "totalCost": 1.4449999999999998,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 194,
@@ -4942,11 +5174,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 390,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 6.57,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.5658666666666665,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 198,
@@ -5007,11 +5239,11 @@
       "ingredient": "PACOCA",
       "quantity": 65,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.63,
+      "unitCost": 0.0289,
+      "totalCost": 1.8784999999999998,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 203,
@@ -5059,11 +5291,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 570,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 9.6,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 9.596266666666667,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 207,
@@ -5124,11 +5356,11 @@
       "ingredient": "PACOCA",
       "quantity": 80,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 2,
+      "unitCost": 0.0289,
+      "totalCost": 2.312,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 212,
@@ -5176,8 +5408,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 179,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 3.0231111111111115,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.0135644444444445,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5241,8 +5473,8 @@
       "ingredient": "NUTELLA",
       "quantity": 41,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 2.7621384615384614,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 2.7522714285714285,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5254,8 +5486,8 @@
       "ingredient": "PACOCA",
       "quantity": 50,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.25,
+      "unitCost": 0.0289,
+      "totalCost": 1.4449999999999998,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5306,8 +5538,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 270,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 4.5600000000000005,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 4.545599999999999,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5371,8 +5603,8 @@
       "ingredient": "NUTELLA",
       "quantity": 50,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 3.3684615384615384,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 3.3564285714285713,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5384,8 +5616,8 @@
       "ingredient": "PACOCA",
       "quantity": 50,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.25,
+      "unitCost": 0.0289,
+      "totalCost": 1.4449999999999998,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5436,8 +5668,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 360,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 6.080000000000001,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.0607999999999995,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5501,8 +5733,8 @@
       "ingredient": "NUTELLA",
       "quantity": 60,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 4.0421538461538455,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 4.027714285714286,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5514,8 +5746,8 @@
       "ingredient": "PACOCA",
       "quantity": 50,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.25,
+      "unitCost": 0.0289,
+      "totalCost": 1.4449999999999998,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5566,8 +5798,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 505,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 8.52888888888889,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 8.501955555555556,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5631,8 +5863,8 @@
       "ingredient": "NUTELLA",
       "quantity": 80,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 5.389538461538461,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 5.370285714285714,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5644,8 +5876,8 @@
       "ingredient": "PACOCA",
       "quantity": 65,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.625,
+      "unitCost": 0.0289,
+      "totalCost": 1.8784999999999998,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -5696,8 +5928,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 200,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 3.377777777777778,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.367111111111111,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -5774,8 +6006,8 @@
       "ingredient": "PACOCA",
       "quantity": 40,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1,
+      "unitCost": 0.0289,
+      "totalCost": 1.156,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -5826,8 +6058,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 300,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 5.066666666666667,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.050666666666666,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -5904,8 +6136,8 @@
       "ingredient": "PACOCA",
       "quantity": 40,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1,
+      "unitCost": 0.0289,
+      "totalCost": 1.156,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -5956,8 +6188,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 400,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 6.755555555555556,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.734222222222222,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -6034,8 +6266,8 @@
       "ingredient": "PACOCA",
       "quantity": 40,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1,
+      "unitCost": 0.0289,
+      "totalCost": 1.156,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -6086,8 +6318,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 600,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 10.133333333333335,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 10.101333333333333,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -6164,8 +6396,8 @@
       "ingredient": "PACOCA",
       "quantity": 40,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1,
+      "unitCost": 0.0289,
+      "totalCost": 1.156,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem corrigida pelo proprietário em 19/10/2026; custo operacional atual"
@@ -6216,11 +6448,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 230,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 3.87,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.8721777777777775,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 296,
@@ -6333,11 +6565,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 330,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 5.56,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.555733333333333,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 305,
@@ -6450,11 +6682,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 390,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 6.57,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.5658666666666665,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 314,
@@ -6567,11 +6799,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 580,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 9.76,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 9.764622222222222,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 323,
@@ -6684,8 +6916,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 189,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 3.192,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.18192,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -6762,8 +6994,8 @@
       "ingredient": "NUTELLA",
       "quantity": 41,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 2.7621384615384614,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 2.7522714285714285,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -6814,8 +7046,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 278,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 4.695111111111111,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 4.680284444444444,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -6892,8 +7124,8 @@
       "ingredient": "NUTELLA",
       "quantity": 52,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 3.5031999999999996,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 3.490685714285714,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -6944,8 +7176,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 369,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 6.232000000000001,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.21232,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -7022,8 +7254,8 @@
       "ingredient": "NUTELLA",
       "quantity": 60,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 4.0421538461538455,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 4.027714285714286,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -7074,8 +7306,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 526,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 8.883555555555557,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 8.855502222222222,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -7152,8 +7384,8 @@
       "ingredient": "NUTELLA",
       "quantity": 80,
       "unit": "g",
-      "unitCost": 0.06736923076923076,
-      "totalCost": 5.389538461538461,
+      "unitCost": 0.06712857142857143,
+      "totalCost": 5.370285714285714,
       "category": "complements",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -7204,11 +7436,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 230,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 3.87,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.8721777777777775,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 372,
@@ -7334,11 +7566,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 310,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 5.22,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.219022222222222,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 382,
@@ -7464,11 +7696,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 400,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 6.73,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.734222222222222,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 392,
@@ -7594,11 +7826,11 @@
       "ingredient": "AÇAÍ",
       "quantity": 570,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 9.6,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 9.596266666666667,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 402,
@@ -7724,8 +7956,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 148,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 2.4995555555555558,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 2.4916622222222222,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -7867,8 +8099,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 240,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 4.053333333333334,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 4.040533333333333,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -8010,8 +8242,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 330,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 5.573333333333334,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.555733333333333,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -8153,8 +8385,8 @@
       "ingredient": "AÇAÍ",
       "quantity": 460,
       "unit": "g",
-      "unitCost": 0.01688888888888889,
-      "totalCost": 7.76888888888889,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 7.744355555555555,
       "category": "acai",
       "status": "Confirmado",
       "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
@@ -9529,13 +9761,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 300ML",
       "ingredient": "AÇAÍ",
-      "quantity": 210,
+      "quantity": 230,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 3.54,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 3.8721777777777775,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 551,
@@ -9607,13 +9839,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 300ML",
       "ingredient": "PACOCA",
-      "quantity": 40,
+      "quantity": 20,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1,
+      "unitCost": 0.0289,
+      "totalCost": 0.578,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 557,
@@ -9659,13 +9891,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 400ML",
       "ingredient": "AÇAÍ",
-      "quantity": 270,
+      "quantity": 322,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 4.55,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 5.421048888888889,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 561,
@@ -9737,13 +9969,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 400ML",
       "ingredient": "PACOCA",
-      "quantity": 41,
+      "quantity": 24,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.03,
+      "unitCost": 0.0289,
+      "totalCost": 0.6936,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 567,
@@ -9789,13 +10021,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 500ML",
       "ingredient": "AÇAÍ",
-      "quantity": 362,
+      "quantity": 410,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 6.09,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 6.902577777777777,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 571,
@@ -9867,13 +10099,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 500ML",
       "ingredient": "PACOCA",
-      "quantity": 40,
+      "quantity": 32,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1,
+      "unitCost": 0.0289,
+      "totalCost": 0.9248,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 577,
@@ -9919,13 +10151,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 700ML",
       "ingredient": "AÇAÍ",
-      "quantity": 550,
+      "quantity": 590,
       "unit": "g",
-      "unitCost": 0.016835556,
-      "totalCost": 9.26,
+      "unitCost": 0.016835555555555555,
+      "totalCost": 9.932977777777777,
       "category": "acai",
       "status": "Confirmado",
-      "source": "Balde de 10 L = 9 kg, R$ 151,52"
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 581,
@@ -9997,13 +10229,13 @@
       "product": "Açaí X-Paçoleite",
       "variant": "X - PAÇOKITA 700ML",
       "ingredient": "PACOCA",
-      "quantity": 60,
+      "quantity": 40,
       "unit": "g",
-      "unitCost": 0.025,
-      "totalCost": 1.5,
+      "unitCost": 0.0289,
+      "totalCost": 1.156,
       "category": "complements",
       "status": "Confirmado",
-      "source": "R$ 25,00/kg."
+      "source": "Gramagem preservada da ficha existente; açaí ajustado pela regra de peso final; custo operacional atual"
     },
     {
       "id": 587,
@@ -10279,12 +10511,12 @@
       "currentPrice": 41.89,
       "packQuantity": 1000,
       "unit": "g",
-      "baseCost": 0.041890000000000004,
-      "comparisonUnit": "R$/kg",
-      "status": "Comprovado",
-      "source": "foto_1_lote3_original.jpg",
-      "referenceDate": "2026-07-16",
-      "note": "Preco comprovado mais recente na nota do Clube do Confeiteiro."
+      "baseCost": 0.04189,
+      "comparisonUnit": "R$/g",
+      "status": "Confirmado",
+      "source": "Preço comprovado de R$ 41,89/kg; atualização futura depende de nova foto de compra.",
+      "referenceDate": "2026-10-18",
+      "note": "Custo recuperado do registro do proprietário."
     },
     {
       "ingredient": "CREME DE MORANGO",
@@ -10348,15 +10580,15 @@
     },
     {
       "ingredient": "NUTELLA",
-      "currentPrice": 43.79,
-      "packQuantity": 650,
+      "currentPrice": 46.99,
+      "packQuantity": 700,
       "unit": "g",
-      "baseCost": 0.067369231,
-      "comparisonUnit": "R$/kg",
-      "status": "Comprovado",
-      "source": "2026-07-09_nutella_650g.jpg",
-      "referenceDate": "2026-07-09",
-      "note": "Quatro unidades comprovadas na nota"
+      "baseCost": 0.06712857142857143,
+      "comparisonUnit": "R$/g",
+      "status": "Confirmado",
+      "source": "Compra de cinco potes de 700 g por R$ 234,95 em 04/11/2026; custo unitário de R$ 46,99.",
+      "referenceDate": "2026-10-18",
+      "note": "Custo recuperado do registro do proprietário."
     },
     {
       "ingredient": "OVOMALTINE",
@@ -10372,15 +10604,15 @@
     },
     {
       "ingredient": "PACOCA",
-      "currentPrice": 25,
+      "currentPrice": 28.9,
       "packQuantity": 1000,
       "unit": "g",
-      "baseCost": 0.025,
-      "comparisonUnit": "R$/kg",
+      "baseCost": 0.0289,
+      "comparisonUnit": "R$/g",
       "status": "Confirmado",
-      "source": "Usuário: R$ 25,00/kg.",
-      "referenceDate": "2026-07-09",
-      "note": "Usuário: R$ 25,00/kg."
+      "source": "Pacote de 1 kg por R$ 28,90 confirmado diretamente pelo proprietário em 05/11/2026.",
+      "referenceDate": "2026-10-18",
+      "note": "Custo recuperado do registro do proprietário."
     },
     {
       "ingredient": "POTE 1000ML",
@@ -10611,6 +10843,18 @@
       "note": "Custo preservado; item pausado no cardápio."
     },
     {
+      "ingredient": "Creme De Bueno",
+      "currentPrice": 42,
+      "packQuantity": 1000,
+      "unit": "g",
+      "baseCost": 0.042,
+      "comparisonUnit": "R$/g",
+      "status": "Confirmado",
+      "source": "Base de R$ 42,00/kg informada pelo proprietário e mantida até nova compra comprovada.",
+      "referenceDate": "2026-10-18",
+      "note": "Custo recuperado do registro do proprietário."
+    },
+    {
       "ingredient": "COBERTURA FINI BANANAS",
       "currentPrice": 28.9,
       "packQuantity": 1000,
@@ -10644,7 +10888,8 @@
       "inputPrice": 18.99,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Confirmado — Informado pelo usuario em 2026-07-22"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-02",
@@ -10654,7 +10899,8 @@
       "inputPrice": 6.85,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Comprovado — data_nao_legivel_granola_aveia.jpg"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-03",
@@ -10664,7 +10910,8 @@
       "inputPrice": 3.98,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Comprovado — 2026-07-06_atacadao_leite_cond_banana_bis.jpg"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-04",
@@ -10672,9 +10919,10 @@
       "menuType": "Grátis e adicional pago",
       "addonPrice": 4,
       "inputPrice": 6.99,
-      "packQuantity": 100.8,
-      "unit": "g",
-      "source": "Comprovado — 2026-07-06_atacadao_leite_cond_banana_bis.jpg"
+      "packQuantity": 16,
+      "unit": "un",
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 4 un",
+      "portionQuantity": 4
     },
     {
       "id": "POR-05",
@@ -10684,7 +10932,8 @@
       "inputPrice": 19.49,
       "packQuantity": 500,
       "unit": "g",
-      "source": "Confirmado — Informado pelo usuario em 2026-07-22"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-06",
@@ -10694,7 +10943,8 @@
       "inputPrice": 19.49,
       "packQuantity": 500,
       "unit": "g",
-      "source": "Confirmado — Informado pelo usuario em 2026-07-22"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-07",
@@ -10704,7 +10954,8 @@
       "inputPrice": 12.99,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "regra de calda confirmada pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-08",
@@ -10714,7 +10965,8 @@
       "inputPrice": 17.9,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "regra de calda confirmada pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-09",
@@ -10724,7 +10976,8 @@
       "inputPrice": 12.9,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "regra de calda confirmada pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-10",
@@ -10734,7 +10987,8 @@
       "inputPrice": 28.9,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-11",
@@ -10744,7 +10998,8 @@
       "inputPrice": 28.9,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-12",
@@ -10754,7 +11009,8 @@
       "inputPrice": 28.9,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-13",
@@ -10764,7 +11020,8 @@
       "inputPrice": 32,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-14",
@@ -10774,7 +11031,8 @@
       "inputPrice": 38,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-15",
@@ -10784,7 +11042,8 @@
       "inputPrice": 16,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Confirmado — Base confirmada pelo proprietário - revisão CMV 25/08/2026"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-16",
@@ -10794,7 +11053,8 @@
       "inputPrice": 30,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-17",
@@ -10804,7 +11064,8 @@
       "inputPrice": 30,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "confirmado pelo proprietário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-18",
@@ -10814,7 +11075,8 @@
       "inputPrice": 30,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "custo confirmado pelo proprietário; item pausado no cardápio"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-19",
@@ -10824,7 +11086,8 @@
       "inputPrice": 7,
       "packQuantity": 395,
       "unit": "g",
-      "source": "porção confirmada na receita Paçoleite 300; escopo: Paçoleite 300 ml"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-20",
@@ -10834,7 +11097,8 @@
       "inputPrice": 37,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "porção confirmada na receita Paçoleite 300; escopo: Paçoleite 300 ml"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-21",
@@ -10844,7 +11108,8 @@
       "inputPrice": 40,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Confirmado — Informado pelo usuário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-22",
@@ -10854,7 +11119,8 @@
       "inputPrice": 41.59,
       "packQuantity": 750,
       "unit": "g",
-      "source": "Confirmado — Base confirmada pelo proprietário - revisão CMV 25/08/2026"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-23",
@@ -10864,17 +11130,19 @@
       "inputPrice": 57.99,
       "packQuantity": 50,
       "unit": "un",
-      "source": "Confirmado — Informado pelo usuario em 2026-07-22"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 1 un",
+      "portionQuantity": 1
     },
     {
       "id": "POR-24",
       "complement": "Paçoca",
       "menuType": "Grátis e adicional pago",
       "addonPrice": 4,
-      "inputPrice": 25,
+      "inputPrice": 28.9,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "porção confirmada na receita Paçoleite 300; escopo: Paçoleite 300 ml"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 30 g",
+      "portionQuantity": 30
     },
     {
       "id": "POR-25",
@@ -10884,7 +11152,8 @@
       "inputPrice": 28,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Confirmado — Base confirmada pelo proprietário - revisão CMV 25/08/2026"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 50 g",
+      "portionQuantity": 50
     },
     {
       "id": "POR-26",
@@ -10894,27 +11163,30 @@
       "inputPrice": 175,
       "packQuantity": 4000,
       "unit": "g",
-      "source": "Confirmado — Informado pelo usuário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 50 g",
+      "portionQuantity": 50
     },
     {
       "id": "POR-27",
       "complement": "Creme De Bueno",
       "menuType": "Adicional pago",
       "addonPrice": 6,
-      "inputPrice": null,
-      "packQuantity": null,
-      "unit": null,
-      "source": "PENDENTE: preço do insumo — Preço não localizado na base vigente."
+      "inputPrice": 42,
+      "packQuantity": 1000,
+      "unit": "g",
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 50 g",
+      "portionQuantity": 50
     },
     {
       "id": "POR-28",
       "complement": "Creme De Leitinho",
       "menuType": "Adicional pago",
       "addonPrice": 6,
-      "inputPrice": 42,
+      "inputPrice": 41.89,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Confirmado — Base confirmada pelo proprietário - revisão CMV 25/08/2026"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 50 g",
+      "portionQuantity": 50
     },
     {
       "id": "POR-29",
@@ -10924,7 +11196,8 @@
       "inputPrice": 41,
       "packQuantity": 1000,
       "unit": "g",
-      "source": "Confirmado — Informado pelo usuário"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 50 g",
+      "portionQuantity": 50
     },
     {
       "id": "POR-30",
@@ -10934,17 +11207,19 @@
       "inputPrice": 4.49,
       "packQuantity": 1,
       "unit": "un",
-      "source": "Confirmado — Usuário: R$ 4,49/un."
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 1 g",
+      "portionQuantity": 1
     },
     {
       "id": "POR-31",
       "complement": "Nutella",
       "menuType": "Adicional pago",
       "addonPrice": 10,
-      "inputPrice": 46,
-      "packQuantity": 650,
+      "inputPrice": 46.99,
+      "packQuantity": 700,
       "unit": "g",
-      "source": "Confirmado — Base confirmada pelo proprietário - revisão CMV 25/08/2026"
+      "source": "confirmado diretamente pelo proprietário em 05/11/2026; porção 60 g",
+      "portionQuantity": 60
     }
   ],
   "collection": [
@@ -11283,64 +11558,78 @@
     "P400": "Paçoleite 400 ml concluído: 4 camadas de 6 g de paçoca, 6 g de leite em pó e 10 g de leite condensado. São 22 g por camada e 88 g de complementos no total. Pela regra operacional, 400 - 88 + 10 g de margem = 322 g de açaí, resultando em 410 g montados. Custo direto operacional atual: R$ 8,51.",
     "P500": "Paçoleite 500 ml concluído: 4 camadas de 8 g de paçoca, 7 g de leite em pó e 10 g de leite condensado. São 25 g por camada e 100 g de complementos no total. Pela regra operacional, 500 - 100 + 10 g de margem = 410 g de açaí, resultando em 510 g montados. Custo direto operacional atual: R$ 10,42.",
     "P700": "Paçoleite 700 ml concluído: 4 camadas de 10 g de paçoca, 10 g de leite em pó e 10 g de leite condensado. São 30 g por camada e 120 g de complementos no total. Pela regra operacional, 700 - 120 + 10 g de margem = 590 g de açaí, resultando em 710 g montados. Custo direto operacional atual: R$ 14,48.",
-    "M300": "Monte Seu 300 ml concluído como receita variável: 3 complementos grátis, 7 g de cada complemento em cada uma das 4 camadas. Cada complemento totaliza 28 g no copo; os três somam 84 g. Pela regra de margem, 300 - 84 + 10 = 226 g de açaí, resultando em 310 g montados. O custo fixo de açaí e embalagem é R$ 4,58; conforme os complementos selecionados, o custo direto teórico da montagem varia de R$ 4,91 a R$ 10,41. Esses valores não são preço de venda. Os custos de confete, gotas de chocolate, granulados e kiwi foram recuperados; o kiwi está pausado, mas seu custo continua registrado.",
-    "M400": "Monte Seu 400 ml concluído como receita variável: 3 complementos grátis, 8 g de cada complemento em cada uma das 4 camadas. Cada complemento totaliza 32 g no copo; os três somam 96 g. Pela regra de margem, 400 - 96 + 10 = 314 g de açaí, resultando em 410 g montados. O custo fixo de açaí e embalagem é R$ 6,18; conforme os complementos selecionados, o custo direto teórico da montagem varia de R$ 6,56 a R$ 12,83. Esses valores não são preço de venda.",
-    "M500": "Monte Seu 500 ml concluído como receita variável: 3 complementos grátis, 10 g de cada complemento em cada uma das 4 camadas. Cada complemento totaliza 40 g no copo; os três somam 120 g. Pela regra de margem, 500 - 120 + 10 = 390 g de açaí, resultando em 510 g montados. O custo fixo de açaí e embalagem é R$ 7,54; conforme os complementos selecionados, o custo direto teórico da montagem varia de R$ 8,02 a R$ 15,86. Esses valores não são preço de venda. Esta correção substitui a regra anterior de 30 g por complemento e 400 g de açaí no Monte Seu 500; o Marmitex 500 continua separado com sua regra própria.",
-    "M700": "Monte Seu 700 ml concluído como receita variável: 4 complementos grátis, 10 g de cada complemento em cada uma das 4 camadas. Cada complemento totaliza 40 g no copo; os quatro somam 160 g. Pela regra de margem, 700 - 160 + 10 = 550 g de açaí, resultando em 710 g montados. O custo fixo de açaí e embalagem é R$ 10,61; conforme os complementos selecionados, o custo direto teórico da montagem varia de R$ 11,25 a R$ 21,71. Esses valores não são preço de venda.",
-    "MX500": "Marmitex 500 concluído como receita variável: mesma base do Monte Seu 500, com 400 g de açaí, 3 complementos escolhidos e 30 g de cada, totalizando 90 g de complementos. A porção de 30 g vale independentemente do item escolhido. Kit de embalagem da base: marmitex 500 com tampa, colher, guardanapo, saquinho 5x24 e saco PP pequeno/médio. Custo fixo de açaí e embalagem: R$ 7,58; somar o custo de 30 g de cada um dos três complementos escolhidos.",
-    "MX700": "Marmitex 700 preparado em duas versões para comparação, ambas com meta operacional de 710 g, quatro complementos escolhidos e kit de embalagem confirmado. Versão de 30 g: 590 g de açaí + 120 g de complementos, sendo 10 g de cada complemento no fundo e 20 g de cada por cima; custo fixo de açaí e embalagem de R$ 11,22 e faixa teórica conhecida de R$ 11,70 a R$ 19,54. Versão de 40 g: 550 g de açaí + 160 g de complementos, sendo 10 g de cada no fundo e 30 g de cada por cima; custo fixo de R$ 10,55 e faixa teórica conhecida de R$ 11,18 a R$ 21,64. A diferença é somente a composição: a versão de 40 g retira 40 g de açaí e coloca 40 g de complementos, mantendo os mesmos 710 g. Em relação à versão de 30 g, o custo pode cair até R$ 0,52 com itens baratos ou subir até R$ 2,10 com itens caros. Confete, gotas de chocolate e os dois granulados agora entram no cálculo; o kiwi tem custo registrado em R$ 30,00/kg, mas está pausado. A regra final entre 30 g e 40 g permanece pendente."
+    "M300": "Monte Seu 300 ml: 3 complementos grátis de 30 g cada, totalizando 90 g; 220 g de açaí; 310 g montados. Com a compra atual e o mix ativo, o custo direto varia de R$ 5,18 a R$ 9,08. No preço oficial de R$ 30,90 conferido em 06/11/2026, a sobra bruta varia de R$ 21,82 a R$ 25,72, antes de taxas e descontos.",
+    "M400": "Monte Seu 400 ml: 3 complementos grátis de 30 g cada, totalizando 90 g; 320 g de açaí; 410 g montados. Com a compra atual e o mix ativo, o custo direto varia de R$ 6,97 a R$ 10,87. No preço atual de R$ 33,90, a sobra bruta varia de R$ 23,03 a R$ 26,93, antes de taxas e descontos.",
+    "M500": "Monte Seu 500 ml: 3 complementos grátis de 30 g cada, totalizando 90 g; 420 g de açaí; 510 g montados. Com a compra atual e o mix ativo, o custo direto varia de R$ 8,73 a R$ 12,63. No preço oficial de R$ 37,90 conferido em 06/11/2026, a sobra bruta varia de R$ 25,27 a R$ 29,17, antes de taxas e descontos.",
+    "M700": "Monte Seu 700 ml: 4 complementos grátis de 30 g cada, totalizando 120 g; 590 g de açaí; 710 g montados. Com a compra atual e o mix ativo, o custo direto varia de R$ 12,30 a R$ 16,98. No preço oficial de R$ 45,90 conferido em 06/11/2026, a sobra bruta varia de R$ 28,92 a R$ 33,60, antes de taxas e descontos.",
+    "MX500": "Marmitex 500: 400 g de açaí e 3 complementos de 30 g. Com a compra atual e o mix ativo, o custo direto varia de R$ 8,27 a R$ 12,17. No preço oficial de R$ 37,65 conferido em 06/11/2026, a sobra bruta varia de R$ 25,48 a R$ 29,38, antes de taxas e descontos.",
+    "MX700": "Marmitex 700: regra final de 30 g por complemento, com 590 g de açaí + 4 complementos de 30 g = 710 g. Com a compra atual e o mix ativo, o custo direto varia de R$ 12,29 a R$ 16,97. No preço oficial de R$ 46,90 conferido em 06/11/2026, a sobra bruta varia de R$ 29,93 a R$ 34,61, antes de taxas e descontos."
   },
   "initialPortionAnswers": {
-    "POR-07": 40,
-    "POR-08": 40,
-    "POR-09": 40,
-    "POR-10": 40,
-    "POR-11": 40,
-    "POR-12": 40,
-    "POR-19": 40,
-    "POR-20": 20,
-    "POR-24": 20
+    "POR-01": 30,
+    "POR-02": 30,
+    "POR-03": 30,
+    "POR-04": 4,
+    "POR-05": 30,
+    "POR-06": 30,
+    "POR-07": 30,
+    "POR-08": 30,
+    "POR-09": 30,
+    "POR-10": 30,
+    "POR-11": 30,
+    "POR-12": 30,
+    "POR-13": 30,
+    "POR-14": 30,
+    "POR-15": 30,
+    "POR-16": 30,
+    "POR-17": 30,
+    "POR-18": 30,
+    "POR-19": 30,
+    "POR-20": 30,
+    "POR-21": 30,
+    "POR-22": 30,
+    "POR-23": 1,
+    "POR-24": 30,
+    "POR-25": 50,
+    "POR-26": 50,
+    "POR-27": 50,
+    "POR-28": 50,
+    "POR-29": 50,
+    "POR-30": 1,
+    "POR-31": 60
   },
   "sizePortionRules": {
     "monte300": {
       "label": "Monte Seu 300 ml",
-      "portionGramsPerComplement": 28,
-      "appliesRegardlessOfItem": true,
+      "portionGramsPerComplement": 30,
+      "appliesRegardlessOfItem": false,
       "confirmedUse": "Monte Seu 300",
       "complementChoices": 3,
-      "layers": 4,
-      "gramsPerComplementPerLayer": 7,
-      "status": "confirmado pelo proprietário"
+      "status": "regra geral de 30 g confirmada em 05/11/2026; Bis e Ouro Branco seguem por unidade"
     },
     "monte400": {
       "label": "Monte Seu 400 ml",
-      "portionGramsPerComplement": 32,
-      "appliesRegardlessOfItem": true,
+      "portionGramsPerComplement": 30,
+      "appliesRegardlessOfItem": false,
       "confirmedUse": "Monte Seu 400",
       "complementChoices": 3,
-      "layers": 4,
-      "gramsPerComplementPerLayer": 8,
-      "status": "confirmado pelo proprietário"
+      "status": "regra geral de 30 g confirmada em 05/11/2026; Bis e Ouro Branco seguem por unidade"
     },
     "monte500": {
       "label": "Monte Seu 500 ml",
-      "portionGramsPerComplement": 40,
-      "appliesRegardlessOfItem": true,
+      "portionGramsPerComplement": 30,
+      "appliesRegardlessOfItem": false,
       "confirmedUse": "Monte Seu 500",
       "complementChoices": 3,
-      "layers": 4,
-      "gramsPerComplementPerLayer": 10,
-      "status": "confirmado pelo proprietário"
+      "status": "regra geral de 30 g confirmada em 05/11/2026; Bis e Ouro Branco seguem por unidade"
     },
     "monte700": {
       "label": "Monte Seu 700 ml",
-      "portionGramsPerComplement": 40,
-      "appliesRegardlessOfItem": true,
+      "portionGramsPerComplement": 30,
+      "appliesRegardlessOfItem": false,
       "confirmedUse": "Monte Seu 700",
       "complementChoices": 4,
-      "layers": 4,
-      "gramsPerComplementPerLayer": 10,
-      "status": "confirmado pelo proprietário"
+      "status": "regra geral de 30 g confirmada em 05/11/2026; Bis e Ouro Branco seguem por unidade"
     },
     "marmitex500": {
       "label": "Marmitex 500 ml",
@@ -11391,8 +11680,408 @@
       "status": "custo confirmado pelo proprietário",
       "availability": "pausado",
       "evidence": "Preço de R$ 30,00/kg corrigido diretamente pelo proprietário em 18/10/2026; item pausado no cardápio."
+    },
+    "Paçoca": {
+      "packagePrice": 28.9,
+      "packageQuantityGrams": 1000,
+      "costPerGram": 0.0289,
+      "status": "compra confirmada pelo proprietário",
+      "availability": "ativo",
+      "evidence": "Pacote de 1 kg por R$ 28,90 confirmado diretamente pelo proprietário em 05/11/2026."
+    },
+    "Creme De Bueno": {
+      "packagePrice": 42,
+      "packageQuantityGrams": 1000,
+      "costPerGram": 0.042,
+      "status": "base operacional aceita pelo proprietário",
+      "availability": "ativo",
+      "evidence": "Base de R$ 42,00/kg informada pelo proprietário e mantida até nova compra comprovada."
+    },
+    "Creme De Leitinho": {
+      "packagePrice": 41.89,
+      "packageQuantityGrams": 1000,
+      "costPerGram": 0.04189,
+      "status": "base operacional aceita pelo proprietário",
+      "availability": "ativo",
+      "evidence": "Preço comprovado de R$ 41,89/kg; atualização futura depende de nova foto de compra."
+    },
+    "Nutella": {
+      "packagePrice": 46.99,
+      "packageQuantityGrams": 700,
+      "costPerGram": 0.06712857142857143,
+      "status": "compra confirmada",
+      "availability": "ativo",
+      "evidence": "Compra de cinco potes de 700 g por R$ 234,95 em 04/11/2026; custo unitário de R$ 46,99."
     }
   },
+  "directCostBasis": {
+    "status": "base de compra confirmada e aplicada em 05/11/2026",
+    "scope": "Custo direto do produto. Sobra bruta = preço de venda atual menos custo direto; taxas, descontos, frete, impostos e custos fixos ficam para a etapa seguinte.",
+    "acaiPackagePrice": 151.52,
+    "acaiPhysicalWeightGrams": 9200,
+    "acaiCostingWeightGrams": 9000,
+    "acaiCostPerGram": 0.016835555555555555,
+    "pacocaPackagePrice": 28.9,
+    "pacocaPackageWeightGrams": 1000,
+    "pacocaCostPerGram": 0.0289,
+    "nutellaPackagePrice": 46.99,
+    "nutellaPackageWeightGrams": 700,
+    "nutellaCostPerGram": 0.06712857142857143,
+    "packagingCostBySize": {
+      "300": 0.7633281481481481,
+      "400": 0.8733281481481482,
+      "500": 0.9449281481481481,
+      "700": 1.2669281481481482
+    },
+    "marmitex500PackagingCost": 0.8233281481481481,
+    "marmitex700PackagingCost": 1.2571077108433735,
+    "evidence": "Planilha de compras atualizada em 03-05/11/2026 e correções diretas do proprietário. Para o açaí, 9.200 g físicos e 9.000 g usados no custeio como margem de segurança."
+  },
+  "liveSalePrices": {
+    "status": "preços lidos em modo somente consulta no cardápio oficial em 06/11/2026",
+    "source": "https://x-acai-api.srv2043482.hstgr.cloud/api/default/menu e /api/default/menu/item/{id}",
+    "verifiedAt": "2026-11-06T00:15:00-03:00",
+    "fixedByProduct": {
+      "Açaí X-King Paçoca": {
+        "300": 26.9,
+        "400": 30.9,
+        "500": 34.9,
+        "700": 42.9
+      },
+      "Açaí X-Splash": {
+        "300": 26.9,
+        "400": 30.9,
+        "500": 34.9,
+        "700": 41.9
+      },
+      "Açaí X-Tradicional": {
+        "300": 26.9,
+        "400": 30.9,
+        "500": 34.9,
+        "700": 41.9
+      },
+      "Açaí X-Paçoleite": {
+        "300": 26.9,
+        "400": 30.9,
+        "500": 34.9,
+        "700": 41.9
+      },
+      "Açaí X-Paçokita": {
+        "300": 28.9,
+        "400": 32.9,
+        "500": 36.9,
+        "700": 43.9
+      },
+      "Açaí X-Chocolá": {
+        "300": 29.9,
+        "400": 33.9,
+        "500": 37.9,
+        "700": 44.9
+      },
+      "Açaí X-Tropical": {
+        "300": 30.9,
+        "400": 34.9,
+        "500": 38.9,
+        "700": 45.9
+      },
+      "Açaí X-Creme": {
+        "300": 31.9,
+        "400": 35.9,
+        "500": 39.9,
+        "700": 46.9
+      },
+      "Açaí X-Tella": {
+        "300": 32.9,
+        "400": 36.9,
+        "500": 40.9,
+        "700": 47.9
+      },
+      "Açaí X-King Tella": {
+        "300": 32.9,
+        "400": 36.9,
+        "500": 40.9,
+        "700": 47.9
+      }
+    },
+    "variableBySku": {
+      "MONTE-300": 30.9,
+      "MONTE-400": 33.9,
+      "MONTE-500": 37.9,
+      "MONTE-700": 45.9,
+      "MARMITEX-500": 37.65,
+      "MARMITEX-700": 46.9
+    }
+  },
+  "variableCupCosting": [
+    {
+      "sku": "MONTE-300",
+      "product": "Açaí de 300ml 3 complementos grátis",
+      "size": "300ml",
+      "acaiGrams": 220,
+      "complementChoices": 3,
+      "complementPortionGrams": 30,
+      "fixedCost": 4.46715037037037,
+      "costMinimum": 5.17905037037037,
+      "costMaximum": 9.07825037037037,
+      "appPrice": 30.9,
+      "grossRemainderMinimum": 21.82174962962963,
+      "grossRemainderMaximum": 25.72094962962963,
+      "cheapestMix": [
+        {
+          "complement": "Banana",
+          "cost": 0.1194
+        },
+        {
+          "complement": "Aveia",
+          "cost": 0.2055
+        },
+        {
+          "complement": "Cobertura De Morango",
+          "cost": 0.387
+        }
+      ],
+      "mostExpensiveMix": [
+        {
+          "complement": "Bis",
+          "cost": 1.7475
+        },
+        {
+          "complement": "Ovomaltine",
+          "cost": 1.6636000000000002
+        },
+        {
+          "complement": "Morango",
+          "cost": 1.2
+        }
+      ]
+    },
+    {
+      "sku": "MONTE-400",
+      "product": "Açaí de 400ml 3 complementos grátis",
+      "size": "400ml",
+      "acaiGrams": 320,
+      "complementChoices": 3,
+      "complementPortionGrams": 30,
+      "fixedCost": 6.260705925925925,
+      "costMinimum": 6.972605925925925,
+      "costMaximum": 10.871805925925926,
+      "appPrice": 33.9,
+      "grossRemainderMinimum": 23.028194074074072,
+      "grossRemainderMaximum": 26.927394074074073,
+      "cheapestMix": [
+        {
+          "complement": "Banana",
+          "cost": 0.1194
+        },
+        {
+          "complement": "Aveia",
+          "cost": 0.2055
+        },
+        {
+          "complement": "Cobertura De Morango",
+          "cost": 0.387
+        }
+      ],
+      "mostExpensiveMix": [
+        {
+          "complement": "Bis",
+          "cost": 1.7475
+        },
+        {
+          "complement": "Ovomaltine",
+          "cost": 1.6636000000000002
+        },
+        {
+          "complement": "Morango",
+          "cost": 1.2
+        }
+      ]
+    },
+    {
+      "sku": "MONTE-500",
+      "product": "Açaí de 500ml 3 complementos grátis",
+      "size": "500ml",
+      "acaiGrams": 420,
+      "complementChoices": 3,
+      "complementPortionGrams": 30,
+      "fixedCost": 8.015861481481481,
+      "costMinimum": 8.727761481481481,
+      "costMaximum": 12.626961481481482,
+      "appPrice": 37.9,
+      "grossRemainderMinimum": 25.27303851851852,
+      "grossRemainderMaximum": 29.17223851851852,
+      "cheapestMix": [
+        {
+          "complement": "Banana",
+          "cost": 0.1194
+        },
+        {
+          "complement": "Aveia",
+          "cost": 0.2055
+        },
+        {
+          "complement": "Cobertura De Morango",
+          "cost": 0.387
+        }
+      ],
+      "mostExpensiveMix": [
+        {
+          "complement": "Bis",
+          "cost": 1.7475
+        },
+        {
+          "complement": "Ovomaltine",
+          "cost": 1.6636000000000002
+        },
+        {
+          "complement": "Morango",
+          "cost": 1.2
+        }
+      ]
+    },
+    {
+      "sku": "MONTE-700",
+      "product": "Açaí de 700ml 4 complementos grátis",
+      "size": "700ml",
+      "acaiGrams": 590,
+      "complementChoices": 4,
+      "complementPortionGrams": 30,
+      "fixedCost": 11.199905925925925,
+      "costMinimum": 12.301505925925925,
+      "costMaximum": 16.980405925925925,
+      "appPrice": 45.9,
+      "grossRemainderMinimum": 28.919594074074073,
+      "grossRemainderMaximum": 33.598494074074075,
+      "cheapestMix": [
+        {
+          "complement": "Banana",
+          "cost": 0.1194
+        },
+        {
+          "complement": "Aveia",
+          "cost": 0.2055
+        },
+        {
+          "complement": "Cobertura De Morango",
+          "cost": 0.387
+        },
+        {
+          "complement": "Cobertura De Caramelo",
+          "cost": 0.3897
+        }
+      ],
+      "mostExpensiveMix": [
+        {
+          "complement": "Bis",
+          "cost": 1.7475
+        },
+        {
+          "complement": "Ovomaltine",
+          "cost": 1.6636000000000002
+        },
+        {
+          "complement": "Morango",
+          "cost": 1.2
+        },
+        {
+          "complement": "Cereal Ball Mesclado",
+          "cost": 1.1693999999999998
+        }
+      ]
+    },
+    {
+      "sku": "MARMITEX-500",
+      "product": "Açaí Marmitex 500ml 3 complementos grátis",
+      "size": "500ml",
+      "acaiGrams": 400,
+      "complementChoices": 3,
+      "complementPortionGrams": 30,
+      "fixedCost": 7.55755037037037,
+      "costMinimum": 8.26945037037037,
+      "costMaximum": 12.16865037037037,
+      "appPrice": 37.65,
+      "grossRemainderMinimum": 25.481349629629626,
+      "grossRemainderMaximum": 29.380549629629627,
+      "cheapestMix": [
+        {
+          "complement": "Banana",
+          "cost": 0.1194
+        },
+        {
+          "complement": "Aveia",
+          "cost": 0.2055
+        },
+        {
+          "complement": "Cobertura De Morango",
+          "cost": 0.387
+        }
+      ],
+      "mostExpensiveMix": [
+        {
+          "complement": "Bis",
+          "cost": 1.7475
+        },
+        {
+          "complement": "Ovomaltine",
+          "cost": 1.6636000000000002
+        },
+        {
+          "complement": "Morango",
+          "cost": 1.2
+        }
+      ]
+    },
+    {
+      "sku": "MARMITEX-700",
+      "product": "Açaí Marmitex 700ml 4 complementos grátis",
+      "size": "700ml",
+      "acaiGrams": 590,
+      "complementChoices": 4,
+      "complementPortionGrams": 30,
+      "fixedCost": 11.19008548862115,
+      "costMinimum": 12.29168548862115,
+      "costMaximum": 16.97058548862115,
+      "appPrice": 46.9,
+      "grossRemainderMinimum": 29.929414511378848,
+      "grossRemainderMaximum": 34.60831451137885,
+      "cheapestMix": [
+        {
+          "complement": "Banana",
+          "cost": 0.1194
+        },
+        {
+          "complement": "Aveia",
+          "cost": 0.2055
+        },
+        {
+          "complement": "Cobertura De Morango",
+          "cost": 0.387
+        },
+        {
+          "complement": "Cobertura De Caramelo",
+          "cost": 0.3897
+        }
+      ],
+      "mostExpensiveMix": [
+        {
+          "complement": "Bis",
+          "cost": 1.7475
+        },
+        {
+          "complement": "Ovomaltine",
+          "cost": 1.6636000000000002
+        },
+        {
+          "complement": "Morango",
+          "cost": 1.2
+        },
+        {
+          "complement": "Cereal Ball Mesclado",
+          "cost": 1.1693999999999998
+        }
+      ]
+    }
+  ],
   "pricingScope": {
     "salesChannel": "Takeat e venda presencial",
     "marketplaceCommission": false,
@@ -11699,17 +12388,6 @@
         "worstCaseContributionAmount": 17.124953362183994,
         "worstCaseContributionMarginPercent": 46.40908770239565,
         "status": "receita e preço aprovados pelo proprietário em 20/10/2026; ainda não publicado na Takeat"
-      },
-      "MX700": {
-        "product": "Marmitex 700 ml",
-        "price": 38.9,
-        "channel": "Takeat e venda presencial",
-        "maximumKnownDirectCost": 21.64,
-        "paymentReservePercent": 5,
-        "paymentReserveAmountAtApprovedPrice": 1.945,
-        "worstCaseContributionAmount": 15.315,
-        "worstCaseContributionMarginPercent": 39.37017994858612,
-        "status": "preço aprovado pelo proprietário em 22/10/2026; ainda não publicado na Takeat"
       }
     },
     "proposedPrices": {
@@ -11718,7 +12396,7 @@
         "proposedPrice": 38.9,
         "reason": "mesmo peso final de 710 g, quatro complementos e custo máximo conhecido de R$ 21,64, apenas R$ 0,07 abaixo do Monte Seu 700",
         "worstCaseContributionMarginPercent": 39.37017994858612,
-        "status": "aprovado pelo proprietário em 22/10/2026"
+        "status": "recomendado; aguardando confirmação do proprietário"
       },
       "status": "Marmitex 700 permanece como preço proposto; as Duplas e as seis famílias fixas foram aprovadas"
     },
