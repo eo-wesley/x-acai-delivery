@@ -37,6 +37,8 @@ const fixed = snapshot.fichas.flatMap((recipe) => {
     sizeMl,
     kind: 'receita fixa',
     detail: 'base cheia + receita fixa + embalagem completa',
+    pureAcaiCost: roundMoney(sizeMl * snapshot.directCostBasis.acaiCostPerGram),
+    previousCost: roundMoney(recipe.total),
     cost: roundMoney((sizeMl * snapshot.directCostBasis.acaiCostPerGram) + recipe.ingredients + recipe.packaging)
   }];
 });
@@ -50,19 +52,21 @@ const freePortions = snapshot.portions
   .filter((portion) => Number.isFinite(portion.cost))
   .sort((a, b) => b.cost - a.cost);
 const definitions = [
-  ['monte-300', 'Monte Seu', 300, 3, snapshot.directCostBasis.packagingCostBySize['300']],
-  ['monte-400', 'Monte Seu', 400, 3, snapshot.directCostBasis.packagingCostBySize['400']],
-  ['monte-500', 'Monte Seu', 500, 3, snapshot.directCostBasis.packagingCostBySize['500']],
-  ['monte-700', 'Monte Seu', 700, 4, snapshot.directCostBasis.packagingCostBySize['700']],
-  ['marmitex-500', 'Marmitex', 500, 3, snapshot.directCostBasis.marmitex500PackagingCost],
-  ['marmitex-700', 'Marmitex', 700, 4, snapshot.directCostBasis.marmitex700PackagingCost]
+  ['monte-300', 'Monte Seu', 300, 3, snapshot.directCostBasis.packagingCostBySize['300'], 4.47],
+  ['monte-400', 'Monte Seu', 400, 3, snapshot.directCostBasis.packagingCostBySize['400'], 6.26],
+  ['monte-500', 'Monte Seu', 500, 3, snapshot.directCostBasis.packagingCostBySize['500'], 8.02],
+  ['monte-700', 'Monte Seu', 700, 4, snapshot.directCostBasis.packagingCostBySize['700'], 11.20],
+  ['marmitex-500', 'Marmitex', 500, 3, snapshot.directCostBasis.marmitex500PackagingCost, 7.56],
+  ['marmitex-700', 'Marmitex', 700, 4, snapshot.directCostBasis.marmitex700PackagingCost, 11.19]
 ];
-const variable = definitions.map(([id, product, sizeMl, choices, packaging]) => ({
+const variable = definitions.map(([id, product, sizeMl, choices, packaging, previousCost]) => ({
   id,
   product,
   sizeMl,
   kind: 'mix seguro',
   detail: `base cheia + ${choices} complementos mais caros + embalagem completa`,
+  pureAcaiCost: roundMoney(sizeMl * snapshot.directCostBasis.acaiCostPerGram),
+  previousCost,
   cost: roundMoney((sizeMl * snapshot.directCostBasis.acaiCostPerGram) + packaging + freePortions.slice(0, choices).reduce((sum, portion) => sum + portion.cost, 0))
 }));
 
@@ -91,7 +95,7 @@ const report = `---
 type: tabela-canonica
 projeto: X-Açaí
 processo: custo-cheio-e-preco-sugerido-por-aplicativo
-status: calculado-taxas-editaveis
+status: vigente-publicado-no-aplicativo
 registros: 46
 updated: 2026-11-06
 ---
@@ -102,6 +106,9 @@ updated: 2026-11-06
 
 - Copos fixos: tamanho nominal cheio de açaí + receita fixa + copo, tampa, colher, guardanapo, saquinho e saco aplicável.
 - Monte Seu e Marmitex: tamanho nominal cheio de açaí + 3 ou 4 complementos grátis do mix ativo mais caro + embalagem completa.
+- A conta do açaí puro e a conta anterior permanecem visíveis; nenhuma das duas foi apagada.
+- Açaí puro = tamanho nominal × custo por grama, sem embalagem ou complemento. Conta anterior = custo que já estava registrado pela gramagem da ficha; preço sugerido usa somente o custo completo.
+- A base de açaí e os ingredientes da receita entram uma vez cada; o custo completo não duplica a base.
 - Kiwi pausado e adicionais pagos não entram no mix grátis.
 - Preço sugerido = custo total ÷ (1 − sobra desejada − taxa do canal), arredondado para cima em final 90.
 - Sobra desejada usada nesta fotografia: 35%.
@@ -114,13 +121,13 @@ ${channels.map(([, label, fee]) => `| ${label} | ${fee.toFixed(1).replace('.', '
 
 ## Tabela em ordem do menor custo para o maior
 
-| Produto | Tamanho | Custo total | Direto/próprio | iFood própria | iFood parceira | Keeta | 99Food |
-|---|---:|---:|---:|---:|---:|---:|---:|
-${rows.map((row) => `| ${row.product} | ${row.sizeMl} ml | ${brl(row.cost)} | ${brl(row.prices.direct)} | ${brl(row.prices.ifoodOwn)} | ${brl(row.prices.ifoodPartner)} | ${brl(row.prices.keeta)} | ${brl(row.prices.food99)} |`).join('\n')}
+| Produto | Tamanho | Açaí puro | Conta anterior | Custo completo | Direto/próprio | iFood própria | iFood parceira | Keeta | 99Food |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+${rows.map((row) => `| ${row.product} | ${row.sizeMl} ml | ${brl(row.pureAcaiCost)} | ${brl(row.previousCost)} | ${brl(row.cost)} | ${brl(row.prices.direct)} | ${brl(row.prices.ifoodOwn)} | ${brl(row.prices.ifoodPartner)} | ${brl(row.prices.keeta)} | ${brl(row.prices.food99)} |`).join('\n')}
 
 ## Portão
 
-Os preços são sugestões calculadas, não preços aprovados nem publicados. Antes de usar em cada aplicativo, substituir as taxas de referência pelas taxas reais do contrato na tela interativa do aplicativo oficial.
+Os preços são sugestões calculadas, não preços aprovados nem publicados nos canais. Antes de usar em cada aplicativo, substituir as taxas de referência pelas taxas reais do contrato na tela interativa do aplicativo oficial: \`https://x-acai-delivery.vercel.app/admin/costing\`.
 `;
 fs.writeFileSync(reportOutput, report, 'utf8');
 console.log(`Catálogo validado: ${fixed.length} fixos + ${variable.length} variáveis = ${rows.length}.`);

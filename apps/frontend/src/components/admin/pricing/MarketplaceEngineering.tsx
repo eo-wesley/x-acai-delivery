@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Calculator, Search, SlidersHorizontal, Store, Truck } from 'lucide-react';
 import snapshotJson from '@/data/xacai-pricing-snapshot.json';
 
-type Recipe = { id: number; product: string; variant: string; ingredients: number | null; packaging: number | null };
+type Recipe = { id: number; product: string; variant: string; ingredients: number | null; packaging: number | null; total?: number | null };
 type Portion = { id: string; complement: string; menuType: string; inputPrice: number | null; packQuantity: number | null; portionQuantity?: number | null };
 type Snapshot = {
     directCostBasis: {
@@ -16,7 +16,7 @@ type Snapshot = {
     fichas: Recipe[];
     portions: Portion[];
 };
-type CatalogItem = { id: string; product: string; sizeMl: number; cost: number; kind: 'fixo' | 'monte-seu'; detail: string };
+type CatalogItem = { id: string; product: string; sizeMl: number; pureAcaiCost: number; previousCost: number; cost: number; kind: 'fixo' | 'monte-seu'; detail: string };
 type Channel = { id: 'direct' | 'ifood-own' | 'ifood-partner' | 'keeta' | '99food'; label: string; fee: number };
 type SortMode = 'cost-asc' | 'cost-desc' | 'price-asc' | 'price-desc';
 
@@ -53,6 +53,8 @@ const fixedCatalog = (): CatalogItem[] => {
             id,
             product: recipe.product.replace(/^Açaí\s+/i, '').replace('X-Chocolã', 'X-Chocolá'),
             sizeMl,
+            pureAcaiCost: sizeMl * snapshot.directCostBasis.acaiCostPerGram,
+            previousCost: recipe.total ?? (recipe.ingredients + recipe.packaging),
             cost: (sizeMl * snapshot.directCostBasis.acaiCostPerGram) + recipe.ingredients + recipe.packaging,
             kind: 'fixo' as const,
             detail: 'base cheia + receita fixa + embalagem completa'
@@ -67,12 +69,12 @@ const variableCatalog = (): CatalogItem[] => {
         .filter((portion): portion is { name: string; cost: number } => portion.cost !== null)
         .sort((a, b) => b.cost - a.cost);
     const definitions = [
-        { id: 'monte-300', product: 'Monte Seu', sizeMl: 300, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['300'] },
-        { id: 'monte-400', product: 'Monte Seu', sizeMl: 400, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['400'] },
-        { id: 'monte-500', product: 'Monte Seu', sizeMl: 500, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['500'] },
-        { id: 'monte-700', product: 'Monte Seu', sizeMl: 700, choices: 4, packaging: snapshot.directCostBasis.packagingCostBySize['700'] },
-        { id: 'marmitex-500', product: 'Marmitex', sizeMl: 500, choices: 3, packaging: snapshot.directCostBasis.marmitex500PackagingCost },
-        { id: 'marmitex-700', product: 'Marmitex', sizeMl: 700, choices: 4, packaging: snapshot.directCostBasis.marmitex700PackagingCost }
+        { id: 'monte-300', product: 'Monte Seu', sizeMl: 300, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['300'], previousCost: 4.47 },
+        { id: 'monte-400', product: 'Monte Seu', sizeMl: 400, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['400'], previousCost: 6.26 },
+        { id: 'monte-500', product: 'Monte Seu', sizeMl: 500, choices: 3, packaging: snapshot.directCostBasis.packagingCostBySize['500'], previousCost: 8.02 },
+        { id: 'monte-700', product: 'Monte Seu', sizeMl: 700, choices: 4, packaging: snapshot.directCostBasis.packagingCostBySize['700'], previousCost: 11.20 },
+        { id: 'marmitex-500', product: 'Marmitex', sizeMl: 500, choices: 3, packaging: snapshot.directCostBasis.marmitex500PackagingCost, previousCost: 7.56 },
+        { id: 'marmitex-700', product: 'Marmitex', sizeMl: 700, choices: 4, packaging: snapshot.directCostBasis.marmitex700PackagingCost, previousCost: 11.19 }
     ];
     return definitions.map(definition => {
         const complementsCost = activePortions.slice(0, definition.choices).reduce((total, portion) => total + portion.cost, 0);
@@ -80,6 +82,8 @@ const variableCatalog = (): CatalogItem[] => {
             id: definition.id,
             product: definition.product,
             sizeMl: definition.sizeMl,
+            pureAcaiCost: definition.sizeMl * snapshot.directCostBasis.acaiCostPerGram,
+            previousCost: definition.previousCost,
             cost: (definition.sizeMl * snapshot.directCostBasis.acaiCostPerGram) + definition.packaging + complementsCost,
             kind: 'monte-seu' as const,
             detail: `base cheia + ${definition.choices} complementos mais caros + embalagem completa`
@@ -127,8 +131,8 @@ export default function MarketplaceEngineering() {
     return <div className="space-y-6">
         <header className="overflow-hidden rounded-[32px] bg-gradient-to-br from-purple-950 via-fuchsia-950 to-slate-950 p-6 text-white shadow-xl md:p-8">
             <div className="flex flex-wrap items-start justify-between gap-5">
-                <div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-fuchsia-100"><Calculator size={14} /> custo cheio e preço sugerido</div><h2 className="text-2xl font-black md:text-4xl">Tabela interativa por aplicativo</h2><p className="mt-2 max-w-3xl text-sm text-fuchsia-100 md:text-base">Cada custo usa a base cheia do tamanho nominal, a receita ou os complementos e a embalagem completa. As taxas são editáveis; confirme os percentuais do seu contrato antes de publicar preços.</p></div>
-                <div className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm"><strong className="block text-emerald-200">Regra corrigida</strong><span>300 ml = 300 g de açaí + receita/complementos + embalagem.</span></div>
+                <div><div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-fuchsia-100"><Calculator size={14} /> custo cheio e preço sugerido</div><h2 className="text-2xl font-black md:text-4xl">Tabela interativa por aplicativo</h2><p className="mt-2 max-w-3xl text-sm text-fuchsia-100 md:text-base">A conta do açaí puro e a conta anterior continuam visíveis lado a lado. O custo completo usa a base cheia, receita ou complementos e embalagem; é ele que forma o preço sugerido.</p></div>
+                <div className="rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm"><strong className="block text-emerald-200">Os dois cálculos preservados</strong><span>Nenhuma conta anterior foi apagada ou substituída.</span></div>
             </div>
         </header>
 
@@ -145,7 +149,7 @@ export default function MarketplaceEngineering() {
                 <div><h3 className="flex items-center gap-2 text-xl font-black text-slate-900"><Truck className="text-purple-700" size={22} /> 46 produtos e bases em ordem</h3><p className="mt-1 text-sm text-slate-500">O Monte Seu e o Marmitex usam o mix mais caro permitido, para o preço sugerido proteger qualquer escolha.</p></div>
                 <div className="flex flex-col gap-2 sm:flex-row"><label className="relative"><Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} /><input aria-label="Buscar produto" value={search} onChange={event => setSearch(event.target.value)} placeholder="Buscar produto" className="rounded-xl border border-slate-300 py-2.5 pl-9 pr-3 text-sm" /></label><select aria-label="Ordenar tabela" value={sortMode} onChange={event => setSortMode(event.target.value as SortMode)} className="rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-bold"><option value="cost-asc">Custo: menor → maior</option><option value="cost-desc">Custo: maior → menor</option><option value="price-asc">Preço sugerido: menor → maior</option><option value="price-desc">Preço sugerido: maior → menor</option></select></div>
             </div>
-            <div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="min-w-[1180px] w-full text-left text-sm"><thead className="bg-purple-950 text-xs uppercase text-white"><tr><th className="p-4">Produto</th><th className="p-4">Tamanho</th><th className="p-4">Custo total</th>{channels.map(channel => <th key={channel.id} className="p-4">{channel.label}<span className="block text-[10px] font-normal text-purple-200">taxa {channel.fee.toFixed(1)}%</span></th>)}</tr></thead><tbody className="divide-y divide-slate-100">{rows.map(item => <tr key={item.id} className="align-top hover:bg-purple-50/50"><td className="p-4"><strong className="text-slate-900">{item.product}</strong><span className={`ml-2 rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.kind === 'fixo' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{item.kind === 'fixo' ? 'receita fixa' : 'mix seguro'}</span><p className="mt-1 max-w-72 text-xs text-slate-500">{item.detail}</p></td><td className="p-4 font-black text-slate-700">{item.sizeMl} ml</td><td className="p-4 text-lg font-black text-slate-950">{money.format(item.cost)}</td>{channels.map(channel => { const price = suggestedPrice(item.cost, targetMargin, channel.fee); return <td key={channel.id} className={`p-4 text-lg font-black ${channel.id === 'direct' ? 'bg-emerald-50 text-emerald-800' : 'text-purple-900'}`}>{price === null ? 'Taxa + margem inválidas' : money.format(price)}</td>; })}</tr>)}</tbody></table></div>
+            <div className="overflow-x-auto rounded-2xl border border-slate-200"><table className="min-w-[1480px] w-full text-left text-sm"><thead className="bg-purple-950 text-xs uppercase text-white"><tr><th className="p-4">Produto</th><th className="p-4">Tamanho</th><th className="p-4">Açaí puro</th><th className="p-4">Conta anterior</th><th className="p-4">Custo completo</th>{channels.map(channel => <th key={channel.id} className="p-4">{channel.label}<span className="block text-[10px] font-normal text-purple-200">taxa {channel.fee.toFixed(1)}%</span></th>)}</tr></thead><tbody className="divide-y divide-slate-100">{rows.map(item => <tr key={item.id} className="align-top hover:bg-purple-50/50"><td className="p-4"><strong className="text-slate-900">{item.product}</strong><span className={`ml-2 rounded-full px-2 py-1 text-[10px] font-black uppercase ${item.kind === 'fixo' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-900'}`}>{item.kind === 'fixo' ? 'receita fixa' : 'mix seguro'}</span><p className="mt-1 max-w-72 text-xs text-slate-500">{item.detail}</p></td><td className="p-4 font-black text-slate-700">{item.sizeMl} ml</td><td className="p-4 font-bold text-sky-800">{money.format(item.pureAcaiCost)}</td><td className="p-4 font-bold text-slate-600">{money.format(item.previousCost)}</td><td className="p-4 text-lg font-black text-slate-950">{money.format(item.cost)}</td>{channels.map(channel => { const price = suggestedPrice(item.cost, targetMargin, channel.fee); return <td key={channel.id} className={`p-4 text-lg font-black ${channel.id === 'direct' ? 'bg-emerald-50 text-emerald-800' : 'text-purple-900'}`}>{price === null ? 'Taxa + margem inválidas' : money.format(price)}</td>; })}</tr>)}</tbody></table></div>
             <div className="mt-4 grid gap-3 text-xs text-slate-600 md:grid-cols-2"><p className="rounded-xl bg-emerald-50 p-3"><Store className="mr-1 inline text-emerald-700" size={15} /><strong>Preço direto:</strong> custo total dividido pela parcela restante após a sobra desejada. Taxa direta padrão: 0%.</p><p className="rounded-xl bg-amber-50 p-3"><strong>Preço por aplicativo:</strong> custo ÷ (1 − sobra desejada − taxa do canal), arredondado sempre para cima em final 90.</p></div>
         </section>
     </div>;
